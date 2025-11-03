@@ -33,6 +33,8 @@ class ProjectDocument {
     required List<CanvasLayerData> layers,
     Uint8List? previewBytes,
     this.path,
+    this.bucketSampleAllLayers = false,
+    this.bucketContiguous = true,
   }) : layers = _cloneLayers(layers),
        previewBytes = _clonePreview(previewBytes);
 
@@ -65,6 +67,8 @@ class ProjectDocument {
   final List<CanvasLayerData> layers;
   final Uint8List? previewBytes;
   final String? path;
+  final bool bucketSampleAllLayers;
+  final bool bucketContiguous;
 
   ProjectDocument copyWith({
     String? id,
@@ -75,6 +79,8 @@ class ProjectDocument {
     List<CanvasLayerData>? layers,
     Uint8List? previewBytes,
     String? path,
+    bool? bucketSampleAllLayers,
+    bool? bucketContiguous,
   }) {
     return ProjectDocument(
       id: id ?? this.id,
@@ -85,6 +91,9 @@ class ProjectDocument {
       layers: layers == null ? this.layers : _cloneLayers(layers),
       previewBytes: previewBytes ?? this.previewBytes,
       path: path ?? this.path,
+      bucketSampleAllLayers:
+          bucketSampleAllLayers ?? this.bucketSampleAllLayers,
+      bucketContiguous: bucketContiguous ?? this.bucketContiguous,
     );
   }
 }

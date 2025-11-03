@@ -82,6 +82,7 @@ mixin _PaintingBoardInteractionMixin on _PaintingBoardBase {
       return;
     }
     setState(() => _bucketSampleAllLayers = value);
+    _markDirty();
   }
 
   void _updateBucketContiguous(bool value) {
@@ -89,6 +90,7 @@ mixin _PaintingBoardInteractionMixin on _PaintingBoardBase {
       return;
     }
     setState(() => _bucketContiguous = value);
+    _markDirty();
   }
 
   void _startStroke(Offset position) {

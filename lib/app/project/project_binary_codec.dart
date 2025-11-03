@@ -8,7 +8,7 @@ import 'project_document.dart';
 
 class ProjectBinaryCodec {
   static const String _magic = 'MISARIN';
-  static const int _version = 2;
+  static const int _version = 3;
 
   static Uint8List encode(ProjectDocument document) {
     final BytesBuilder builder = BytesBuilder();
@@ -25,6 +25,8 @@ class ProjectBinaryCodec {
         'height': document.settings.height,
         'backgroundColor': _encodeColor(document.settings.backgroundColor),
       },
+      'bucketSampleAllLayers': document.bucketSampleAllLayers,
+      'bucketContiguous': document.bucketContiguous,
     };
 
     final Uint8List metadataBytes = Uint8List.fromList(
@@ -52,7 +54,7 @@ class ProjectBinaryCodec {
     final _ByteReader reader = _ByteReader(bytes);
     reader.expectMagic(_magic);
     final int version = reader.readByte();
-    if (version != 1 && version != _version) {
+    if (version < 1 || version > _version) {
       throw UnsupportedError('不支持的项目文件版本：$version');
     }
 
@@ -80,6 +82,17 @@ class ProjectBinaryCodec {
         ? null
         : reader.readBytes(previewLength);
 
+    final bool bucketSampleAllLayers = _readBool(
+      metadata,
+      'bucketSampleAllLayers',
+      fallback: false,
+    );
+    final bool bucketContiguous = _readBool(
+      metadata,
+      'bucketContiguous',
+      fallback: true,
+    );
+
     return ProjectDocument(
       id: metadata['id'] as String,
       name: metadata['name'] as String,
@@ -89,6 +102,8 @@ class ProjectBinaryCodec {
       layers: layers,
       previewBytes: preview,
       path: path,
+      bucketSampleAllLayers: bucketSampleAllLayers,
+      bucketContiguous: bucketContiguous,
     );
   }
 
@@ -100,7 +115,7 @@ class ProjectBinaryCodec {
     final _ByteReader reader = _ByteReader(bytes);
     reader.expectMagic(_magic);
     final int version = reader.readByte();
-    if (version != 1 && version != _version) {
+    if (version < 1 || version > _version) {
       throw UnsupportedError('不支持的项目文件版本：$version');
     }
 
@@ -173,6 +188,21 @@ class ProjectBinaryCodec {
               entry as Map<String, dynamic>,
             ))
         .toList(growable: false);
+  }
+
+  static bool _readBool(
+    Map<String, dynamic> json,
+    String key, {
+    required bool fallback,
+  }) {
+    final dynamic value = json[key];
+    if (value is bool) {
+      return value;
+    }
+    if (value is num) {
+      return value != 0;
+    }
+    return fallback;
   }
 
   static List<CanvasLayerData> _legacyLayers({

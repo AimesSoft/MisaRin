@@ -149,6 +149,8 @@ class CanvasPageState extends State<CanvasPage> {
       final ProjectDocument updated = _document.copyWith(
         layers: layers,
         previewBytes: preview,
+        bucketSampleAllLayers: board.bucketSampleAllLayers,
+        bucketContiguous: board.bucketContiguous,
       );
       final ProjectDocument saved = await _repository.saveDocument(updated);
       if (!mounted) {
@@ -210,6 +212,8 @@ class CanvasPageState extends State<CanvasPage> {
         layers: layers,
         previewBytes: preview,
         path: normalizedPath,
+        bucketSampleAllLayers: board.bucketSampleAllLayers,
+        bucketContiguous: board.bucketContiguous,
       );
       final ProjectDocument saved = await _repository.saveDocumentAs(
         updated,
@@ -524,6 +528,8 @@ class CanvasPageState extends State<CanvasPage> {
       onRequestExit: _handleExitRequest,
       onDirtyChanged: (dirty) => _handleDirtyChanged(entry.id, dirty),
       initialLayers: entry.document.layers,
+      bucketSampleAllLayers: entry.document.bucketSampleAllLayers,
+      bucketContiguous: entry.document.bucketContiguous,
     );
   }
 

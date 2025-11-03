@@ -51,12 +51,16 @@ class PaintingBoard extends StatefulWidget {
     required this.onRequestExit,
     this.onDirtyChanged,
     this.initialLayers,
+    this.bucketSampleAllLayers = false,
+    this.bucketContiguous = true,
   });
 
   final CanvasSettings settings;
   final VoidCallback onRequestExit;
   final ValueChanged<bool>? onDirtyChanged;
   final List<CanvasLayerData>? initialLayers;
+  final bool bucketSampleAllLayers;
+  final bool bucketContiguous;
 
   @override
   State<PaintingBoard> createState() => PaintingBoardState();
@@ -110,6 +114,8 @@ abstract class _PaintingBoardBase extends State<PaintingBoard> {
   bool get isDirty => _isDirty;
   bool get canUndo => _store.canUndo;
   bool get canRedo => _store.canRedo;
+  bool get bucketSampleAllLayers => _bucketSampleAllLayers;
+  bool get bucketContiguous => _bucketContiguous;
 
   List<CanvasLayerData> get _layers => _store.layers;
   String? get _activeLayerId => _store.activeLayerId;
@@ -239,6 +245,8 @@ class PaintingBoardState extends _PaintingBoardBase
   @override
   void initState() {
     super.initState();
+    _bucketSampleAllLayers = widget.bucketSampleAllLayers;
+    _bucketContiguous = widget.bucketContiguous;
     _primaryHsv = HSVColor.fromColor(_primaryColor);
     _rememberColor(widget.settings.backgroundColor);
     _rememberColor(_primaryColor);
@@ -281,6 +289,21 @@ class PaintingBoardState extends _PaintingBoardBase
           _viewportInitialized = false;
         }
         _bumpCurrentStrokeVersion();
+      });
+    }
+
+    final bool bucketSampleAllLayersChanged =
+        widget.bucketSampleAllLayers != oldWidget.bucketSampleAllLayers;
+    final bool bucketContiguousChanged =
+        widget.bucketContiguous != oldWidget.bucketContiguous;
+    if (bucketSampleAllLayersChanged || bucketContiguousChanged) {
+      setState(() {
+        if (bucketSampleAllLayersChanged) {
+          _bucketSampleAllLayers = widget.bucketSampleAllLayers;
+        }
+        if (bucketContiguousChanged) {
+          _bucketContiguous = widget.bucketContiguous;
+        }
       });
     }
   }
