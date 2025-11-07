@@ -42,7 +42,7 @@ void _strokeBegin(
     ..clear()
     ..add(position);
   controller._currentStrokeRadius = radius;
-  final bool useSlimeEngine = simulatePressure && !useDevicePressure;
+  final bool useSlimeEngine = !useDevicePressure;
   controller._currentStrokeUsesSlimeEngine = useSlimeEngine;
   controller._currentStrokeStylusPressureEnabled =
       useDevicePressure && controller._stylusPressureEnabled && !simulatePressure;
@@ -60,6 +60,7 @@ void _strokeBegin(
       position: position,
       baseRadius: radius,
       timestampMillis: resolvedTimestamp,
+      dynamicRadius: simulatePressure,
     );
     controller._currentStrokeLastRadius =
         controller._slimeStrokeEngine.surfaceRadius;

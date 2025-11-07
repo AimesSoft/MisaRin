@@ -20,6 +20,8 @@ class SlimeStrokeEngine {
   StrokePressureProfile _profile = StrokePressureProfile.auto;
   double _traveledDistance = 0.0;
   double _lastVisualRadius = 0.0;
+  double _smoothedSpeed = 0.0;
+  bool _dynamicRadius = true;
 
   static const double _kMinMotion = 0.35;
   static const double _kStationaryGain = 0.0045;
@@ -43,6 +45,7 @@ class SlimeStrokeEngine {
     required Offset position,
     required double baseRadius,
     required double timestampMillis,
+    required bool dynamicRadius,
   }) {
     _active = true;
     _joints
@@ -62,6 +65,8 @@ class SlimeStrokeEngine {
     _lastTimestamp = timestampMillis;
     _traveledDistance = 0.0;
     _lastVisualRadius = _visualizeRadius(_surfaceRadius, 0.0);
+    _smoothedSpeed = 0.0;
+    _dynamicRadius = dynamicRadius;
   }
 
   SlimeStrokeSample? extend({
@@ -80,6 +85,13 @@ class SlimeStrokeEngine {
     final double startProgress = _pathProgressFor(_traveledDistance);
     if (distance < _kMinMotion) {
       _stationaryMs = math.min(_stationaryMs + dt, _kMaxStationary);
+      if (!_dynamicRadius) {
+        _surfaceRadius = _baseRadius;
+        final double visual = _visualizeRadius(_surfaceRadius, startProgress);
+        _lastVisualRadius = visual;
+        _updateLastJointRadius(_surfaceRadius, visual);
+        return null;
+      }
       final double swellTarget = math.max(_surfaceRadius, _stationaryRadius());
       _surfaceRadius = ui.lerpDouble(_surfaceRadius, swellTarget, 0.35) ?? swellTarget;
       _volume = math.max(_volume, _surfaceRadius * _surfaceRadius * math.pi);
@@ -91,7 +103,19 @@ class SlimeStrokeEngine {
 
     // 真正移动，更新骨骼与体积
     _stationaryMs = math.max(0.0, _stationaryMs - dt * _kStationaryDecay);
-    final double speed = distance / math.max(dt, 1.0);
+    double speed = distance / math.max(dt, 1.0);
+    final double leadInThreshold = _baseRadius * 1.6;
+    final double leadIn = math.min(leadInThreshold, _traveledDistance + distance);
+    if (leadIn < leadInThreshold) {
+      final double blend = (leadIn / leadInThreshold).clamp(0.0, 1.0);
+      speed = speed * blend;
+    } else {
+      final double releaseBlend =
+          ((_traveledDistance - leadInThreshold) / leadInThreshold)
+              .clamp(0.0, 1.0);
+      speed = ui.lerpDouble(speed, _smoothedSpeed, releaseBlend) ?? speed;
+    }
+    _smoothedSpeed += (speed - _smoothedSpeed) * 0.35;
     final double curvature = _computeCurvature(position);
     _traveledDistance += distance;
 
@@ -100,31 +124,39 @@ class SlimeStrokeEngine {
     final double pathProgress =
         (_traveledDistance / (_baseRadius * 4.0)).clamp(0.0, 1.0);
 
-    final double targetVolume = _baseCrossSection() *
-        (1.0 + (_stationaryMs * _kStationaryGain)) /
-        (1.0 + curvature * 0.35 * tuning.curvaturePenaltyScale);
-    _volume = ui.lerpDouble(_volume, targetVolume, _kVolumeRelax)!;
+    final double targetVolume = _dynamicRadius
+        ? _baseCrossSection() *
+            (1.0 + (_stationaryMs * _kStationaryGain)) /
+            (1.0 + curvature * 0.35 * tuning.curvaturePenaltyScale)
+        : _baseCrossSection();
+    _volume = ui.lerpDouble(_volume, targetVolume, _dynamicRadius ? _kVolumeRelax : 1.0)!;
 
     final double rawResponse = ((_kMinResponse +
             (_kMaxResponse - _kMinResponse) *
                 (1.0 - math.exp(-distance / (_baseRadius * 0.8 + 0.001))))
         * tuning.responseBoost)
         .clamp(_kMinResponse * 0.6, _kMaxResponse * 1.2);
-    final double response =
-        ui.lerpDouble(0.25, rawResponse, pathProgress) ?? rawResponse;
+    final double response = _dynamicRadius
+        ? ui.lerpDouble(0.25, rawResponse, pathProgress) ?? rawResponse
+        : 1.0;
 
-    final double rawRelease =
-        1.0 / (1.0 + speed * _kSpeedTension * tuning.speedTensionScale);
+    final double rawRelease = _dynamicRadius
+        ? 1.0 / (1.0 + speed * _kSpeedTension * tuning.speedTensionScale)
+        : 1.0;
     final double release =
-        ui.lerpDouble(1.0, rawRelease, pathProgress) ?? rawRelease;
-    final double rawCurvatureLoss =
-        1.0 /
-        (1.0 + curvature * _kCurvaturePenalty * tuning.curvaturePenaltyScale);
-    final double curvatureLoss =
-        ui.lerpDouble(1.0, rawCurvatureLoss, pathProgress) ?? rawCurvatureLoss;
+        _dynamicRadius ? ui.lerpDouble(1.0, rawRelease, pathProgress) ?? rawRelease : 1.0;
+    final double rawCurvatureLoss = _dynamicRadius
+        ? 1.0 /
+            (1.0 + curvature * _kCurvaturePenalty * tuning.curvaturePenaltyScale)
+        : 1.0;
+    final double curvatureLoss = _dynamicRadius
+        ? ui.lerpDouble(1.0, rawCurvatureLoss, pathProgress) ?? rawCurvatureLoss
+        : 1.0;
 
     final double area = _volume / math.max(distance * 0.95, _baseRadius * 0.45);
-    double targetRadius = math.sqrt(area / math.pi) * release * curvatureLoss;
+    double targetRadius = _dynamicRadius
+        ? math.sqrt(area / math.pi) * release * curvatureLoss
+        : _baseRadius;
     targetRadius = targetRadius.clamp(_baseRadius * 0.28, _baseRadius * 3.1);
 
     final double previousRadius = _surfaceRadius;
@@ -178,7 +210,7 @@ class SlimeStrokeEngine {
     }
     tangent = tangent / tangent.distance;
     final double pathProgress = _pathProgressFor(_traveledDistance);
-    if (pathProgress < 0.35) {
+    if (pathProgress < 0.35 || !_dynamicRadius) {
       return SlimeTailResult.point(
         center: tip.position,
         radius: tip.visualRadius ?? tip.radius,
@@ -246,9 +278,32 @@ class SlimeStrokeEngine {
   }
 
   double _visualizeRadius(double radius, double progress) {
-    final double eased = math.pow(progress.clamp(0.0, 1.0), 0.7).toDouble();
+    if (!_dynamicRadius) {
+      return radius;
+    }
+    final _SlimeProfileTuning tuning = _profileTuning();
+    final double clampedProgress = progress.clamp(0.0, 1.0);
+    final double eased = math.pow(clampedProgress, 0.7).toDouble();
+    double shaped = eased;
+    if (tuning.centerNarrowing > 0) {
+      final double symmetric = (clampedProgress - 0.5).abs() * 2.0;
+      final double edgeWeight = math.pow(
+        symmetric.clamp(0.0, 1.0),
+        tuning.centerExponent,
+      ).toDouble();
+      final double centerMin = (1.0 - tuning.centerNarrowing).clamp(0.0, 1.0);
+      final double shape = centerMin + (1.0 - centerMin) * edgeWeight;
+
+      final double normalizedSpeed =
+          (_smoothedSpeed / (_baseRadius * 0.8)).clamp(0.0, 1.0);
+      final double speedWeight = math.pow(normalizedSpeed, 0.55).toDouble();
+      final double taperFactor = (1.0 - clampedProgress).abs();
+      final double blend = (speedWeight * taperFactor).clamp(0.0, 1.0);
+
+      shaped = ui.lerpDouble(shaped, shaped * shape, blend) ?? shaped;
+    }
     final double base = _baseRadius * 0.52;
-    final double visual = base + (radius - base) * eased;
+    final double visual = base + (radius - base) * shaped;
     return visual.clamp(_baseRadius * 0.4, _baseRadius * 3.2);
   }
 
@@ -289,6 +344,8 @@ class SlimeStrokeEngine {
           speedTensionScale: 0.7,
           curvaturePenaltyScale: 1.25,
           tailLengthScale: 0.85,
+          centerNarrowing: 0.45,
+          centerExponent: 0.8,
         );
       case StrokePressureProfile.auto:
         return const _SlimeProfileTuning();
@@ -302,12 +359,16 @@ class _SlimeProfileTuning {
     this.speedTensionScale = 1.0,
     this.curvaturePenaltyScale = 1.0,
     this.tailLengthScale = 1.0,
+    this.centerNarrowing = 0.0,
+    this.centerExponent = 1.0,
   });
 
   final double responseBoost;
   final double speedTensionScale;
   final double curvaturePenaltyScale;
   final double tailLengthScale;
+  final double centerNarrowing;
+  final double centerExponent;
 }
 
 class SlimeStrokeSample {
