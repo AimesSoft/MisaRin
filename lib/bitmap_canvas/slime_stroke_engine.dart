@@ -46,8 +46,19 @@ class SlimeStrokeEngine {
     required double baseRadius,
     required double timestampMillis,
     required bool dynamicRadius,
+    double? initialOverrideRadius,
   }) {
     _active = true;
+    _baseRadius = math.max(baseRadius, 0.08);
+    _dynamicRadius = dynamicRadius;
+    _stationaryMs = 0.0;
+    _lastTimestamp = timestampMillis;
+    _traveledDistance = 0.0;
+    _smoothedSpeed = 0.0;
+    final double seedRadius = _initialSurfaceRadius(initialOverrideRadius);
+    _surfaceRadius = seedRadius;
+    _volume = _surfaceRadius * _surfaceRadius * math.pi;
+    _lastVisualRadius = _visualizeRadius(_surfaceRadius, 0.0);
     _joints
       ..clear()
       ..add(
@@ -56,24 +67,20 @@ class SlimeStrokeEngine {
           timestamp: timestampMillis,
           radius: _surfaceRadius,
           visualRadius: _lastVisualRadius,
+          tangent: null,
+          progress: 0.0,
+          leftPoint: null,
+          rightPoint: null,
         ),
       );
-    _baseRadius = math.max(baseRadius, 0.08);
-    _surfaceRadius = _baseRadius * 0.7;
-    _volume = _surfaceRadius * _surfaceRadius * math.pi;
-    _stationaryMs = 0.0;
-    _lastTimestamp = timestampMillis;
-    _traveledDistance = 0.0;
-    _lastVisualRadius = _visualizeRadius(_surfaceRadius, 0.0);
-    _smoothedSpeed = 0.0;
-    _dynamicRadius = dynamicRadius;
   }
 
   SlimeStrokeSample? extend({
     required Offset position,
     required double timestampMillis,
+    double? overrideRadius,
   }) {
-    if (!_active) {
+    if (!_active || _joints.isEmpty) {
       return null;
     }
     final _SlimeJoint last = _joints.last;
@@ -83,21 +90,32 @@ class SlimeStrokeEngine {
     _lastTimestamp = timestampMillis;
 
     final double startProgress = _pathProgressFor(_traveledDistance);
+    final double? forcedRadius = _clampOverrideRadius(overrideRadius);
+
     if (distance < _kMinMotion) {
       _stationaryMs = math.min(_stationaryMs + dt, _kMaxStationary);
-      if (!_dynamicRadius) {
-        _surfaceRadius = _baseRadius;
-        final double visual = _visualizeRadius(_surfaceRadius, startProgress);
-        _lastVisualRadius = visual;
-        _updateLastJointRadius(_surfaceRadius, visual);
-        return null;
+      double nextRadius;
+      if (_dynamicRadius) {
+        final double swellTarget = math.max(
+          _surfaceRadius,
+          _stationaryRadius(),
+        );
+        _surfaceRadius =
+            ui.lerpDouble(_surfaceRadius, swellTarget, 0.35) ?? swellTarget;
+        nextRadius = _surfaceRadius;
+        _volume = math.max(_volume, _surfaceRadius * _surfaceRadius * math.pi);
+      } else {
+        nextRadius = forcedRadius ?? _baseRadius;
+        _surfaceRadius = nextRadius;
+        _volume = nextRadius * nextRadius * math.pi;
       }
-      final double swellTarget = math.max(_surfaceRadius, _stationaryRadius());
-      _surfaceRadius = ui.lerpDouble(_surfaceRadius, swellTarget, 0.35) ?? swellTarget;
-      _volume = math.max(_volume, _surfaceRadius * _surfaceRadius * math.pi);
-      final double visual = _visualizeRadius(_surfaceRadius, startProgress);
+      final double visual = _visualizeRadius(nextRadius, startProgress);
       _lastVisualRadius = visual;
-      _updateLastJointRadius(_surfaceRadius, visual);
+      _updateLastJointGeometry(
+        radius: nextRadius,
+        visualRadius: visual,
+        progress: startProgress,
+      );
       return null;
     }
 
@@ -105,37 +123,49 @@ class SlimeStrokeEngine {
     _stationaryMs = math.max(0.0, _stationaryMs - dt * _kStationaryDecay);
     double speed = distance / math.max(dt, 1.0);
     final double leadInThreshold = _baseRadius * 1.6;
-    final double leadIn = math.min(leadInThreshold, _traveledDistance + distance);
+    final double pendingDistance = _traveledDistance + distance;
+    final double leadIn = math.min(leadInThreshold, pendingDistance);
     if (leadIn < leadInThreshold) {
       final double blend = (leadIn / leadInThreshold).clamp(0.0, 1.0);
       speed = speed * blend;
     } else {
       final double releaseBlend =
-          ((_traveledDistance - leadInThreshold) / leadInThreshold)
-              .clamp(0.0, 1.0);
+          ((_traveledDistance - leadInThreshold) / leadInThreshold).clamp(
+            0.0,
+            1.0,
+          );
       speed = ui.lerpDouble(speed, _smoothedSpeed, releaseBlend) ?? speed;
     }
     _smoothedSpeed += (speed - _smoothedSpeed) * 0.35;
     final double curvature = _computeCurvature(position);
-    _traveledDistance += distance;
 
+    _traveledDistance = pendingDistance;
     final _SlimeProfileTuning tuning = _profileTuning();
-
-    final double pathProgress =
-        (_traveledDistance / (_baseRadius * 4.0)).clamp(0.0, 1.0);
+    final double pathProgress = (_traveledDistance / (_baseRadius * 4.0)).clamp(
+      0.0,
+      1.0,
+    );
 
     final double targetVolume = _dynamicRadius
         ? _baseCrossSection() *
-            (1.0 + (_stationaryMs * _kStationaryGain)) /
-            (1.0 + curvature * 0.35 * tuning.curvaturePenaltyScale)
-        : _baseCrossSection();
-    _volume = ui.lerpDouble(_volume, targetVolume, _dynamicRadius ? _kVolumeRelax : 1.0)!;
+              (1.0 + (_stationaryMs * _kStationaryGain)) /
+              (1.0 + curvature * 0.35 * tuning.curvaturePenaltyScale)
+        : _crossSectionForRadius(forcedRadius ?? _baseRadius);
+    _volume = ui.lerpDouble(
+      _volume,
+      targetVolume,
+      _dynamicRadius ? _kVolumeRelax : 1.0,
+    )!;
 
-    final double rawResponse = ((_kMinResponse +
-            (_kMaxResponse - _kMinResponse) *
-                (1.0 - math.exp(-distance / (_baseRadius * 0.8 + 0.001))))
-        * tuning.responseBoost)
-        .clamp(_kMinResponse * 0.6, _kMaxResponse * 1.2);
+    final double rawResponse =
+        ((_kMinResponse +
+                    (_kMaxResponse - _kMinResponse) *
+                        (1.0 -
+                            math.exp(
+                              -distance / (_baseRadius * 0.8 + 0.001),
+                            ))) *
+                tuning.responseBoost)
+            .clamp(_kMinResponse * 0.6, _kMaxResponse * 1.2);
     final double response = _dynamicRadius
         ? ui.lerpDouble(0.25, rawResponse, pathProgress) ?? rawResponse
         : 1.0;
@@ -143,11 +173,13 @@ class SlimeStrokeEngine {
     final double rawRelease = _dynamicRadius
         ? 1.0 / (1.0 + speed * _kSpeedTension * tuning.speedTensionScale)
         : 1.0;
-    final double release =
-        _dynamicRadius ? ui.lerpDouble(1.0, rawRelease, pathProgress) ?? rawRelease : 1.0;
+    final double release = _dynamicRadius
+        ? ui.lerpDouble(1.0, rawRelease, pathProgress) ?? rawRelease
+        : 1.0;
     final double rawCurvatureLoss = _dynamicRadius
         ? 1.0 /
-            (1.0 + curvature * _kCurvaturePenalty * tuning.curvaturePenaltyScale)
+              (1.0 +
+                  curvature * _kCurvaturePenalty * tuning.curvaturePenaltyScale)
         : 1.0;
     final double curvatureLoss = _dynamicRadius
         ? ui.lerpDouble(1.0, rawCurvatureLoss, pathProgress) ?? rawCurvatureLoss
@@ -156,39 +188,59 @@ class SlimeStrokeEngine {
     final double area = _volume / math.max(distance * 0.95, _baseRadius * 0.45);
     double targetRadius = _dynamicRadius
         ? math.sqrt(area / math.pi) * release * curvatureLoss
-        : _baseRadius;
-    targetRadius = targetRadius.clamp(_baseRadius * 0.28, _baseRadius * 3.1);
+        : (forcedRadius ?? _baseRadius);
+    final double maxClamp = _dynamicRadius
+        ? _baseRadius * 3.1
+        : _baseRadius * 4.0;
+    targetRadius = targetRadius.clamp(_baseRadius * 0.28, maxClamp);
 
     final double previousRadius = _surfaceRadius;
-    _surfaceRadius = previousRadius + (targetRadius - previousRadius) * response;
-    final double previousVisualRadius =
-        _visualizeRadius(previousRadius, startProgress);
-    _traveledDistance += distance;
+    _surfaceRadius =
+        previousRadius + (targetRadius - previousRadius) * response;
+    final double previousVisualRadius = _visualizeRadius(
+      previousRadius,
+      startProgress,
+    );
     final double endProgress = _pathProgressFor(_traveledDistance);
-    final double currentVisualRadius =
-        _visualizeRadius(_surfaceRadius, endProgress);
-    final bool restartCaps =
-        _needsRestartCaps(previousVisualRadius, currentVisualRadius);
-
-    final Offset direction = delta / distance;
-    _joints.add(
-      _SlimeJoint(
-        position: position,
-        timestamp: timestampMillis,
-        radius: _surfaceRadius,
-        visualRadius: currentVisualRadius,
-        tangent: direction,
-      ),
+    final double currentVisualRadius = _visualizeRadius(
+      _surfaceRadius,
+      endProgress,
     );
-    final double startRadius = restartCaps ? currentVisualRadius : previousVisualRadius;
-    final double endRadius = currentVisualRadius;
-    _lastVisualRadius = endRadius;
-
-    return SlimeStrokeSample.segment(
-      startRadius: startRadius,
-      endRadius: endRadius,
-      includeStartCap: restartCaps,
+    final bool restartCaps = _needsRestartCaps(
+      previousVisualRadius,
+      currentVisualRadius,
     );
+
+    final Offset direction = _normalizeOr(delta, const Offset(0.0, -1.0));
+    _updateLastJointGeometry(
+      radius: previousRadius,
+      visualRadius: restartCaps ? currentVisualRadius : previousVisualRadius,
+      tangent: direction,
+      progress: startProgress,
+    );
+    final _SlimeJoint startJoint = _joints.last;
+    final _SlimeJoint endJoint = _SlimeJoint(
+      position: position,
+      timestamp: timestampMillis,
+      radius: _surfaceRadius,
+      visualRadius: currentVisualRadius,
+      tangent: direction,
+      progress: endProgress,
+    );
+    final SlimeStrokeStrip strip = _buildStrip(startJoint, endJoint);
+    _joints.add(endJoint);
+    final bool firstSegment = _joints.length <= 2;
+    final bool needStartCap = firstSegment || restartCaps;
+    final SlimeStrokeCap? startCap = needStartCap
+        ? SlimeStrokeCap(
+            center: startJoint.position,
+            radius: _visualRadiusOrFallback(startJoint),
+          )
+        : null;
+
+    _lastVisualRadius = currentVisualRadius;
+
+    return SlimeStrokeSample.strip(strip: strip, startCap: startCap);
   }
 
   SlimeTailResult? finishStroke() {
@@ -196,27 +248,10 @@ class SlimeStrokeEngine {
       return null;
     }
     final _SlimeJoint tip = _joints.last;
-    final bool minimalTravel = _traveledDistance <= _baseRadius * 0.9;
-    if (_joints.length == 1 || minimalTravel) {
-      return SlimeTailResult.point(
-        center: tip.position,
-        radius: tip.visualRadius ?? tip.radius,
-      );
-    }
-    final _SlimeJoint prev = _joints[_joints.length - 2];
-    Offset tangent = tip.tangent ?? (tip.position - prev.position);
-    if (tangent.distance <= 1e-4) {
-      tangent = const Offset(0.0, -1.0);
-    }
-    tangent = tangent / tangent.distance;
-    final double pathProgress = _pathProgressFor(_traveledDistance);
-    if (pathProgress < 0.35 || !_dynamicRadius) {
-      return SlimeTailResult.point(
-        center: tip.position,
-        radius: tip.visualRadius ?? tip.radius,
-      );
-    }
-    return null;
+    final double radius = math.max(_visualRadiusOrFallback(tip), 0.08);
+    return SlimeTailResult.cap(
+      cap: SlimeStrokeCap(center: tip.position, radius: radius),
+    );
   }
 
   void reset() {
@@ -243,14 +278,39 @@ class SlimeStrokeEngine {
     return radius.clamp(_baseRadius * 0.4, _baseRadius * 3.0);
   }
 
+  double? _clampOverrideRadius(double? candidate) {
+    if (candidate == null || !candidate.isFinite) {
+      return null;
+    }
+    final double minRadius = math.max(_baseRadius * 0.05, 0.04);
+    final double maxRadius = math.max(_baseRadius * 4.5, minRadius + 0.01);
+    return candidate.clamp(minRadius, maxRadius);
+  }
+
+  double _initialSurfaceRadius(double? override) {
+    final double seed;
+    if (_dynamicRadius) {
+      seed = override ?? (_baseRadius * 0.7);
+    } else {
+      seed = override ?? _baseRadius;
+    }
+    return math.max(seed, 0.08);
+  }
+
   double _baseCrossSection() =>
       (_baseRadius * _baseRadius * math.pi).clamp(0.02, 80.0);
+
+  double _crossSectionForRadius(double radius) {
+    final double clamped = math.max(radius, 0.04);
+    return (clamped * clamped * math.pi).clamp(0.02, 80.0);
+  }
 
   double _computeCurvature(Offset nextPoint) {
     if (_joints.length < 2) {
       return 0.0;
     }
-    final Offset a = _joints[_joints.length - 1].position -
+    final Offset a =
+        _joints[_joints.length - 1].position -
         _joints[_joints.length - 2].position;
     final Offset b = nextPoint - _joints[_joints.length - 1].position;
     final double lenA = a.distance;
@@ -258,8 +318,7 @@ class SlimeStrokeEngine {
     if (lenA < 1e-3 || lenB < 1e-3) {
       return 0.0;
     }
-    final double dot =
-        ((a.dx * b.dx) + (a.dy * b.dy)) / (lenA * lenB);
+    final double dot = ((a.dx * b.dx) + (a.dy * b.dy)) / (lenA * lenB);
     final double angle = math.acos(dot.clamp(-1.0, 1.0));
     return (angle / math.pi).clamp(0.0, 1.0);
   }
@@ -287,15 +346,14 @@ class SlimeStrokeEngine {
     double shaped = eased;
     if (tuning.centerNarrowing > 0) {
       final double symmetric = (clampedProgress - 0.5).abs() * 2.0;
-      final double edgeWeight = math.pow(
-        symmetric.clamp(0.0, 1.0),
-        tuning.centerExponent,
-      ).toDouble();
+      final double edgeWeight = math
+          .pow(symmetric.clamp(0.0, 1.0), tuning.centerExponent)
+          .toDouble();
       final double centerMin = (1.0 - tuning.centerNarrowing).clamp(0.0, 1.0);
       final double shape = centerMin + (1.0 - centerMin) * edgeWeight;
 
-      final double normalizedSpeed =
-          (_smoothedSpeed / (_baseRadius * 0.8)).clamp(0.0, 1.0);
+      final double normalizedSpeed = (_smoothedSpeed / (_baseRadius * 0.8))
+          .clamp(0.0, 1.0);
       final double speedWeight = math.pow(normalizedSpeed, 0.55).toDouble();
       final double taperFactor = (1.0 - clampedProgress).abs();
       final double blend = (speedWeight * taperFactor).clamp(0.0, 1.0);
@@ -315,17 +373,24 @@ class SlimeStrokeEngine {
     return (distance / denom).clamp(0.0, 1.0);
   }
 
-  void _updateLastJointRadius(double radius, double visualRadius) {
+  void _updateLastJointGeometry({
+    double? radius,
+    double? visualRadius,
+    Offset? tangent,
+    double? progress,
+  }) {
     if (_joints.isEmpty) {
       return;
     }
-    final _SlimeJoint last = _joints.last;
-    _joints[_joints.length - 1] = _SlimeJoint(
-      position: last.position,
-      timestamp: last.timestamp,
-      radius: radius,
-      visualRadius: visualRadius,
-      tangent: last.tangent,
+    final int index = _joints.length - 1;
+    final _SlimeJoint joint = _joints[index];
+    _joints[index] = _SlimeJoint(
+      position: joint.position,
+      timestamp: joint.timestamp,
+      radius: radius ?? joint.radius,
+      visualRadius: visualRadius ?? joint.visualRadius,
+      tangent: tangent ?? joint.tangent,
+      progress: progress ?? joint.progress,
     );
   }
 
@@ -372,92 +437,56 @@ class _SlimeProfileTuning {
 }
 
 class SlimeStrokeSample {
-  const SlimeStrokeSample._({
-    required this.isBlob,
-    this.startRadius,
-    this.endRadius,
-    this.includeStartCap = false,
-    this.blobCenter,
-    this.blobRadius,
-  });
+  const SlimeStrokeSample.strip({required this.strip, this.startCap});
 
-  const SlimeStrokeSample.segment({
-    required double startRadius,
-    required double endRadius,
-    required bool includeStartCap,
-  }) : this._(
-          isBlob: false,
-          startRadius: startRadius,
-          endRadius: endRadius,
-          includeStartCap: includeStartCap,
-        );
-
-  const SlimeStrokeSample.blob({
-    required Offset center,
-    required double radius,
-  }) : this._(
-          isBlob: true,
-          blobCenter: center,
-          blobRadius: radius,
-        );
-
-  final bool isBlob;
-  final double? startRadius;
-  final double? endRadius;
-  final bool includeStartCap;
-  final Offset? blobCenter;
-  final double? blobRadius;
+  final SlimeStrokeStrip strip;
+  final SlimeStrokeCap? startCap;
 }
 
 class SlimeTailResult {
-  const SlimeTailResult._({
-    required this.isLine,
-    this.start,
-    this.end,
-    this.startRadius,
-    this.endRadius,
-    this.center,
-    this.pointRadius,
+  const SlimeTailResult.cap({required this.cap});
+
+  final SlimeStrokeCap cap;
+}
+
+class SlimeStrokeStrip {
+  const SlimeStrokeStrip({
+    required this.startLeft,
+    required this.endLeft,
+    required this.endRight,
+    required this.startRight,
   });
 
-  const SlimeTailResult.line({
-    required Offset start,
-    required Offset end,
-    required double startRadius,
-    required double endRadius,
-  }) : this._(
-          isLine: true,
-          start: start,
-          end: end,
-          startRadius: startRadius,
-          endRadius: endRadius,
-        );
+  final Offset startLeft;
+  final Offset endLeft;
+  final Offset endRight;
+  final Offset startRight;
 
-  const SlimeTailResult.point({
-    required Offset center,
-    required double radius,
-  }) : this._(
-          isLine: false,
-          center: center,
-          pointRadius: radius,
-        );
+  Iterable<Offset> get points => <Offset>[
+    startLeft,
+    startRight,
+    endRight,
+    endLeft,
+  ];
+}
 
-  final bool isLine;
-  final Offset? start;
-  final Offset? end;
-  final double? startRadius;
-  final double? endRadius;
-  final Offset? center;
-  final double? pointRadius;
+class SlimeStrokeCap {
+  const SlimeStrokeCap({required this.center, required this.radius});
+
+  final Offset center;
+  final double radius;
 }
 
 class _SlimeJoint {
   _SlimeJoint({
     required this.position,
     required this.timestamp,
-    this.radius = 0.0,
+    required this.radius,
     this.visualRadius,
     this.tangent,
+    required this.progress,
+    this.leftPoint,
+    this.rightPoint,
   });
 
   final Offset position;
@@ -465,4 +494,35 @@ class _SlimeJoint {
   final double radius;
   final double? visualRadius;
   final Offset? tangent;
+  final double progress;
+  final Offset? leftPoint;
+  final Offset? rightPoint;
 }
+
+SlimeStrokeStrip _buildStrip(_SlimeJoint start, _SlimeJoint end) {
+  final Offset direction = end.position - start.position;
+  final Offset fallback = start.tangent ?? const Offset(0.0, -1.0);
+  final Offset tangent = _normalizeOr(direction, fallback);
+  final Offset normal = _perpendicularLeft(tangent);
+  final double startRadius = _visualRadiusOrFallback(start);
+  final double endRadius = _visualRadiusOrFallback(end);
+  return SlimeStrokeStrip(
+    startLeft: start.position + normal * startRadius,
+    endLeft: end.position + normal * endRadius,
+    endRight: end.position - normal * endRadius,
+    startRight: start.position - normal * startRadius,
+  );
+}
+
+Offset _perpendicularLeft(Offset vector) => Offset(-vector.dy, vector.dx);
+
+Offset _normalizeOr(Offset vector, Offset fallback) {
+  final double length = vector.distance;
+  if (length <= 1e-5) {
+    return fallback;
+  }
+  return Offset(vector.dx / length, vector.dy / length);
+}
+
+double _visualRadiusOrFallback(_SlimeJoint joint) =>
+    (joint.visualRadius ?? joint.radius).abs();

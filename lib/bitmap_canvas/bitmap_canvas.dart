@@ -44,63 +44,13 @@ class BitmapSurface {
     Uint8List? mask,
     int antialiasLevel = 0,
   }) {
-    if (radius <= 0) {
-      return;
-    }
-    final int minX = math.max(0, (center.dx - radius - 1).floor());
-    final int maxX = math.min(width - 1, (center.dx + radius + 1).ceil());
-    final int minY = math.max(0, (center.dy - radius - 1).floor());
-    final int maxY = math.min(height - 1, (center.dy + radius + 1).ceil());
-    final double radiusSq = radius * radius;
-
-    for (int y = minY; y <= maxY; y++) {
-      final double dy = y + 0.5 - center.dy;
-      for (int x = minX; x <= maxX; x++) {
-        final double dx = x + 0.5 - center.dx;
-        final double distanceSq = dx * dx + dy * dy;
-        final int level = antialiasLevel.clamp(0, 3);
-        if (level == 0) {
-          if (distanceSq <= radiusSq) {
-            if (mask == null || mask[y * width + x] != 0) {
-              blendPixel(x, y, color);
-            }
-          }
-          continue;
-        }
-        final double distance = math.sqrt(distanceSq);
-        final double feather = _featherForLevel(level);
-        final double innerRadius = math.max(radius - feather, 0.0);
-        final double outerRadius = radius + feather;
-        double coverage;
-        if (distance <= innerRadius) {
-          coverage = 1.0;
-        } else if (distance >= outerRadius || outerRadius <= innerRadius) {
-          coverage = 0.0;
-        } else {
-          coverage = (outerRadius - distance) / (outerRadius - innerRadius);
-        }
-        if (coverage <= 0.0) {
-          continue;
-        }
-        if (mask != null && mask[y * width + x] == 0) {
-          continue;
-        }
-        if (coverage >= 0.999) {
-          blendPixel(x, y, color);
-        } else {
-          final int argb = color.toARGB32();
-          final int baseAlpha = (argb >> 24) & 0xff;
-          final int adjustedAlpha = (baseAlpha * coverage).round().clamp(
-            0,
-            255,
-          );
-          if (adjustedAlpha == 0) {
-            continue;
-          }
-          blendPixel(x, y, color.withAlpha(adjustedAlpha));
-        }
-      }
-    }
+    _drawCircleInternal(
+      center: center,
+      radius: radius,
+      color: color,
+      mask: mask,
+      antialiasLevel: antialiasLevel.clamp(0, 3),
+    );
   }
 
   /// Draws a line between [a] and [b] with a circular brush of [radius].
@@ -125,26 +75,39 @@ class BitmapSurface {
     );
   }
 
-  /// Draws a line between [a] and [b] gradually interpolating the brush radius.
-  void drawVariableLine({
-    required Offset a,
-    required Offset b,
-    required double startRadius,
-    required double endRadius,
+  /// Fills a convex strip defined by [polygon] points in winding order.
+  void fillStrip({
+    required Iterable<Offset> polygon,
     required Color color,
     Uint8List? mask,
     int antialiasLevel = 0,
-    bool includeStartCap = true,
   }) {
-    _drawCapsuleSegment(
-      a: a,
-      b: b,
-      startRadius: startRadius,
-      endRadius: endRadius,
+    final List<Offset> points = List<Offset>.from(polygon);
+    if (points.length < 3) {
+      return;
+    }
+    _fillConvexPolygon(
+      points: points,
       color: color,
       mask: mask,
       antialiasLevel: antialiasLevel.clamp(0, 3),
-      includeStartCap: includeStartCap,
+    );
+  }
+
+  /// Fills a circular cap, sharing the same implementation as [drawCircle].
+  void fillCap({
+    required Offset center,
+    required double radius,
+    required Color color,
+    Uint8List? mask,
+    int antialiasLevel = 0,
+  }) {
+    _drawCircleInternal(
+      center: center,
+      radius: radius,
+      color: color,
+      mask: mask,
+      antialiasLevel: antialiasLevel.clamp(0, 3),
     );
   }
 
@@ -181,6 +144,148 @@ class BitmapSurface {
         includeStartCap: includeStartCap,
       );
       includeStartCap = false;
+    }
+  }
+
+  void _drawCircleInternal({
+    required Offset center,
+    required double radius,
+    required Color color,
+    Uint8List? mask,
+    required int antialiasLevel,
+  }) {
+    if (radius <= 0) {
+      return;
+    }
+    final int minX = math.max(0, (center.dx - radius - 1).floor());
+    final int maxX = math.min(width - 1, (center.dx + radius + 1).ceil());
+    final int minY = math.max(0, (center.dy - radius - 1).floor());
+    final int maxY = math.min(height - 1, (center.dy + radius + 1).ceil());
+    final double radiusSq = radius * radius;
+
+    for (int y = minY; y <= maxY; y++) {
+      final double dy = y + 0.5 - center.dy;
+      final int rowIndex = y * width;
+      for (int x = minX; x <= maxX; x++) {
+        if (mask != null && mask[rowIndex + x] == 0) {
+          continue;
+        }
+        final double dx = x + 0.5 - center.dx;
+        final double distanceSq = dx * dx + dy * dy;
+        if (antialiasLevel == 0) {
+          if (distanceSq <= radiusSq) {
+            blendPixel(x, y, color);
+          }
+          continue;
+        }
+        final double distance = math.sqrt(distanceSq);
+        final double feather = _featherForLevel(antialiasLevel);
+        final double innerRadius = math.max(radius - feather, 0.0);
+        final double outerRadius = radius + feather;
+        double coverage;
+        if (distance <= innerRadius) {
+          coverage = 1.0;
+        } else if (distance >= outerRadius || outerRadius <= innerRadius) {
+          coverage = 0.0;
+        } else {
+          coverage = (outerRadius - distance) / (outerRadius - innerRadius);
+        }
+        if (coverage <= 0.0) {
+          continue;
+        }
+        if (coverage >= 0.999) {
+          blendPixel(x, y, color);
+        } else {
+          final int baseAlpha = color.alpha;
+          final int adjustedAlpha = (baseAlpha * coverage).round().clamp(
+            0,
+            255,
+          );
+          if (adjustedAlpha == 0) {
+            continue;
+          }
+          blendPixel(x, y, color.withAlpha(adjustedAlpha));
+        }
+      }
+    }
+  }
+
+  void _fillConvexPolygon({
+    required List<Offset> points,
+    required Color color,
+    Uint8List? mask,
+    required int antialiasLevel,
+  }) {
+    final List<_PolygonEdge> edges = _buildPolygonEdges(points);
+    if (edges.length < 3) {
+      return;
+    }
+    double minX = points.first.dx;
+    double maxX = points.first.dx;
+    double minY = points.first.dy;
+    double maxY = points.first.dy;
+    for (int i = 1; i < points.length; i++) {
+      final Offset p = points[i];
+      if (p.dx < minX) {
+        minX = p.dx;
+      }
+      if (p.dx > maxX) {
+        maxX = p.dx;
+      }
+      if (p.dy < minY) {
+        minY = p.dy;
+      }
+      if (p.dy > maxY) {
+        maxY = p.dy;
+      }
+    }
+    final double feather = _featherForLevel(antialiasLevel);
+    final double expand = feather + 1.5;
+    final int minXi = math.max(0, (minX - expand).floor());
+    final int maxXi = math.min(width - 1, (maxX + expand).ceil());
+    final int minYi = math.max(0, (minY - expand).floor());
+    final int maxYi = math.min(height - 1, (maxY + expand).ceil());
+    final int baseAlpha = color.alpha;
+    for (int y = minYi; y <= maxYi; y++) {
+      final double py = y + 0.5;
+      final int rowIndex = y * width;
+      for (int x = minXi; x <= maxXi; x++) {
+        if (mask != null && mask[rowIndex + x] == 0) {
+          continue;
+        }
+        final double px = x + 0.5;
+        double minDistance = double.infinity;
+        bool inside = true;
+        for (final _PolygonEdge edge in edges) {
+          final double d = edge.signedDistance(px, py);
+          if (d < 0) {
+            inside = false;
+            break;
+          }
+          if (d < minDistance) {
+            minDistance = d;
+          }
+        }
+        if (!inside) {
+          continue;
+        }
+        double coverage = 1.0;
+        if (antialiasLevel > 0 && feather > 0) {
+          coverage = (minDistance / feather).clamp(0.0, 1.0);
+        }
+        if (coverage >= 0.999) {
+          blendPixel(x, y, color);
+        } else {
+          final int adjustedAlpha = (baseAlpha * coverage).round().clamp(
+            0,
+            255,
+          );
+          if (adjustedAlpha == 0) {
+            continue;
+          }
+          blendPixel(x, y, color.withAlpha(adjustedAlpha));
+        }
+      }
     }
   }
 
@@ -256,7 +361,9 @@ class BitmapSurface {
         final double dxp = px - closestX;
         final double dyp = py - closestY;
         final double distance = math.sqrt(dxp * dxp + dyp * dyp);
-        double radius = variableRadius ? startRadius + radiusDelta * t : startRadius;
+        double radius = variableRadius
+            ? startRadius + radiusDelta * t
+            : startRadius;
         radius = radius.abs();
         if (radius == 0.0 && feather == 0.0) {
           continue;
@@ -282,7 +389,10 @@ class BitmapSurface {
         if (coverage >= 0.999) {
           blendPixel(x, y, color);
         } else {
-          final int adjustedAlpha = (baseAlpha * coverage).round().clamp(0, 255);
+          final int adjustedAlpha = (baseAlpha * coverage).round().clamp(
+            0,
+            255,
+          );
           if (adjustedAlpha == 0) {
             continue;
           }
@@ -479,4 +589,37 @@ class BitmapDocument {
     }
     return baseSurface;
   }
+}
+
+List<_PolygonEdge> _buildPolygonEdges(List<Offset> points) {
+  final List<_PolygonEdge> edges = <_PolygonEdge>[];
+  if (points.length < 2) {
+    return edges;
+  }
+  for (int i = 0; i < points.length; i++) {
+    final Offset a = points[i];
+    final Offset b = points[(i + 1) % points.length];
+    final double nx = -(b.dy - a.dy);
+    final double ny = b.dx - a.dx;
+    final double length = math.sqrt(nx * nx + ny * ny);
+    if (length <= 1e-6) {
+      continue;
+    }
+    final double inv = 1.0 / length;
+    final double nnx = nx * inv;
+    final double nny = ny * inv;
+    final double constant = -(nnx * a.dx + nny * a.dy);
+    edges.add(_PolygonEdge(nnx, nny, constant));
+  }
+  return edges;
+}
+
+class _PolygonEdge {
+  const _PolygonEdge(this.nx, this.ny, this.constant);
+
+  final double nx;
+  final double ny;
+  final double constant;
+
+  double signedDistance(double px, double py) => nx * px + ny * py + constant;
 }
