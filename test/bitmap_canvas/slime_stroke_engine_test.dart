@@ -28,7 +28,7 @@ void main() {
       expect(segment.endRadius, greaterThan(0));
     });
 
-    test('finishStroke emits tail line for moving stroke', () {
+    test('finishStroke no longer extends extra tail for moving stroke', () {
       final SlimeStrokeEngine engine = SlimeStrokeEngine()
         ..setProfile(StrokePressureProfile.taperEnds);
       engine.startStroke(position: Offset.zero, baseRadius: 4.0, timestampMillis: 0.0);
@@ -36,12 +36,7 @@ void main() {
       engine.extend(position: const Offset(9.0, 2.0), timestampMillis: 32.0);
 
       final SlimeTailResult? tail = engine.finishStroke();
-      expect(tail, isNotNull);
-      expect(tail!.isLine, isTrue);
-      expect(tail.start, isNotNull);
-      expect(tail.end, isNotNull);
-      expect(tail.startRadius, isNotNull);
-      expect(tail.endRadius, isNotNull);
+      expect(tail, isNull, reason: 'stroke should end exactly at tip');
     });
 
     test('finishStroke keeps isolated dot without tail', () {

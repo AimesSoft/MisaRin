@@ -19,6 +19,7 @@ class SlimeStrokeEngine {
   double? _lastTimestamp;
   StrokePressureProfile _profile = StrokePressureProfile.auto;
   double _traveledDistance = 0.0;
+  double _lastVisualRadius = 0.0;
 
   static const double _kMinMotion = 0.35;
   static const double _kStationaryGain = 0.0045;
@@ -46,13 +47,21 @@ class SlimeStrokeEngine {
     _active = true;
     _joints
       ..clear()
-      ..add(_SlimeJoint(position: position, timestamp: timestampMillis));
+      ..add(
+        _SlimeJoint(
+          position: position,
+          timestamp: timestampMillis,
+          radius: _surfaceRadius,
+          visualRadius: _lastVisualRadius,
+        ),
+      );
     _baseRadius = math.max(baseRadius, 0.08);
     _surfaceRadius = _baseRadius * 0.7;
     _volume = _surfaceRadius * _surfaceRadius * math.pi;
     _stationaryMs = 0.0;
     _lastTimestamp = timestampMillis;
     _traveledDistance = 0.0;
+    _lastVisualRadius = _visualizeRadius(_surfaceRadius, 0.0);
   }
 
   SlimeStrokeSample? extend({
@@ -68,9 +77,12 @@ class SlimeStrokeEngine {
     final double dt = _resolveDelta(timestampMillis);
     _lastTimestamp = timestampMillis;
 
+    final double startProgress = _pathProgressFor(_traveledDistance);
     if (distance < _kMinMotion) {
       _stationaryMs = math.min(_stationaryMs + dt, _kMaxStationary);
-      final double blobRadius = _stationaryRadius();
+      final double blobRadius =
+          _visualizeRadius(_stationaryRadius(), startProgress);
+      _lastVisualRadius = blobRadius;
       return SlimeStrokeSample.blob(center: position, radius: blobRadius);
     }
 
@@ -82,21 +94,31 @@ class SlimeStrokeEngine {
 
     final _SlimeProfileTuning tuning = _profileTuning();
 
+    final double pathProgress =
+        (_traveledDistance / (_baseRadius * 4.0)).clamp(0.0, 1.0);
+
     final double targetVolume = _baseCrossSection() *
         (1.0 + (_stationaryMs * _kStationaryGain)) /
         (1.0 + curvature * 0.35 * tuning.curvaturePenaltyScale);
     _volume = ui.lerpDouble(_volume, targetVolume, _kVolumeRelax)!;
 
-    final double response = ((_kMinResponse +
+    final double rawResponse = ((_kMinResponse +
             (_kMaxResponse - _kMinResponse) *
                 (1.0 - math.exp(-distance / (_baseRadius * 0.8 + 0.001))))
         * tuning.responseBoost)
         .clamp(_kMinResponse * 0.6, _kMaxResponse * 1.2);
+    final double response =
+        ui.lerpDouble(0.25, rawResponse, pathProgress) ?? rawResponse;
 
-    final double release =
+    final double rawRelease =
         1.0 / (1.0 + speed * _kSpeedTension * tuning.speedTensionScale);
+    final double release =
+        ui.lerpDouble(1.0, rawRelease, pathProgress) ?? rawRelease;
+    final double rawCurvatureLoss =
+        1.0 /
+        (1.0 + curvature * _kCurvaturePenalty * tuning.curvaturePenaltyScale);
     final double curvatureLoss =
-        1.0 / (1.0 + curvature * _kCurvaturePenalty * tuning.curvaturePenaltyScale);
+        ui.lerpDouble(1.0, rawCurvatureLoss, pathProgress) ?? rawCurvatureLoss;
 
     final double area = _volume / math.max(distance * 0.95, _baseRadius * 0.45);
     double targetRadius = math.sqrt(area / math.pi) * release * curvatureLoss;
@@ -104,7 +126,14 @@ class SlimeStrokeEngine {
 
     final double previousRadius = _surfaceRadius;
     _surfaceRadius = previousRadius + (targetRadius - previousRadius) * response;
-    final bool restartCaps = _needsRestartCaps(previousRadius, _surfaceRadius);
+    final double previousVisualRadius =
+        _visualizeRadius(previousRadius, startProgress);
+    _traveledDistance += distance;
+    final double endProgress = _pathProgressFor(_traveledDistance);
+    final double currentVisualRadius =
+        _visualizeRadius(_surfaceRadius, endProgress);
+    final bool restartCaps =
+        _needsRestartCaps(previousVisualRadius, currentVisualRadius);
 
     final Offset direction = delta / distance;
     _joints.add(
@@ -112,13 +141,17 @@ class SlimeStrokeEngine {
         position: position,
         timestamp: timestampMillis,
         radius: _surfaceRadius,
+        visualRadius: currentVisualRadius,
         tangent: direction,
       ),
     );
+    final double startRadius = restartCaps ? currentVisualRadius : previousVisualRadius;
+    final double endRadius = currentVisualRadius;
+    _lastVisualRadius = endRadius;
 
     return SlimeStrokeSample.segment(
-      startRadius: restartCaps ? _surfaceRadius : previousRadius,
-      endRadius: _surfaceRadius,
+      startRadius: startRadius,
+      endRadius: endRadius,
       includeStartCap: restartCaps,
     );
   }
@@ -130,7 +163,10 @@ class SlimeStrokeEngine {
     final _SlimeJoint tip = _joints.last;
     final bool minimalTravel = _traveledDistance <= _baseRadius * 0.9;
     if (_joints.length == 1 || minimalTravel) {
-      return SlimeTailResult.point(center: tip.position, radius: tip.radius);
+      return SlimeTailResult.point(
+        center: tip.position,
+        radius: tip.visualRadius ?? tip.radius,
+      );
     }
     final _SlimeJoint prev = _joints[_joints.length - 2];
     Offset tangent = tip.tangent ?? (tip.position - prev.position);
@@ -138,19 +174,14 @@ class SlimeStrokeEngine {
       tangent = const Offset(0.0, -1.0);
     }
     tangent = tangent / tangent.distance;
-    final _SlimeProfileTuning tuning = _profileTuning();
-    final double taperLength = math.max(
-      tip.radius * 3.2 * tuning.tailLengthScale,
-      _baseRadius * 2.1 * tuning.tailLengthScale,
-    );
-    final Offset end = tip.position + tangent * taperLength;
-    final double endRadius = math.max(tip.radius * 0.28, _baseRadius * 0.2);
-    return SlimeTailResult.line(
-      start: tip.position,
-      end: end,
-      startRadius: tip.radius,
-      endRadius: endRadius,
-    );
+    final double pathProgress = _pathProgressFor(_traveledDistance);
+    if (pathProgress < 0.35) {
+      return SlimeTailResult.point(
+        center: tip.position,
+        radius: tip.visualRadius ?? tip.radius,
+      );
+    }
+    return null;
   }
 
   void reset() {
@@ -161,6 +192,7 @@ class SlimeStrokeEngine {
     _surfaceRadius = 0.0;
     _lastTimestamp = null;
     _traveledDistance = 0.0;
+    _lastVisualRadius = 0.0;
   }
 
   double _resolveDelta(double timestampMillis) {
@@ -204,7 +236,25 @@ class SlimeStrokeEngine {
     if (next <= previous) {
       return false;
     }
+    if (_traveledDistance < _baseRadius * 0.6) {
+      return false;
+    }
     return next >= previous * 1.45;
+  }
+
+  double _visualizeRadius(double radius, double progress) {
+    final double eased = math.pow(progress.clamp(0.0, 1.0), 0.7).toDouble();
+    final double base = _baseRadius * 0.52;
+    final double visual = base + (radius - base) * eased;
+    return visual.clamp(_baseRadius * 0.4, _baseRadius * 3.2);
+  }
+
+  double _pathProgressFor(double distance) {
+    final double denom = _baseRadius * 6.0;
+    if (denom <= 0.0001) {
+      return 0.0;
+    }
+    return (distance / denom).clamp(0.0, 1.0);
   }
 
   _SlimeProfileTuning _profileTuning() {
@@ -328,11 +378,13 @@ class _SlimeJoint {
     required this.position,
     required this.timestamp,
     this.radius = 0.0,
+    this.visualRadius,
     this.tangent,
   });
 
   final Offset position;
   final double timestamp;
   final double radius;
+  final double? visualRadius;
   final Offset? tangent;
 }
