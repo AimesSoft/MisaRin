@@ -18,6 +18,7 @@ class SlimeStrokeEngine {
   double _stationaryMs = 0.0;
   double? _lastTimestamp;
   StrokePressureProfile _profile = StrokePressureProfile.auto;
+  double _traveledDistance = 0.0;
 
   static const double _kMinMotion = 0.35;
   static const double _kStationaryGain = 0.0045;
@@ -51,6 +52,7 @@ class SlimeStrokeEngine {
     _volume = _surfaceRadius * _surfaceRadius * math.pi;
     _stationaryMs = 0.0;
     _lastTimestamp = timestampMillis;
+    _traveledDistance = 0.0;
   }
 
   SlimeStrokeSample? extend({
@@ -76,6 +78,7 @@ class SlimeStrokeEngine {
     _stationaryMs = math.max(0.0, _stationaryMs - dt * _kStationaryDecay);
     final double speed = distance / math.max(dt, 1.0);
     final double curvature = _computeCurvature(position);
+    _traveledDistance += distance;
 
     final _SlimeProfileTuning tuning = _profileTuning();
 
@@ -125,7 +128,8 @@ class SlimeStrokeEngine {
       return null;
     }
     final _SlimeJoint tip = _joints.last;
-    if (_joints.length == 1) {
+    final bool minimalTravel = _traveledDistance <= _baseRadius * 0.9;
+    if (_joints.length == 1 || minimalTravel) {
       return SlimeTailResult.point(center: tip.position, radius: tip.radius);
     }
     final _SlimeJoint prev = _joints[_joints.length - 2];
@@ -156,6 +160,7 @@ class SlimeStrokeEngine {
     _volume = 0.0;
     _surfaceRadius = 0.0;
     _lastTimestamp = null;
+    _traveledDistance = 0.0;
   }
 
   double _resolveDelta(double timestampMillis) {

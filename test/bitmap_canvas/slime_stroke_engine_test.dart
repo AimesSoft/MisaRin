@@ -43,5 +43,17 @@ void main() {
       expect(tail.startRadius, isNotNull);
       expect(tail.endRadius, isNotNull);
     });
+
+    test('finishStroke keeps isolated dot without tail', () {
+      final SlimeStrokeEngine engine = SlimeStrokeEngine()
+        ..setProfile(StrokePressureProfile.auto);
+      engine.startStroke(position: Offset.zero, baseRadius: 4.0, timestampMillis: 0.0);
+      engine.extend(position: const Offset(0.5, 0.2), timestampMillis: 20.0);
+
+      final SlimeTailResult? tail = engine.finishStroke();
+      expect(tail, isNotNull);
+      expect(tail!.isLine, isFalse);
+      expect(tail.pointRadius, greaterThan(0));
+    });
   });
 }
