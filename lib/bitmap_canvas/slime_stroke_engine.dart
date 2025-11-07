@@ -80,10 +80,13 @@ class SlimeStrokeEngine {
     final double startProgress = _pathProgressFor(_traveledDistance);
     if (distance < _kMinMotion) {
       _stationaryMs = math.min(_stationaryMs + dt, _kMaxStationary);
-      final double blobRadius =
-          _visualizeRadius(_stationaryRadius(), startProgress);
-      _lastVisualRadius = blobRadius;
-      return SlimeStrokeSample.blob(center: position, radius: blobRadius);
+      final double swellTarget = math.max(_surfaceRadius, _stationaryRadius());
+      _surfaceRadius = ui.lerpDouble(_surfaceRadius, swellTarget, 0.35) ?? swellTarget;
+      _volume = math.max(_volume, _surfaceRadius * _surfaceRadius * math.pi);
+      final double visual = _visualizeRadius(_surfaceRadius, startProgress);
+      _lastVisualRadius = visual;
+      _updateLastJointRadius(_surfaceRadius, visual);
+      return null;
     }
 
     // 真正移动，更新骨骼与体积
@@ -255,6 +258,20 @@ class SlimeStrokeEngine {
       return 0.0;
     }
     return (distance / denom).clamp(0.0, 1.0);
+  }
+
+  void _updateLastJointRadius(double radius, double visualRadius) {
+    if (_joints.isEmpty) {
+      return;
+    }
+    final _SlimeJoint last = _joints.last;
+    _joints[_joints.length - 1] = _SlimeJoint(
+      position: last.position,
+      timestamp: last.timestamp,
+      radius: radius,
+      visualRadius: visualRadius,
+      tangent: last.tangent,
+    );
   }
 
   _SlimeProfileTuning _profileTuning() {

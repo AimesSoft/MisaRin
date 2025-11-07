@@ -5,17 +5,16 @@ import 'package:misa_rin/bitmap_canvas/stroke_pressure_profile.dart';
 
 void main() {
   group('SlimeStrokeEngine', () {
-    test('produces blob while stationary and segment when moving', () {
+    test('accumulates thickness while stationary then emits smooth segment', () {
       final SlimeStrokeEngine engine = SlimeStrokeEngine()
         ..setProfile(StrokePressureProfile.auto);
       engine.startStroke(position: Offset.zero, baseRadius: 3.0, timestampMillis: 0.0);
 
-      final SlimeStrokeSample? blob = engine.extend(
+      final SlimeStrokeSample? stationary = engine.extend(
         position: const Offset(0.2, 0.0),
         timestampMillis: 30.0,
       );
-      expect(blob, isNotNull);
-      expect(blob!.isBlob, isTrue);
+      expect(stationary, isNull);
 
       final SlimeStrokeSample? segment = engine.extend(
         position: const Offset(6.0, 0.0),
@@ -25,7 +24,7 @@ void main() {
       expect(segment!.isBlob, isFalse);
       expect(segment.startRadius, isNotNull);
       expect(segment.endRadius, isNotNull);
-      expect(segment.endRadius, greaterThan(0));
+      expect(segment.startRadius!, greaterThan(segment.endRadius!));
     });
 
     test('finishStroke no longer extends extra tail for moving stroke', () {
