@@ -10,8 +10,8 @@ import 'package:flutter/material.dart';
 import '../canvas/blend_mode_math.dart';
 import '../canvas/canvas_layer.dart';
 import 'bitmap_canvas.dart';
-import 'stroke_dynamics.dart';
-import 'stroke_pressure_simulator.dart';
+import 'slime_stroke_engine.dart';
+import 'stroke_pressure_profile.dart';
 
 part 'controller_active_transform.dart';
 part 'controller_layer_management.dart';
@@ -75,13 +75,15 @@ class BitmapCanvasController extends ChangeNotifier {
   static const double _kStylusSmoothing = 0.55;
   int _currentStrokeAntialiasLevel = 0;
   bool _currentStrokeHasMoved = false;
-  final StrokePressureSimulator _strokePressureSimulator =
-      StrokePressureSimulator();
+  final SlimeStrokeEngine _slimeStrokeEngine = SlimeStrokeEngine();
+  double _currentStrokeLastTimestamp = 0.0;
   Color _currentStrokeColor = const Color(0xFF000000);
   bool _stylusPressureEnabled = true;
   double _stylusMinFactor = 0.18;
   double _stylusMaxFactor = 1.28;
   double _stylusCurve = 0.85;
+  bool _currentStrokeUsesSlimeEngine = false;
+  StrokePressureProfile _currentStrokeProfile = StrokePressureProfile.auto;
 
   static const int _kAntialiasCenterWeight = 4;
   static const List<int> _kAntialiasDx = <int>[-1, 0, 1, -1, 1, -1, 0, 1];

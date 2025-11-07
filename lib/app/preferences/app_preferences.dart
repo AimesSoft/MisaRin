@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../../bitmap_canvas/stroke_dynamics.dart';
+import '../../bitmap_canvas/stroke_pressure_profile.dart';
 
 class AppPreferences {
   AppPreferences._({

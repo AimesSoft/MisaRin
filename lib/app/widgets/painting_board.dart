@@ -41,7 +41,8 @@ import 'package:flutter_localizations/flutter_localizations.dart'
 
 import '../../bitmap_canvas/bitmap_canvas.dart';
 import '../../bitmap_canvas/controller.dart';
-import '../../bitmap_canvas/stroke_dynamics.dart' show StrokePressureProfile;
+import '../../bitmap_canvas/stroke_pressure_profile.dart'
+    show StrokePressureProfile;
 import '../../canvas/blend_mode_utils.dart';
 import '../../canvas/canvas_layer.dart';
 import '../../canvas/canvas_settings.dart';
