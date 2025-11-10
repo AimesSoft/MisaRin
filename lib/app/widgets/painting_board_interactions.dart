@@ -335,24 +335,22 @@ mixin _PaintingBoardInteractionMixin
     _lastStylusPressureValue = stylusPressure?.clamp(0.0, 1.0);
     _pushUndoSnapshot();
     _lastPenSampleTimestamp = timestamp;
-    setState(() {
-      _isDrawing = true;
-      _controller.beginStroke(
-        start,
-        color: _primaryColor,
-        radius: _penStrokeWidth / 2,
-        simulatePressure: _simulatePenPressure,
-        useDevicePressure: _activeStrokeUsesStylus,
-        stylusPressureBlend: stylusBlend,
-        pressure: stylusPressure,
-        pressureMin: _activeStylusPressureMin,
-        pressureMax: _activeStylusPressureMax,
-        profile: _penPressureProfile,
-        timestampMillis: timestamp.inMicroseconds / 1000.0,
-        antialiasLevel: _penAntialiasLevel,
-        brushShape: _brushShape,
-      );
-    });
+    setState(() => _isDrawing = true);
+    _controller.beginStroke(
+      start,
+      color: _primaryColor,
+      radius: _penStrokeWidth / 2,
+      simulatePressure: _simulatePenPressure,
+      useDevicePressure: _activeStrokeUsesStylus,
+      stylusPressureBlend: stylusBlend,
+      pressure: stylusPressure,
+      pressureMin: _activeStylusPressureMin,
+      pressureMax: _activeStylusPressureMax,
+      profile: _penPressureProfile,
+      timestampMillis: timestamp.inMicroseconds / 1000.0,
+      antialiasLevel: _penAntialiasLevel,
+      brushShape: _brushShape,
+    );
     _markDirty();
   }
 
@@ -390,16 +388,14 @@ mixin _PaintingBoardInteractionMixin
     if (stylusPressure != null && stylusPressure.isFinite) {
       _lastStylusPressureValue = stylusPressure.clamp(0.0, 1.0);
     }
-    setState(() {
-      _controller.extendStroke(
-        clamped,
-        deltaTimeMillis: deltaMillis,
-        timestampMillis: timestamp.inMicroseconds / 1000.0,
-        pressure: stylusPressure,
-        pressureMin: _activeStylusPressureMin,
-        pressureMax: _activeStylusPressureMax,
-      );
-    });
+    _controller.extendStroke(
+      clamped,
+      deltaTimeMillis: deltaMillis,
+      timestampMillis: timestamp.inMicroseconds / 1000.0,
+      pressure: stylusPressure,
+      pressureMin: _activeStylusPressureMin,
+      pressureMax: _activeStylusPressureMax,
+    );
   }
 
   void _appendStylusReleaseSample(
@@ -469,60 +465,21 @@ mixin _PaintingBoardInteractionMixin
     final double stepDistance = math.max(_penStrokeWidth * 0.35, 3.0);
     Offset currentPoint = anchor;
 
-    setState(() {
-      _controller.extendStroke(
-        currentPoint,
-        deltaTimeMillis: initialDeltaMillis,
-        timestampMillis: timestampMillis,
-        pressure: clampedPressure,
-        pressureMin: _activeStylusPressureMin,
-        pressureMax: _activeStylusPressureMax,
-      );
+    _controller.extendStroke(
+      currentPoint,
+      deltaTimeMillis: initialDeltaMillis,
+      timestampMillis: timestampMillis,
+      pressure: clampedPressure,
+      pressureMin: _activeStylusPressureMin,
+      pressureMax: _activeStylusPressureMax,
+    );
 
-      if (!enableSharpPeak) {
-        return;
-      }
+    if (!enableSharpPeak) {
+      return;
+    }
 
-      double nextTimestamp = timestampMillis + (initialDeltaMillis ?? 0.0);
-      if (clampedPressure <= 0.0001) {
-        nextTimestamp += kTailDeltaMs;
-        if (dir != Offset.zero) {
-          currentPoint = currentPoint + dir * stepDistance;
-        }
-        _controller.extendStroke(
-          currentPoint,
-          deltaTimeMillis: kTailDeltaMs,
-          timestampMillis: nextTimestamp,
-          pressure: 0.0,
-          pressureMin: _activeStylusPressureMin,
-          pressureMax: _activeStylusPressureMax,
-        );
-        return;
-      }
-
-      for (int i = 0; i < kTailSteps; i++) {
-        final double t = (i + 1) / (kTailSteps + 1);
-        final double virtualPressure = (clampedPressure * (1.0 - t)).clamp(
-          0.0,
-          1.0,
-        );
-        if (virtualPressure <= 0.0001) {
-          break;
-        }
-        nextTimestamp += kTailDeltaMs;
-        if (dir != Offset.zero) {
-          currentPoint = currentPoint + dir * stepDistance;
-        }
-        _controller.extendStroke(
-          currentPoint,
-          deltaTimeMillis: kTailDeltaMs,
-          timestampMillis: nextTimestamp,
-          pressure: virtualPressure,
-          pressureMin: _activeStylusPressureMin,
-          pressureMax: _activeStylusPressureMax,
-        );
-      }
-
+    double nextTimestamp = timestampMillis + (initialDeltaMillis ?? 0.0);
+    if (clampedPressure <= 0.0001) {
       nextTimestamp += kTailDeltaMs;
       if (dir != Offset.zero) {
         currentPoint = currentPoint + dir * stepDistance;
@@ -535,7 +492,44 @@ mixin _PaintingBoardInteractionMixin
         pressureMin: _activeStylusPressureMin,
         pressureMax: _activeStylusPressureMax,
       );
-    });
+      return;
+    }
+
+    for (int i = 0; i < kTailSteps; i++) {
+      final double t = (i + 1) / (kTailSteps + 1);
+      final double virtualPressure = (clampedPressure * (1.0 - t)).clamp(
+        0.0,
+        1.0,
+      );
+      if (virtualPressure <= 0.0001) {
+        break;
+      }
+      nextTimestamp += kTailDeltaMs;
+      if (dir != Offset.zero) {
+        currentPoint = currentPoint + dir * stepDistance;
+      }
+      _controller.extendStroke(
+        currentPoint,
+        deltaTimeMillis: kTailDeltaMs,
+        timestampMillis: nextTimestamp,
+        pressure: virtualPressure,
+        pressureMin: _activeStylusPressureMin,
+        pressureMax: _activeStylusPressureMax,
+      );
+    }
+
+    nextTimestamp += kTailDeltaMs;
+    if (dir != Offset.zero) {
+      currentPoint = currentPoint + dir * stepDistance;
+    }
+    _controller.extendStroke(
+      currentPoint,
+      deltaTimeMillis: kTailDeltaMs,
+      timestampMillis: nextTimestamp,
+      pressure: 0.0,
+      pressureMin: _activeStylusPressureMin,
+      pressureMax: _activeStylusPressureMax,
+    );
   }
 
   Offset _sanitizeStrokePosition(
