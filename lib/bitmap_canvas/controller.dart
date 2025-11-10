@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:isolate';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -12,6 +13,7 @@ import '../canvas/blend_mode_math.dart';
 import '../canvas/canvas_layer.dart';
 import '../canvas/canvas_tools.dart';
 import 'bitmap_canvas.dart';
+import 'compositor_worker.dart';
 import 'stroke_dynamics.dart';
 import 'stroke_pressure_simulator.dart';
 
@@ -153,6 +155,9 @@ class BitmapCanvasController extends ChangeNotifier {
   Rect? _activeLayerTransformDirtyRegion;
   bool _pendingActiveLayerTransformCleanup = false;
   bool _clipLayerOverflow = false;
+  final BitmapCompositor _backgroundCompositor = BitmapCompositor();
+  bool _backgroundCompositeEnabled = true;
+  bool _compositeProcessing = false;
   final Map<String, _LayerOverflowStore> _layerOverflowStores =
       <String, _LayerOverflowStore>{};
 
@@ -186,6 +191,12 @@ class BitmapCanvasController extends ChangeNotifier {
       return;
     }
     _clipLayerOverflow = enabled;
+  }
+
+  @override
+  void dispose() {
+    _backgroundCompositor.dispose();
+    super.dispose();
   }
 
   bool get hasVisibleContent {
@@ -912,4 +923,7 @@ class _IntRect {
   final int bottom;
 
   bool get isEmpty => left >= right || top >= bottom;
+
+  int get width => right - left;
+  int get height => bottom - top;
 }

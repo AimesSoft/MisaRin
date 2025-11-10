@@ -67,7 +67,62 @@ void _compositeProcessPending(BitmapCanvasController controller) {
       !controller._compositeInitialized ||
       controller._pendingFullSurface ||
       dirtyBounds == null;
+  final _IntRect region =
+      _effectiveCompositeRegion(controller, dirtyBounds, requiresFullSurface);
 
+  if (_tryDispatchBackgroundComposite(controller, region)) {
+    return;
+  }
+
+  _processCompositeSynchronously(controller, requiresFullSurface);
+}
+
+bool _tryDispatchBackgroundComposite(
+  BitmapCanvasController controller,
+  _IntRect region,
+) {
+  if (!controller._backgroundCompositeEnabled) {
+    return false;
+  }
+  if (controller._compositeProcessing) {
+    return true;
+  }
+  if (region.isEmpty) {
+    return false;
+  }
+  final BitmapCompositePayload? payload =
+      _buildCompositePayload(controller, region);
+  if (payload == null) {
+    return false;
+  }
+  controller._pendingDirtyBounds = null;
+  controller._pendingDirtyTiles.clear();
+  controller._pendingDirtyTileKeys.clear();
+  controller._pendingFullSurface = false;
+  controller._compositeDirty = false;
+  controller._compositeProcessing = true;
+  controller._backgroundCompositor.composite(payload).then(
+      (BitmapCompositeResult result) {
+    _applyCompositeBuffers(
+      controller,
+      result,
+    );
+  }).catchError((Object error, StackTrace stackTrace) {
+    controller._backgroundCompositeEnabled = false;
+    controller._compositeProcessing = false;
+    controller._compositeDirty = true;
+    controller._pendingFullSurface = true;
+    if (!controller._refreshScheduled) {
+      _compositeScheduleRefresh(controller);
+    }
+  });
+  return true;
+}
+
+void _processCompositeSynchronously(
+  BitmapCanvasController controller,
+  bool requiresFullSurface,
+) {
   final List<_IntRect> dirtyTiles = requiresFullSurface
       ? const <_IntRect>[]
       : List<_IntRect>.from(controller._pendingDirtyTiles);
@@ -85,6 +140,50 @@ void _compositeProcessPending(BitmapCanvasController controller) {
 
   final Uint8List rgba = controller._compositeRgba ??
       Uint8List(controller._width * controller._height * 4);
+  controller._compositeInitialized = true;
+  _finalizeCompositeImage(controller, rgba);
+}
+
+void _applyCompositeBuffers(
+  BitmapCanvasController controller,
+  BitmapCompositeResult result,
+) {
+  final bool fullSurface =
+      result.regionLeft == 0 &&
+      result.regionTop == 0 &&
+      result.regionWidth == controller._width &&
+      result.regionHeight == controller._height;
+
+  if (fullSurface) {
+    controller._compositePixels = result.composite;
+    controller._compositeRgba = result.rgba;
+  } else {
+    controller._compositePixels ??=
+        Uint32List(controller._width * controller._height);
+    controller._compositeRgba ??=
+        Uint8List(controller._width * controller._height * 4);
+    _blitCompositeRegion(
+      controller._compositePixels!,
+      controller._compositeRgba!,
+      result.composite,
+      result.rgba,
+      controller._width,
+      result.regionLeft,
+      result.regionTop,
+      result.regionWidth,
+      result.regionHeight,
+    );
+  }
+
+  controller._compositeProcessing = false;
+  controller._compositeInitialized = true;
+  _finalizeCompositeImage(controller, controller._compositeRgba!);
+}
+
+void _finalizeCompositeImage(
+  BitmapCanvasController controller,
+  Uint8List rgba,
+) {
   ui.decodeImageFromPixels(
     rgba,
     controller._width,
@@ -106,6 +205,146 @@ void _compositeProcessPending(BitmapCanvasController controller) {
       }
     },
   );
+}
+
+BitmapCompositePayload? _buildCompositePayload(
+  BitmapCanvasController controller,
+  _IntRect region,
+) {
+  if (controller._layers.isEmpty) {
+    return null;
+  }
+  final String? translatingLayerId =
+      controller._activeLayerTranslationSnapshot != null &&
+              !controller._pendingActiveLayerTransformCleanup
+          ? controller._activeLayerTranslationId
+          : null;
+  final List<BitmapCompositeLayerPayload> layers =
+      <BitmapCompositeLayerPayload>[];
+  for (final BitmapLayerState layer in controller._layers) {
+    if (translatingLayerId != null && layer.id == translatingLayerId) {
+      continue;
+    }
+    Uint8List bytes;
+    if (region.left == 0 &&
+        region.top == 0 &&
+        region.width == controller._width &&
+        region.height == controller._height) {
+      bytes = layer.surface.pixels.buffer.asUint8List();
+    } else {
+      final Uint32List subset = _copySurfaceRegion(layer.surface, region);
+      bytes = subset.buffer.asUint8List();
+    }
+    layers.add(
+      BitmapCompositeLayerPayload(
+        pixelData: TransferableTypedData.fromList(<Uint8List>[bytes]),
+        opacity: layer.opacity,
+        visible: layer.visible,
+        clippingMask: layer.clippingMask,
+        blendModeIndex: layer.blendMode.index,
+      ),
+    );
+  }
+  if (layers.isEmpty) {
+    return null;
+  }
+  return BitmapCompositePayload(
+    backgroundColor: controller._backgroundColor.value,
+    layers: layers,
+    regionLeft: region.left,
+    regionTop: region.top,
+    regionWidth: region.width,
+    regionHeight: region.height,
+  );
+}
+
+_IntRect _effectiveCompositeRegion(
+  BitmapCanvasController controller,
+  Rect? dirtyBounds,
+  bool requiresFullSurface,
+) {
+  if (requiresFullSurface || dirtyBounds == null) {
+    return _IntRect(0, 0, controller._width, controller._height);
+  }
+  final Rect expanded = dirtyBounds.inflate(2).intersect(
+        Rect.fromLTWH(
+          0,
+          0,
+          controller._width.toDouble(),
+          controller._height.toDouble(),
+        ),
+      );
+  if (expanded.isEmpty) {
+    return _IntRect(0, 0, controller._width, controller._height);
+  }
+  return _rectToIntRect(expanded, controller._width, controller._height);
+}
+
+_IntRect _rectToIntRect(Rect rect, int canvasWidth, int canvasHeight) {
+  final int safeWidth = math.max(1, canvasWidth);
+  final int safeHeight = math.max(1, canvasHeight);
+  final int left = math.max(0, math.min(safeWidth - 1, rect.left.floor()));
+  final int top = math.max(0, math.min(safeHeight - 1, rect.top.floor()));
+  final int right = math.max(left + 1, math.min(safeWidth, rect.right.ceil()));
+  final int bottom = math.max(top + 1, math.min(safeHeight, rect.bottom.ceil()));
+  return _IntRect(left, top, right, bottom);
+}
+
+Uint32List _copySurfaceRegion(BitmapSurface surface, _IntRect region) {
+  final int regionWidth = region.width;
+  final int regionHeight = region.height;
+  if (regionWidth <= 0 || regionHeight <= 0) {
+    return Uint32List(0);
+  }
+  final Uint32List subset = Uint32List(regionWidth * regionHeight);
+  final Uint32List pixels = surface.pixels;
+  final int stride = surface.width;
+  int writeOffset = 0;
+  for (int y = region.top; y < region.bottom; y++) {
+    final int srcOffset = y * stride + region.left;
+    subset.setRange(
+      writeOffset,
+      writeOffset + regionWidth,
+      pixels,
+      srcOffset,
+    );
+    writeOffset += regionWidth;
+  }
+  return subset;
+}
+
+void _blitCompositeRegion(
+  Uint32List targetComposite,
+  Uint8List targetRgba,
+  Uint32List sourceComposite,
+  Uint8List sourceRgba,
+  int canvasWidth,
+  int regionLeft,
+  int regionTop,
+  int regionWidth,
+  int regionHeight,
+) {
+  if (regionWidth <= 0 || regionHeight <= 0) {
+    return;
+  }
+  for (int row = 0; row < regionHeight; row++) {
+    final int dstIndex = (regionTop + row) * canvasWidth + regionLeft;
+    final int srcIndex = row * regionWidth;
+    targetComposite.setRange(
+      dstIndex,
+      dstIndex + regionWidth,
+      sourceComposite,
+      srcIndex,
+    );
+    final int dstRgbaOffset = dstIndex * 4;
+    final int srcRgbaOffset = srcIndex * 4;
+    targetRgba.setRange(
+      dstRgbaOffset,
+      dstRgbaOffset + regionWidth * 4,
+      sourceRgba,
+      srcRgbaOffset,
+    );
+  }
 }
 
 void _compositeUpdate(
