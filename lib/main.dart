@@ -16,7 +16,9 @@ Future<void> main() async {
 
   await AppPreferences.load();
   await _initializePerformancePulse();
-
+if (Platform.isMacOS) {
+      await windowManager.setMovable(false);
+    }
   final bool isDesktop =
       !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
   if (isDesktop) {
