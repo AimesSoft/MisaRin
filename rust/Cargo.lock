@@ -443,13 +443,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "misa_rin_rust"
-version = "0.1.0"
-dependencies = [
- "flutter_rust_bridge",
-]
-
-[[package]]
 name = "num_cpus"
 version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -571,6 +564,13 @@ name = "regex-syntax"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
+
+[[package]]
+name = "rust_lib_misa_rin"
+version = "0.1.0"
+dependencies = [
+ "flutter_rust_bridge",
+]
 
 [[package]]
 name = "rustc-demangle"

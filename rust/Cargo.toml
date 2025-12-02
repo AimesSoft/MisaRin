@@ -1,5 +1,5 @@
 [package]
-name = "misa_rin_rust"
+name = "rust_lib_misa_rin"
 version = "0.1.0"
 edition = "2021"
 
