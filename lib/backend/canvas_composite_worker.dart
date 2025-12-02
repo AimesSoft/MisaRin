@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import '../src/rust/api/blend_utils.dart' as rust_blend;
+import '../src/rust/frb_generated.dart';
 import '../bitmap_canvas/raster_int_rect.dart';
 import '../canvas/canvas_layer.dart';
 
@@ -186,7 +187,8 @@ class _LayerDimensions {
 }
 
 @pragma('vm:entry-point')
-void _compositeWorkerMain(SendPort replyPort) {
+void _compositeWorkerMain(SendPort replyPort) async {
+  await RustLib.init();
   final ReceivePort commandPort = ReceivePort();
   replyPort.send(commandPort.sendPort);
   final _CompositeWorkerState state = _CompositeWorkerState();

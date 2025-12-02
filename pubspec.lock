@@ -188,10 +188,9 @@ packages:
   file_picker:
     dependency: "direct main"
     description:
-      name: file_picker
-      sha256: "1bbf65dd997458a08b531042ec3794112a6c39c07c37ff22113d2e7e4f81d4e4"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/file_picker"
+      relative: true
+    source: path
     version: "6.2.1"
   fixnum:
     dependency: transitive

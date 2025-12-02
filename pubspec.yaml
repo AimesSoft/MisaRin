@@ -61,6 +61,10 @@ dev_dependencies:
   integration_test:
     sdk: flutter
 
+dependency_overrides:
+  file_picker:
+    path: third_party/file_picker
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
