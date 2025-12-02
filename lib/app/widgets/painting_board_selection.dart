@@ -874,7 +874,7 @@ Path? _pathFromMaskFallback(Uint8List mask, int width) {
       final Path segment = Path()..addRect(rect);
       result = result == null
           ? segment
-          : Path.combine(ui.PathOperation.union, result!, segment);
+          : Path.combine(ui.PathOperation.union, result, segment);
     }
   }
   return result;

@@ -71,8 +71,9 @@ class BitmapSurface {
       return;
     }
     final double softnessClamped = softness.clamp(0.0, 1.0);
-    final double softnessRadius =
-        softnessClamped > 0 ? radius * (0.35 + softnessClamped * 1.65) : 0.0;
+    final double softnessRadius = softnessClamped > 0
+        ? radius * (0.35 + softnessClamped * 1.65)
+        : 0.0;
     final double extent = radius + softnessRadius + 1.5;
     final int minX = math.max(0, (center.dx - extent).floor());
     final int maxX = math.min(width - 1, (center.dx + extent).ceil());
@@ -730,14 +731,15 @@ class BitmapSurface {
     if (distance <= innerRadius) {
       return 1.0;
     }
-    final double outerRadius =
-        radius + radius * (0.65 + 1.2 * clampedSoftness);
+    final double outerRadius = radius + radius * (0.65 + 1.2 * clampedSoftness);
     if (distance >= outerRadius) {
       return 0.0;
     }
     final double normalized =
-        ((distance - innerRadius) / (outerRadius - innerRadius))
-            .clamp(0.0, 1.0);
+        ((distance - innerRadius) / (outerRadius - innerRadius)).clamp(
+          0.0,
+          1.0,
+        );
     final double eased = 1.0 - normalized;
     return math.pow(eased, 2.2).toDouble();
   }

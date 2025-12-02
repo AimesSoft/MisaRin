@@ -167,10 +167,7 @@ class _AsepritePaletteParser extends _PaletteFileParser {
         } else if (chunkType == 0x0004 || chunkType == 0x0011) {
           colors.clear();
           colors.addAll(
-            _readOldPaletteChunk(
-              reader,
-              isSixBit: chunkType == 0x0011,
-            ),
+            _readOldPaletteChunk(reader, isSixBit: chunkType == 0x0011),
           );
           return PaletteImportResult(
             name: fileName ?? 'Aseprite 调色盘',
@@ -236,7 +233,9 @@ class _AsepritePaletteParser extends _PaletteFileParser {
         index++;
       }
     }
-    final List<Color> colors = entries.whereType<Color>().toList(growable: false);
+    final List<Color> colors = entries.whereType<Color>().toList(
+      growable: false,
+    );
     if (colors.isEmpty) {
       throw PaletteImportException('该 Aseprite 调色盘没有有效颜色。');
     }

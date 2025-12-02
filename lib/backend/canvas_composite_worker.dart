@@ -2,7 +2,7 @@ import 'dart:isolate';
 import 'dart:async';
 import 'dart:typed_data';
 
-import '../bitmap_canvas/bitmap_blend_utils.dart' as blend_utils;
+import '../src/rust/api/blend_utils.dart' as rust_blend;
 import '../bitmap_canvas/raster_int_rect.dart';
 import '../canvas/canvas_layer.dart';
 
@@ -26,10 +26,7 @@ class CompositeRegionLayerRef {
 }
 
 class CompositeRegionPayload {
-  const CompositeRegionPayload({
-    required this.rect,
-    required this.layers,
-  });
+  const CompositeRegionPayload({required this.rect, required this.layers});
 
   final RasterIntRect rect;
   final List<CompositeRegionLayerRef> layers;
@@ -52,10 +49,7 @@ class CompositeWorkPayload {
 }
 
 class CompositeRegionResult {
-  const CompositeRegionResult({
-    required this.rect,
-    required this.pixels,
-  });
+  const CompositeRegionResult({required this.rect, required this.pixels});
 
   final RasterIntRect rect;
   final Uint32List pixels;
@@ -63,8 +57,8 @@ class CompositeRegionResult {
 
 class CanvasCompositeWorker {
   CanvasCompositeWorker()
-      : _receivePort = ReceivePort(),
-        _sendPortCompleter = Completer<SendPort>() {
+    : _receivePort = ReceivePort(),
+      _sendPortCompleter = Completer<SendPort>() {
     _subscription = _receivePort.listen(_handleMessage);
   }
 
@@ -99,21 +93,23 @@ class CanvasCompositeWorker {
     await _ensureStarted();
     final SendPort port = _sendPort!;
     final TransferableTypedData? buffer = pixels != null
-        ? TransferableTypedData.fromList(
-            <Uint8List>[Uint8List.view(pixels.buffer)],
-          )
+        ? TransferableTypedData.fromList(<Uint8List>[
+            Uint8List.view(pixels.buffer),
+          ])
         : null;
-    port.send(_CompositeWorkerRequest(
-      id: -1, // No response needed for updates
-      type: _CompositeWorkerRequestType.updateLayer,
-      payload: <String, Object?>{
-        'id': id,
-        'width': width,
-        'height': height,
-        'pixels': buffer,
-        'rect': rect,
-      },
-    ));
+    port.send(
+      _CompositeWorkerRequest(
+        id: -1, // No response needed for updates
+        type: _CompositeWorkerRequestType.updateLayer,
+        payload: <String, Object?>{
+          'id': id,
+          'width': width,
+          'height': height,
+          'pixels': buffer,
+          'rect': rect,
+        },
+      ),
+    );
   }
 
   Future<List<CompositeRegionResult>> composite(
@@ -125,11 +121,13 @@ class CanvasCompositeWorker {
         Completer<List<CompositeRegionResult>>();
     final int requestId = _nextRequestId++;
     _pending[requestId] = completer;
-    port.send(_CompositeWorkerRequest(
-      id: requestId,
-      type: _CompositeWorkerRequestType.composite,
-      payload: payload,
-    ));
+    port.send(
+      _CompositeWorkerRequest(
+        id: requestId,
+        type: _CompositeWorkerRequestType.composite,
+        payload: payload,
+      ),
+    );
     return completer.future;
   }
 
@@ -156,14 +154,16 @@ class CanvasCompositeWorker {
       return;
     }
     if (message is _CompositeWorkerResponse) {
-      final Completer<List<CompositeRegionResult>>? completer =
-          _pending.remove(message.id);
+      final Completer<List<CompositeRegionResult>>? completer = _pending.remove(
+        message.id,
+      );
       completer?.complete(message.regions);
       return;
     }
     if (message is _CompositeWorkerError) {
-      final Completer<List<CompositeRegionResult>>? completer =
-          _pending.remove(message.id);
+      final Completer<List<CompositeRegionResult>>? completer = _pending.remove(
+        message.id,
+      );
       completer?.completeError(
         Exception('Composite failed: ${message.error}\n${message.stackTrace}'),
       );
@@ -171,14 +171,12 @@ class CanvasCompositeWorker {
   }
 }
 
-enum _CompositeWorkerRequestType {
-  updateLayer,
-  composite,
-}
+enum _CompositeWorkerRequestType { updateLayer, composite }
 
 class _CompositeWorkerState {
   final Map<String, Uint32List> layers = <String, Uint32List>{};
-  final Map<String, _LayerDimensions> layerDimensions = <String, _LayerDimensions>{};
+  final Map<String, _LayerDimensions> layerDimensions =
+      <String, _LayerDimensions>{};
 }
 
 class _LayerDimensions {
@@ -199,8 +197,10 @@ void _compositeWorkerMain(SendPort replyPort) {
         if (message.type == _CompositeWorkerRequestType.updateLayer) {
           _handleUpdateLayer(state, message.payload as Map<String, Object?>);
         } else if (message.type == _CompositeWorkerRequestType.composite) {
-          final List<CompositeRegionResult> regions =
-              _runCompositeWork(state, message.payload as CompositeWorkPayload);
+          final List<CompositeRegionResult> regions = _runCompositeWork(
+            state,
+            message.payload as CompositeWorkPayload,
+          );
           replyPort.send(_CompositeWorkerResponse(message.id, regions));
         }
       } catch (error, stackTrace) {
@@ -318,95 +318,136 @@ List<CompositeRegionResult> _runCompositeWork(
     if (areaWidth <= 0 || areaHeight <= 0) {
       continue;
     }
-    final Uint32List composite = Uint32List(areaWidth * areaHeight);
-    final Uint8List clipMask = Uint8List(areaWidth * areaHeight);
 
-    for (int localY = 0; localY < areaHeight; localY++) {
-      final int globalY = area.top + localY;
-      final int rowOffset = localY * areaWidth;
-      for (int localX = 0; localX < areaWidth; localX++) {
-        final int localIndex = rowOffset + localX;
-        final int globalIndex =
-            (globalY * surfaceWidth) + (area.left + localX);
-        int color = 0;
-        bool initialized = false;
+    // Collect layer data for this region
+    final List<Uint32List> layersPixels = [];
+    final List<double> layersOpacity = [];
+    final List<rust_blend.BlendMode> layersBlendMode = [];
 
-        for (final CompositeRegionLayerRef layer in region.layers) {
-          if (!layer.visible) {
-            continue;
-          }
-          if (payload.translatingLayerId != null &&
-              layer.id == payload.translatingLayerId) {
-            continue;
-          }
-          
-          final Uint32List? layerPixels = state.layers[layer.id];
-          // If layer missing in worker, skip it (or handle error?)
-          if (layerPixels == null) {
-             continue;
-          }
-
-          final double opacity = _clampUnit(layer.opacity);
-          if (opacity <= 0) {
-            if (!layer.clippingMask) {
-              clipMask[localIndex] = 0;
-            }
-            continue;
-          }
-
-          final int src = layerPixels[globalIndex];
-          final int srcA = (src >> 24) & 0xff;
-          if (srcA == 0) {
-            if (!layer.clippingMask) {
-              clipMask[localIndex] = 0;
-            }
-            continue;
-          }
-
-          double totalOpacity = opacity;
-          if (layer.clippingMask) {
-            final int maskAlpha = clipMask[localIndex];
-            if (maskAlpha == 0) {
-              continue;
-            }
-            totalOpacity *= maskAlpha / 255.0;
-            if (totalOpacity <= 0) {
-              continue;
-            }
-          }
-
-          int effectiveA = (srcA * totalOpacity).round();
-          if (effectiveA <= 0) {
-            if (!layer.clippingMask) {
-              clipMask[localIndex] = 0;
-            }
-            continue;
-          }
-          effectiveA = effectiveA.clamp(0, 255);
-
-          if (!layer.clippingMask) {
-            clipMask[localIndex] = effectiveA;
-          }
-
-          final int effectiveColor = (effectiveA << 24) | (src & 0x00FFFFFF);
-          if (!initialized) {
-            color = effectiveColor;
-            initialized = true;
-          } else {
-            color = blend_utils.blendWithMode(
-              color,
-              effectiveColor,
-              layer.blendMode,
-              globalIndex,
-            );
-          }
-        }
-        composite[localIndex] = initialized ? color : 0;
+    for (final CompositeRegionLayerRef layer in region.layers) {
+      if (!layer.visible) {
+        continue;
       }
+      if (payload.translatingLayerId != null &&
+          layer.id == payload.translatingLayerId) {
+        continue;
+      }
+
+      final Uint32List? layerBuffer = state.layers[layer.id];
+      if (layerBuffer == null) {
+        continue;
+      }
+
+      final double opacity = _clampUnit(layer.opacity);
+      if (opacity <= 0) {
+        continue;
+      }
+
+      // Extract pixels for the region
+      // TODO: Optimization - If we could pass the full buffer + stride/offset to Rust,
+      // we'd save this copy. But for now, this is the safest "drop-in" replacement.
+      final Uint32List regionPixels = Uint32List(areaWidth * areaHeight);
+      for (int row = 0; row < areaHeight; row++) {
+        final int srcRowStart = (area.top + row) * surfaceWidth + area.left;
+        final int dstRowStart = row * areaWidth;
+        // Bulk copy the row
+        regionPixels.setRange(
+          dstRowStart,
+          dstRowStart + areaWidth,
+          layerBuffer,
+          srcRowStart,
+        );
+      }
+
+      layersPixels.add(regionPixels);
+      layersOpacity.add(opacity);
+
+      // Map Dart BlendMode enum to Rust BlendMode enum
+      layersBlendMode.add(_mapBlendMode(layer.blendMode));
     }
+
+    if (layersPixels.isEmpty) {
+      // Empty region
+      results.add(
+        CompositeRegionResult(
+          rect: area,
+          pixels: Uint32List(areaWidth * areaHeight),
+        ),
+      );
+      continue;
+    }
+
+    // Call Rust to blend
+    final Uint32List composite = rust_blend.compositeRegion(
+      width: areaWidth,
+      height: areaHeight,
+      layersPixels: layersPixels,
+      layersOpacity: layersOpacity,
+      layersBlendMode: layersBlendMode,
+    );
+
     results.add(CompositeRegionResult(rect: area, pixels: composite));
   }
   return results;
+}
+
+rust_blend.BlendMode _mapBlendMode(CanvasLayerBlendMode mode) {
+  switch (mode) {
+    case CanvasLayerBlendMode.normal:
+      return rust_blend.BlendMode.normal;
+    case CanvasLayerBlendMode.multiply:
+      return rust_blend.BlendMode.multiply;
+    case CanvasLayerBlendMode.dissolve:
+      return rust_blend.BlendMode.dissolve;
+    case CanvasLayerBlendMode.darken:
+      return rust_blend.BlendMode.darken;
+    case CanvasLayerBlendMode.colorBurn:
+      return rust_blend.BlendMode.colorBurn;
+    case CanvasLayerBlendMode.linearBurn:
+      return rust_blend.BlendMode.linearBurn;
+    case CanvasLayerBlendMode.darkerColor:
+      return rust_blend.BlendMode.darkerColor;
+    case CanvasLayerBlendMode.lighten:
+      return rust_blend.BlendMode.lighten;
+    case CanvasLayerBlendMode.screen:
+      return rust_blend.BlendMode.screen;
+    case CanvasLayerBlendMode.colorDodge:
+      return rust_blend.BlendMode.colorDodge;
+    case CanvasLayerBlendMode.linearDodge:
+      return rust_blend.BlendMode.linearDodge;
+    case CanvasLayerBlendMode.lighterColor:
+      return rust_blend.BlendMode.lighterColor;
+    case CanvasLayerBlendMode.overlay:
+      return rust_blend.BlendMode.overlay;
+    case CanvasLayerBlendMode.softLight:
+      return rust_blend.BlendMode.softLight;
+    case CanvasLayerBlendMode.hardLight:
+      return rust_blend.BlendMode.hardLight;
+    case CanvasLayerBlendMode.vividLight:
+      return rust_blend.BlendMode.vividLight;
+    case CanvasLayerBlendMode.linearLight:
+      return rust_blend.BlendMode.linearLight;
+    case CanvasLayerBlendMode.pinLight:
+      return rust_blend.BlendMode.pinLight;
+    case CanvasLayerBlendMode.hardMix:
+      return rust_blend.BlendMode.hardMix;
+    case CanvasLayerBlendMode.difference:
+      return rust_blend.BlendMode.difference;
+    case CanvasLayerBlendMode.exclusion:
+      return rust_blend.BlendMode.exclusion;
+    case CanvasLayerBlendMode.subtract:
+      return rust_blend.BlendMode.subtract;
+    case CanvasLayerBlendMode.divide:
+      return rust_blend.BlendMode.divide;
+    case CanvasLayerBlendMode.hue:
+      return rust_blend.BlendMode.hue;
+    case CanvasLayerBlendMode.saturation:
+      return rust_blend.BlendMode.saturation;
+    case CanvasLayerBlendMode.color:
+      return rust_blend.BlendMode.color;
+    case CanvasLayerBlendMode.luminosity:
+      return rust_blend.BlendMode.luminosity;
+  }
 }
 
 double _clampUnit(double value) {

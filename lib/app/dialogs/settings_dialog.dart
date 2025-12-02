@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/widgets.dart';
 
 import '../theme/theme_controller.dart';
 import '../preferences/app_preferences.dart';
@@ -235,10 +234,7 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
       ],
     );
 
-    return SingleChildScrollView(
-      primary: true,
-      child: body,
-    );
+    return SingleChildScrollView(primary: true, child: body);
   }
 
   void _updatePenSliderRange(PenStrokeSliderRange range) {
@@ -396,8 +392,7 @@ class _TabletInspectPaneState extends State<_TabletInspectPane> {
     final double pressure =
         TabletInputBridge.instance.pressureForEvent(event) ??
         (event.pressure.isFinite ? event.pressure.clamp(0.0, 1.0) : 0.0);
-    final double radius =
-        _brushRadiusForPressure(pressure, devicePixelRatio);
+    final double radius = _brushRadiusForPressure(pressure, devicePixelRatio);
     final double physicalRadius = radius * devicePixelRatio;
     final bool inContact = event.down || pressure > 0.0;
     setState(() {
@@ -536,8 +531,9 @@ class _TabletInspectPaneState extends State<_TabletInspectPane> {
     final double eased = math.sqrt(normalized);
     final double physicalRadius =
         minPhysicalRadius + (maxPhysicalRadius - minPhysicalRadius) * eased;
-    final double safePixelRatio =
-        devicePixelRatio <= 0 ? 1.0 : devicePixelRatio;
+    final double safePixelRatio = devicePixelRatio <= 0
+        ? 1.0
+        : devicePixelRatio;
     return physicalRadius / safePixelRatio;
   }
 
@@ -637,8 +633,9 @@ class _TabletPainter extends CustomPainter {
     if (points.isEmpty) {
       return;
     }
-    final double safePixelRatio =
-        devicePixelRatio <= 0 ? 1.0 : devicePixelRatio;
+    final double safePixelRatio = devicePixelRatio <= 0
+        ? 1.0
+        : devicePixelRatio;
     final double minLogicalStroke = 1.0 / safePixelRatio;
     final double maxLogicalStroke = 12.0 / safePixelRatio;
     final Paint strokePaint = Paint()

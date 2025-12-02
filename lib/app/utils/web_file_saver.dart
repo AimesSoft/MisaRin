@@ -1,9 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 
 import 'web_file_saver_stub.dart'
-    if (dart.library.html) 'web_file_saver_web.dart' as saver_impl;
+    if (dart.library.html) 'web_file_saver_web.dart'
+    as saver_impl;
 
 /// 提供基于浏览器下载能力的文件保存工具。
 class WebFileSaver {

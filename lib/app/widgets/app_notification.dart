@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/scheduler.dart' show WidgetsBinding;
-import 'package:flutter/widgets.dart';
 
 class AppNotificationAnchor extends StatefulWidget {
   const AppNotificationAnchor({super.key, required this.child});
@@ -74,10 +72,7 @@ class AppNotifications {
     InfoBarSeverity severity = InfoBarSeverity.info,
     Duration duration = const Duration(seconds: 4),
   }) {
-    final OverlayState? overlay = Overlay.of(context, rootOverlay: true);
-    if (overlay == null) {
-      return;
-    }
+    final OverlayState overlay = Overlay.of(context, rootOverlay: true);
 
     _currentEntry?.remove();
     _currentEntry = null;
@@ -222,8 +217,10 @@ class _AppNotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final FluentThemeData theme = FluentTheme.of(context);
-    final _AppNotificationVisual visual =
-        _AppNotificationVisual.resolve(theme, severity);
+    final _AppNotificationVisual visual = _AppNotificationVisual.resolve(
+      theme,
+      severity,
+    );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -243,10 +240,8 @@ class _AppNotificationCard extends StatelessWidget {
               message,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: (theme.typography.body ?? const TextStyle(fontSize: 13)).copyWith(
-                color: visual.textColor,
-                height: 1.2,
-              ),
+              style: (theme.typography.body ?? const TextStyle(fontSize: 13))
+                  .copyWith(color: visual.textColor, height: 1.2),
             ),
           ),
           const SizedBox(width: 8),

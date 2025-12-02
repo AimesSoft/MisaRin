@@ -363,10 +363,7 @@ class MenuDefinitionBuilder {
   static MenuDefinition? _toolMenu(MenuActionHandler handler) {
     final List<MenuEntry> paletteEntries = <MenuEntry>[
       if (handler.generatePalette != null)
-        MenuActionEntry(
-          label: '取色当前画布生成调色盘…',
-          action: handler.generatePalette,
-        ),
+        MenuActionEntry(label: '取色当前画布生成调色盘…', action: handler.generatePalette),
       if (handler.generateGradientPalette != null)
         MenuActionEntry(
           label: '使用当前颜色生成渐变调色盘',

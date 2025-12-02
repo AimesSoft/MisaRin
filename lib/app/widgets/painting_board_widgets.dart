@@ -70,9 +70,9 @@ class ImportReferenceImageIntent extends Intent {
 
 class _CheckboardBackground extends StatelessWidget {
   const _CheckboardBackground({
-    this.cellSize = 16.0,
-    this.lightColor = const Color(0xFFF9F9F9),
-    this.darkColor = const ui.Color.fromARGB(255, 211, 211, 211),
+    required this.cellSize,
+    required this.lightColor,
+    required this.darkColor,
   });
 
   final double cellSize;
@@ -240,10 +240,7 @@ class _PreviewPathPainter extends CustomPainter {
 }
 
 class _ShapeFillOverlayPainter extends CustomPainter {
-  const _ShapeFillOverlayPainter({
-    required this.path,
-    required this.color,
-  });
+  const _ShapeFillOverlayPainter({required this.path, required this.color});
 
   final Path path;
   final Color color;
@@ -269,9 +266,9 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
     required this.color,
     this.shape = BrushShape.circle,
     required this.committingStrokes,
-    this.antialiasLevel = 1,
     required this.activeStrokeIsEraser,
     this.eraserPreviewColor = _kVectorEraserPreviewColor,
+    required this.antialiasLevel, // Added initialization
   });
 
   final List<Offset> points;
@@ -279,7 +276,8 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
   final Color color;
   final BrushShape shape;
   final List<PaintingDrawCommand> committingStrokes;
-  final int antialiasLevel;
+  final int antialiasLevel; // Field declaration
+
   final bool activeStrokeIsEraser;
   final Color eraserPreviewColor;
 
@@ -288,8 +286,9 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
     // Draw committing strokes (fading out/waiting for raster) first
     for (final PaintingDrawCommand command in committingStrokes) {
       if (command.points == null || command.radii == null) continue;
-      final Color commandColor =
-          command.erase ? eraserPreviewColor : Color(command.color);
+      final Color commandColor = command.erase
+          ? eraserPreviewColor
+          : Color(command.color);
       VectorStrokePainter.paint(
         canvas: canvas,
         points: command.points!,
@@ -302,8 +301,9 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
 
     // Draw active stroke on top
     if (points.isNotEmpty) {
-      final Color activeColor =
-          activeStrokeIsEraser ? eraserPreviewColor : color;
+      final Color activeColor = activeStrokeIsEraser
+          ? eraserPreviewColor
+          : color;
       VectorStrokePainter.paint(
         canvas: canvas,
         points: points,

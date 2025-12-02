@@ -1,6 +1,7 @@
 part of 'painting_board.dart';
 
 mixin _PaintingBoardColorMixin on _PaintingBoardBase {
+  @override
   Future<void> _pickColor({
     required String title,
     required Color initialColor,
@@ -57,6 +58,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
     }
   }
 
+  @override
   Future<void> _applyPaintBucket(Offset position) async {
     if (!isPointInsideSelection(position)) {
       return;
@@ -120,7 +122,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
 
   void _persistPrimaryColor() {
     final AppPreferences prefs = AppPreferences.instance;
-    if (prefs.primaryColor.value == _primaryColor.value) {
+    if (prefs.primaryColor.toARGB32() == _primaryColor.toARGB32()) {
       return;
     }
     prefs.primaryColor = _primaryColor;
@@ -129,7 +131,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
 
   void _rememberCurrentPrimary() {
     if (_recentColors.isNotEmpty &&
-        _recentColors.first.value == _primaryColor.value) {
+        _recentColors.first.toARGB32() == _primaryColor.toARGB32()) {
       return;
     }
     setState(() {
@@ -137,8 +139,9 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
     });
   }
 
+  @override
   void _rememberColor(Color color) {
-    _recentColors.removeWhere((c) => c.value == color.value);
+    _recentColors.removeWhere((c) => c.toARGB32() == color.toARGB32());
     _recentColors.insert(0, color);
     if (_recentColors.length > _recentColorCapacity) {
       _recentColors.removeRange(_recentColorCapacity, _recentColors.length);
@@ -150,7 +153,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
   }
 
   void _handleSelectColorLineColor(Color color) {
-    final bool changed = _colorLineColor.value != color.value;
+    final bool changed = _colorLineColor.toARGB32() != color.toARGB32();
     if (changed) {
       setState(() => _colorLineColor = color);
       final AppPreferences prefs = AppPreferences.instance;
@@ -168,6 +171,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
     );
   }
 
+  @override
   Widget? _buildColorPanelTrailing(FluentThemeData theme) {
     if (_recentColors.isEmpty) {
       return null;
@@ -187,7 +191,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
           padding: EdgeInsets.only(left: index == 0 ? 0 : 6),
           child: _InlineRecentColorSwatch(
             color: color,
-            selected: color.value == _primaryColor.value,
+            selected: color.toARGB32() == _primaryColor.toARGB32(),
             borderColor: previewBorder,
             onTap: () => _selectRecentColor(color),
           ),
@@ -216,7 +220,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
                 .map((Color color) {
                   return _ColorLineSwatch(
                     color: color,
-                    selected: color.value == _colorLineColor.value,
+                    selected: color.toARGB32() == _colorLineColor.toARGB32(),
                     borderColor: previewBorder,
                     onTap: () => _handleSelectColorLineColor(color),
                   );
@@ -228,6 +232,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
     );
   }
 
+  @override
   Widget _buildColorPanelContent(FluentThemeData theme) {
     final Color borderColor = theme.resources.controlStrokeColorDefault;
     final Color previewBorder = Color.lerp(
@@ -369,7 +374,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
                 .map<Widget>(
                   (color) => _RecentColorSwatch(
                     color: color,
-                    selected: color.value == _primaryColor.value,
+                    selected: color.toARGB32() == _primaryColor.toARGB32(),
                     borderColor: previewBorder,
                     onTap: () => _selectRecentColor(color),
                   ),
@@ -439,6 +444,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
     );
   }
 
+  @override
   Widget _buildColorIndicator(FluentThemeData theme) {
     final bool isDark = theme.brightness.isDark;
     final Color borderColor = isDark
@@ -472,7 +478,10 @@ class _ColorPickerHandle extends StatelessWidget {
       height: 16,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.black.withOpacity(0.8), width: 2),
+        border: Border.all(
+          color: Colors.black.withValues(alpha: 0.8),
+          width: 2,
+        ),
         color: color,
       ),
     );
@@ -489,7 +498,10 @@ class _HueSliderHandle extends StatelessWidget {
       height: 16,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black.withOpacity(0.7), width: 2),
+        border: Border.all(
+          color: Colors.black.withValues(alpha: 0.7),
+          width: 2,
+        ),
         color: Colors.white,
       ),
     );
@@ -538,7 +550,7 @@ class _RecentColorSwatchState extends State<_RecentColorSwatch> {
     final List<BoxShadow>? shadows = widget.selected
         ? [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -546,8 +558,8 @@ class _RecentColorSwatchState extends State<_RecentColorSwatch> {
         : (showHover
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(
-                      theme.brightness.isDark ? 0.25 : 0.12,
+                    color: Colors.black.withValues(
+                      alpha: theme.brightness.isDark ? 0.25 : 0.12,
                     ),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
@@ -621,7 +633,7 @@ class _InlineRecentColorSwatchState extends State<_InlineRecentColorSwatch> {
     final List<BoxShadow>? shadows = widget.selected
         ? [
             BoxShadow(
-              color: Colors.black.withOpacity(0.18),
+              color: Colors.black.withValues(alpha: 0.18),
               blurRadius: 4,
               offset: const Offset(0, 1),
             ),
@@ -629,8 +641,8 @@ class _InlineRecentColorSwatchState extends State<_InlineRecentColorSwatch> {
         : (showHover
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(
-                      theme.brightness.isDark ? 0.25 : 0.1,
+                    color: Colors.black.withValues(
+                      alpha: theme.brightness.isDark ? 0.25 : 0.1,
                     ),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
@@ -717,7 +729,7 @@ class _ColorIndicatorButtonState extends State<_ColorIndicatorButton> {
   @override
   Widget build(BuildContext context) {
     final Color hoverOverlay = (widget.isDark ? Colors.white : Colors.black)
-        .withOpacity(widget.isDark ? 0.08 : 0.05);
+        .withValues(alpha: widget.isDark ? 0.08 : 0.05);
     final Color background = _hovered
         ? Color.alphaBlend(hoverOverlay, widget.backgroundColor)
         : widget.backgroundColor;
@@ -732,7 +744,9 @@ class _ColorIndicatorButtonState extends State<_ColorIndicatorButton> {
     final List<BoxShadow>? shadows = _hovered
         ? [
             BoxShadow(
-              color: Colors.black.withOpacity(widget.isDark ? 0.35 : 0.12),
+              color: Colors.black.withValues(
+                alpha: widget.isDark ? 0.35 : 0.12,
+              ),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -763,7 +777,9 @@ class _ColorIndicatorButtonState extends State<_ColorIndicatorButton> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: widget.color,
-                  border: Border.all(color: Colors.black.withOpacity(0.1)),
+                  border: Border.all(
+                    color: Colors.black.withValues(alpha: 0.1),
+                  ),
                 ),
               ),
             ),

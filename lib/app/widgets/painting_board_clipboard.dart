@@ -9,14 +9,17 @@ class _ClipboardPayload {
 mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
   _ClipboardPayload? _clipboard;
 
+  @override
   Future<bool> cut() {
     return _copyActiveLayer(clearAfter: true);
   }
 
+  @override
   Future<bool> copy() {
     return _copyActiveLayer(clearAfter: false);
   }
 
+  @override
   Future<bool> paste() {
     return _performPaste();
   }
@@ -60,9 +63,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     }
     final CanvasLayerData source = payload.layerData;
     final String newId = generateLayerId();
-    final String pasteName = source.name.isEmpty
-        ? '粘贴图层'
-        : '${source.name} 副本';
+    final String pasteName = source.name.isEmpty ? '粘贴图层' : '${source.name} 副本';
     final CanvasLayerData layerData = source.copyWith(
       id: newId,
       name: pasteName,
@@ -71,10 +72,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
       clippingMask: false,
     );
     await _pushUndoSnapshot();
-    _controller.insertLayerFromData(
-      layerData,
-      aboveLayerId: _activeLayerId,
-    );
+    _controller.insertLayerFromData(layerData, aboveLayerId: _activeLayerId);
     _controller.setActiveLayer(newId);
     setState(() {
       setSelectionState(path: null, mask: null);

@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/widgets.dart';
 
 import '../dialogs/about_dialog.dart';
 import '../dialogs/canvas_settings_dialog.dart';
@@ -54,32 +53,33 @@ class AppMenuActions {
       return;
     }
     try {
-      final ProjectDocument document = await _runWithWebProgress<ProjectDocument>(
-        context,
-        title: '正在打开项目…',
-        message: '正在加载 ${file.name}',
-        action: () async {
-          final String extension = file.name.toLowerCase();
-          if (extension.endsWith('.psd')) {
-            if (path != null && !kIsWeb) {
-              return ProjectRepository.instance.importPsd(path);
-            } else if (bytes != null) {
-              return ProjectRepository.instance.importPsdFromBytes(
-                bytes,
-                fileName: file.name,
-              );
-            }
-            throw Exception('无法读取 PSD 文件内容。');
-          }
-          if (path != null && !kIsWeb) {
-            return ProjectRepository.instance.loadDocument(path);
-          }
-          if (bytes != null) {
-            return ProjectRepository.instance.loadDocumentFromBytes(bytes);
-          }
-          throw Exception('无法读取项目文件内容。');
-        },
-      );
+      final ProjectDocument document =
+          await _runWithWebProgress<ProjectDocument>(
+            context,
+            title: '正在打开项目…',
+            message: '正在加载 ${file.name}',
+            action: () async {
+              final String extension = file.name.toLowerCase();
+              if (extension.endsWith('.psd')) {
+                if (path != null && !kIsWeb) {
+                  return ProjectRepository.instance.importPsd(path);
+                } else if (bytes != null) {
+                  return ProjectRepository.instance.importPsdFromBytes(
+                    bytes,
+                    fileName: file.name,
+                  );
+                }
+                throw Exception('无法读取 PSD 文件内容。');
+              }
+              if (path != null && !kIsWeb) {
+                return ProjectRepository.instance.loadDocument(path);
+              }
+              if (bytes != null) {
+                return ProjectRepository.instance.loadDocumentFromBytes(bytes);
+              }
+              throw Exception('无法读取项目文件内容。');
+            },
+          );
       if (!context.mounted) {
         return;
       }
@@ -200,6 +200,7 @@ class AppMenuActions {
       loadingOverlay!.remove();
       loadingOverlay = null;
     }
+
     if (kIsWeb) {
       loadingOverlay = _showWebCanvasLoadingOverlay(context);
     }
@@ -245,10 +246,7 @@ class AppMenuActions {
     if (!context.mounted || !kIsWeb) {
       return action();
     }
-    final OverlayState? overlay = Overlay.of(context, rootOverlay: true);
-    if (overlay == null) {
-      return action();
-    }
+    final OverlayState overlay = Overlay.of(context, rootOverlay: true);
     final OverlayEntry entry = OverlayEntry(
       builder: (context) => AbsorbPointer(
         absorbing: true,
@@ -269,10 +267,7 @@ class AppMenuActions {
     if (!context.mounted) {
       return null;
     }
-    final OverlayState? overlay = Overlay.of(context, rootOverlay: true);
-    if (overlay == null) {
-      return null;
-    }
+    final OverlayState overlay = Overlay.of(context, rootOverlay: true);
     final OverlayEntry entry = OverlayEntry(
       builder: (context) => const _WebProgressOverlay(
         title: '正在准备画布…',
@@ -296,9 +291,7 @@ class _WebProgressOverlay extends StatelessWidget {
     final Color overlayColor = theme.micaBackgroundColor.withOpacity(0.65);
     return Stack(
       children: [
-        Positioned.fill(
-          child: ColoredBox(color: overlayColor),
-        ),
+        Positioned.fill(child: ColoredBox(color: overlayColor)),
         Positioned.fill(
           child: Center(
             child: Container(

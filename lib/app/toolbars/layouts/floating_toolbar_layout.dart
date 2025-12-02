@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart' show Divider, FluentTheme;
 import 'package:flutter/widgets.dart';
@@ -54,13 +53,8 @@ class FloatingToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Expanded(
-              child: Text(title, style: theme.typography.bodyStrong),
-            ),
-            if (trailing != null) ...[
-              const SizedBox(width: 8),
-              trailing,
-            ],
+            Expanded(child: Text(title, style: theme.typography.bodyStrong)),
+            if (trailing != null) ...[const SizedBox(width: 8), trailing],
           ],
         );
       }
@@ -114,10 +108,12 @@ class FloatingToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: WorkspaceSplitHandle.horizontal(
             onDragUpdate: (delta) {
-              final double? measured =
-                  splits?.floatingColorPanelMeasuredHeight;
-              final double base = (splits?.floatingColorPanelHeight ?? measured)
-                      ?.clamp(0.0, double.infinity) ??
+              final double? measured = splits?.floatingColorPanelMeasuredHeight;
+              final double base =
+                  (splits?.floatingColorPanelHeight ?? measured)?.clamp(
+                    0.0,
+                    double.infinity,
+                  ) ??
                   _floatingColorMinHeight;
               final double maxHeight = math.max(
                 _floatingColorMinHeight,
@@ -168,9 +164,7 @@ class FloatingToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
         width: metrics.sidePanelWidth,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: buildCombinedPanel()),
-          ],
+          children: [Expanded(child: buildCombinedPanel())],
         ),
       ),
     );

@@ -119,11 +119,7 @@ void _startClippedLayerTransformSession(
   controller._activeLayerTransformOriginY = 0;
   layer.surface.pixels.fillRange(0, layer.surface.pixels.length, 0);
   if (bounds != null) {
-    controller._markDirty(
-      region: bounds,
-      layerId: layer.id,
-      pixelsDirty: true,
-    );
+    controller._markDirty(region: bounds, layerId: layer.id, pixelsDirty: true);
   } else {
     controller._markDirty(layerId: layer.id, pixelsDirty: true);
   }

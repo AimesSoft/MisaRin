@@ -434,6 +434,7 @@ mixin _PaintingBoardReferenceMixin on _PaintingBoardBase {
     return null;
   }
 
+  @override
   bool _isInsideReferenceCardArea(Offset workspacePosition) {
     for (final _ReferenceCardEntry entry in _referenceCards) {
       final Size size = entry.panelSize;
@@ -552,8 +553,9 @@ mixin _PaintingBoardReferenceMixin on _PaintingBoardBase {
         .map(
           (entry) => ReferenceCardSnapshot(
             imageBytes: Uint8List.fromList(entry.rawBytes),
-            pixelBytes:
-                entry.pixelBytes != null ? Uint8List.fromList(entry.pixelBytes!) : null,
+            pixelBytes: entry.pixelBytes != null
+                ? Uint8List.fromList(entry.pixelBytes!)
+                : null,
             bodySize: entry.bodySize,
             panelSize: entry.panelSize,
             offset: entry.offset,
@@ -580,17 +582,18 @@ mixin _PaintingBoardReferenceMixin on _PaintingBoardBase {
     final List<_ReferenceCardEntry> restored = <_ReferenceCardEntry>[];
     for (final ReferenceCardSnapshot snapshot in snapshots) {
       try {
-        final ui.Codec codec = await ui.instantiateImageCodec(snapshot.imageBytes);
+        final ui.Codec codec = await ui.instantiateImageCodec(
+          snapshot.imageBytes,
+        );
         final ui.FrameInfo frame = await codec.getNextFrame();
         codec.dispose();
         final ui.Image image = frame.image;
         Uint8List? pixelBytes = snapshot.pixelBytes != null
             ? Uint8List.fromList(snapshot.pixelBytes!)
             : null;
-        pixelBytes ??= (await image
-                .toByteData(format: ui.ImageByteFormat.rawRgba))
-            ?.buffer
-            .asUint8List();
+        pixelBytes ??= (await image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))?.buffer.asUint8List();
         final Offset offset = _clampReferenceCardOffset(
           snapshot.offset,
           snapshot.size ?? snapshot.panelSize,
@@ -1296,7 +1299,7 @@ class _ReferenceImageCardState extends State<_ReferenceImageCard> {
 
   Widget _buildBody() {
     final Decoration decoration = BoxDecoration(
-      color: Colors.black.withOpacity(0.05),
+      color: Colors.black.withValues(alpha: 0.05),
       borderRadius: BorderRadius.circular(12),
     );
     return DecoratedBox(

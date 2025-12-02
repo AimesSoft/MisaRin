@@ -92,10 +92,7 @@ mixin _PaintingBoardPaletteMixin on _PaintingBoardBase {
       );
       return;
     }
-    _addPaletteCard(
-      palette,
-      title: '渐变调色盘（当前颜色）',
-    );
+    _addPaletteCard(palette, title: '渐变调色盘（当前颜色）');
   }
 
   void _handlePaletteDragStart(int id) {
@@ -380,9 +377,7 @@ mixin _PaintingBoardPaletteMixin on _PaintingBoardBase {
       }
       AppNotifications.show(
         context,
-        message: kIsWeb
-            ? '调色盘已下载：$downloadName'
-            : '调色盘已导出到 $normalizedPath',
+        message: kIsWeb ? '调色盘已下载：$downloadName' : '调色盘已导出到 $normalizedPath',
         severity: InfoBarSeverity.success,
       );
     } catch (error) {
@@ -481,8 +476,9 @@ mixin _PaintingBoardPaletteMixin on _PaintingBoardBase {
   }
 
   String _sanitizePaletteFileNameInput(String input) {
-    final String sanitized =
-        input.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+    final String sanitized = input
+        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+        .trim();
     return sanitized.isEmpty ? 'palette' : sanitized;
   }
 
@@ -707,7 +703,7 @@ mixin _PaintingBoardPaletteMixin on _PaintingBoardBase {
           (entry) => PaletteCardSnapshot(
             title: entry.title,
             colors: entry.colors
-                .map((color) => color.value)
+                .map((color) => color.toARGB32())
                 .toList(growable: false),
             offset: entry.offset,
             size: entry.size,
@@ -724,7 +720,10 @@ mixin _PaintingBoardPaletteMixin on _PaintingBoardBase {
         final List<Color> colors = snapshot.colors
             .map((value) => Color(value))
             .toList(growable: false);
-        final Offset offset = _clampPaletteOffset(snapshot.offset, snapshot.size);
+        final Offset offset = _clampPaletteOffset(
+          snapshot.offset,
+          snapshot.size,
+        );
         final _PaletteCardEntry entry = _PaletteCardEntry(
           id: _paletteCardSerial++,
           title: snapshot.title.trim().isEmpty ? '调色盘' : snapshot.title,
@@ -804,7 +803,6 @@ mixin _PaintingBoardPaletteMixin on _PaintingBoardBase {
 
 class _WorkspacePaletteCard extends StatelessWidget {
   const _WorkspacePaletteCard({
-    super.key,
     required this.title,
     required this.colors,
     this.onExport,
@@ -835,7 +833,6 @@ class _WorkspacePaletteCard extends StatelessWidget {
           onChanged: onSizeChanged,
           child: WorkspaceFloatingPanel(
             title: title,
-            child: _PaletteSwatches(colors: colors, onTap: onColorTap),
             width: _paletteCardWidth,
             onClose: onClose,
             headerActions: onExport == null
@@ -873,6 +870,7 @@ class _WorkspacePaletteCard extends StatelessWidget {
             bodySpacing: 10,
             footerSpacing: 0,
             closeIconSize: 12,
+            child: _PaletteSwatches(colors: colors, onTap: onColorTap),
           ),
         ),
       ),

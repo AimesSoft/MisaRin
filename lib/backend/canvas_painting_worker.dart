@@ -6,7 +6,6 @@ import 'dart:ui'; // Keep dart:ui for Color, but DO NOT use Canvas/PictureRecord
 
 import '../bitmap_canvas/bitmap_canvas.dart';
 import '../canvas/canvas_tools.dart';
-import '../canvas/brush_shape_geometry.dart';
 // Removed vector_stroke_painter import as we don't draw vectors in worker anymore.
 
 enum PaintingDrawCommandType {
@@ -1041,8 +1040,9 @@ void _paintingWorkerApplyCommand({
           ?.cast<double>();
       final double radius = (command['radius'] as num? ?? 0).toDouble();
       final int shapeIndex = command['shape'] as int? ?? 0;
-      final double softness =
-          (command['softness'] as num? ?? 0).toDouble().clamp(0.0, 1.0);
+      final double softness = (command['softness'] as num? ?? 0)
+          .toDouble()
+          .clamp(0.0, 1.0);
       final BrushShape shape =
           BrushShape.values[shapeIndex.clamp(0, BrushShape.values.length - 1)];
       surface.drawBrushStamp(
@@ -1551,9 +1551,9 @@ _FloodFillResult _paintingWorkerFloodFillContiguous({
 
         // Check neighbors for a filled pixel
         bool hasFilledNeighbor = false;
-        if (x > 0 && fillMask[index - 1] == 1)
+        if (x > 0 && fillMask[index - 1] == 1) {
           hasFilledNeighbor = true;
-        else if (x < width - 1 && fillMask[index + 1] == 1)
+        } else if (x < width - 1 && fillMask[index + 1] == 1)
           hasFilledNeighbor = true;
         else if (y > 0 && fillMask[index - width] == 1)
           hasFilledNeighbor = true;

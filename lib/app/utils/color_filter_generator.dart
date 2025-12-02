@@ -91,12 +91,14 @@ class ColorFilterGenerator {
   }
 
   static List<double> contrast(double value) {
-    final double scale = value >= 0 ? (1.0 + value / 100.0) : (1.0 + value / 200.0); 
+    final double scale = value >= 0
+        ? (1.0 + value / 100.0)
+        : (1.0 + value / 200.0);
     // Using a simpler scale factor logic similar to standard implementations or user provided one.
-    // User provided implementation: 
+    // User provided implementation:
     // brightnessOffset = brightnessPercent / 100.0 * 255.0;
     // contrastFactor = math.max(0.0, 1.0 + contrastPercent / 100.0);
-    
+
     // Matrix implementation for contrast:
     final double t = (1.0 - scale) * 128.0;
     return <double>[
@@ -122,22 +124,38 @@ class ColorFilterGenerator {
       0,
     ];
   }
-  
+
   // For combining brightness and contrast which are often applied together in the user's logic
   // But since we have matrix multiplication, we can just multiply them or provide a specialized one.
   // User's logic: ((channel - 128) * contrastFactor + 128 + brightnessOffset)
   // = channel * contrastFactor - 128*contrastFactor + 128 + brightnessOffset
   // = channel * contrastFactor + (128 * (1 - contrastFactor) + brightnessOffset)
   static List<double> brightnessContrast(double brightness, double contrast) {
-      final double brightnessOffset = brightness / 100.0 * 255.0;
-      final double contrastFactor = math.max(0.0, 1.0 + contrast / 100.0);
-      final double t = 128 * (1 - contrastFactor) + brightnessOffset;
-      
-      return <double>[
-          contrastFactor, 0, 0, 0, t,
-          0, contrastFactor, 0, 0, t,
-          0, 0, contrastFactor, 0, t,
-          0, 0, 0, 1, 0,
-      ];
+    final double brightnessOffset = brightness / 100.0 * 255.0;
+    final double contrastFactor = math.max(0.0, 1.0 + contrast / 100.0);
+    final double t = 128 * (1 - contrastFactor) + brightnessOffset;
+
+    return <double>[
+      contrastFactor,
+      0,
+      0,
+      0,
+      t,
+      0,
+      contrastFactor,
+      0,
+      0,
+      t,
+      0,
+      0,
+      contrastFactor,
+      0,
+      t,
+      0,
+      0,
+      0,
+      1,
+      0,
+    ];
   }
 }

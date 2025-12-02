@@ -60,7 +60,11 @@ class PaletteFileExporter {
     headerData.setUint32(0, 0, Endian.little); // Placeholder for file size
     headerData.setUint16(4, 0xA5E0, Endian.little); // Magic
     headerData.setUint16(6, 1, Endian.little); // Frame count
-    headerData.setUint16(8, canvasWidth.clamp(1, 0xFFFF), Endian.little); // Width
+    headerData.setUint16(
+      8,
+      canvasWidth.clamp(1, 0xFFFF),
+      Endian.little,
+    ); // Width
     headerData.setUint16(10, 1, Endian.little); // Height
     headerData.setUint16(12, 32, Endian.little); // Color depth (RGBA)
     headerData.setUint32(14, 1, Endian.little); // Flags (layer opacity valid)
@@ -102,7 +106,11 @@ class PaletteFileExporter {
     final ByteData chunkFixed = ByteData(20);
     chunkFixed.setUint32(0, entryCount, Endian.little);
     chunkFixed.setUint32(4, 0, Endian.little); // First color index
-    chunkFixed.setUint32(8, entryCount == 0 ? 0 : entryCount - 1, Endian.little);
+    chunkFixed.setUint32(
+      8,
+      entryCount == 0 ? 0 : entryCount - 1,
+      Endian.little,
+    );
     builder.add(chunkFixed.buffer.asUint8List());
 
     for (final Color color in colors) {

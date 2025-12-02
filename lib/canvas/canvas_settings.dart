@@ -33,9 +33,7 @@ class CanvasSettings {
 
   static bool get supportsMultithreadedCanvas => !kIsWeb;
 
-  static CanvasCreationLogic _resolveCreationLogic(
-    CanvasCreationLogic _,
-  ) {
+  static CanvasCreationLogic _resolveCreationLogic(CanvasCreationLogic _) {
     if (!supportsMultithreadedCanvas) {
       return CanvasCreationLogic.singleThread;
     }
@@ -54,8 +52,7 @@ class CanvasSettings {
       width: width ?? this.width,
       height: height ?? this.height,
       backgroundColor: backgroundColor ?? this.backgroundColor,
-      creationLogic:
-          _resolveCreationLogic(creationLogic ?? this.creationLogic),
+      creationLogic: _resolveCreationLogic(creationLogic ?? this.creationLogic),
     );
   }
 

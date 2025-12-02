@@ -16,14 +16,19 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
   Path? _shapeVectorFillOverlayPath;
   Color? _shapeVectorFillOverlayColor;
 
+  @override
   ShapeToolVariant get shapeToolVariant => _shapeToolVariant;
 
+  @override
   Path? get shapePreviewPath => _shapePreviewPath;
 
+  @override
   Path? get shapeVectorFillOverlayPath => _shapeVectorFillOverlayPath;
 
+  @override
   Color? get shapeVectorFillOverlayColor => _shapeVectorFillOverlayColor;
 
+  @override
   void _updateShapeToolVariant(ShapeToolVariant variant) {
     if (_shapeToolVariant == variant) {
       return;
@@ -128,14 +133,16 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
     const double initialTimestamp = 0.0;
     Path? pendingFillOverlay;
     Color? pendingFillOverlayColor;
-    final bool canShowFillOverlay = _vectorDrawingEnabled &&
+    final bool canShowFillOverlay =
+        _vectorDrawingEnabled &&
         _shapeFillEnabled &&
         _shapeToolVariant != ShapeToolVariant.line &&
         _shapePreviewPath != null;
     if (canShowFillOverlay) {
       pendingFillOverlay = Path()..addPath(_shapePreviewPath!, Offset.zero);
-      pendingFillOverlayColor =
-          _isBrushEraserEnabled ? const Color(0xFFFFFFFF) : _primaryColor;
+      pendingFillOverlayColor = _isBrushEraserEnabled
+          ? const Color(0xFFFFFFFF)
+          : _primaryColor;
     }
     _clearShapePreviewOverlay();
     if (_vectorDrawingEnabled) {
@@ -479,6 +486,7 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
         erase: erase,
       );
     }
+
     if (_vectorDrawingEnabled) {
       // 避免矢量异步落盘导致填充延迟，强制同步绘制填充区域消除闪烁。
       _controller.runSynchronousRasterization(drawFill);

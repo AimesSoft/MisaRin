@@ -14,6 +14,7 @@ mixin _PaintingBoardLayerMixin
   final FlyoutController _layerContextMenuController = FlyoutController();
   final FlyoutController _blendModeFlyoutController = FlyoutController();
 
+  @override
   List<CanvasLayerData> _buildInitialLayers() {
     final List<CanvasLayerData>? provided = widget.initialLayers;
     if (provided != null && provided.isNotEmpty) {
@@ -34,6 +35,7 @@ mixin _PaintingBoardLayerMixin
     ];
   }
 
+  @override
   Color get _backgroundPreviewColor {
     if (_layers.isEmpty) {
       return widget.settings.backgroundColor;
@@ -132,6 +134,7 @@ mixin _PaintingBoardLayerMixin
     _markDirty();
   }
 
+  @override
   void _handleAddLayer() async {
     await _pushUndoSnapshot();
     _controller.addLayer(aboveLayerId: _activeLayerId);
@@ -139,6 +142,7 @@ mixin _PaintingBoardLayerMixin
     _markDirty();
   }
 
+  @override
   void _handleRemoveLayer(String id) async {
     if (_layers.length <= 1) {
       return;
@@ -277,10 +281,11 @@ mixin _PaintingBoardLayerMixin
   void _ensureLayerOpacityPreview(BitmapLayerState layer) {
     bool needsImages =
         _layerOpacityPreviewLayerId != layer.id ||
-            _layerOpacityPreviewActiveLayerImage == null;
+        _layerOpacityPreviewActiveLayerImage == null;
     if (!needsImages) {
       final int currentSignature = _layerOpacityPreviewSignature(_layers);
-      needsImages = _layerOpacityPreviewCapturedSignature == null ||
+      needsImages =
+          _layerOpacityPreviewCapturedSignature == null ||
           _layerOpacityPreviewCapturedSignature != currentSignature;
     }
     _layerOpacityPreviewLayerId = layer.id;
@@ -336,8 +341,9 @@ mixin _PaintingBoardLayerMixin
     _layerOpacityPreviewBackground = previews.background;
     _layerOpacityPreviewActiveLayerImage = previews.active;
     _layerOpacityPreviewForeground = previews.foreground;
-    _layerOpacityPreviewCapturedSignature =
-        _layerOpacityPreviewSignature(snapshot);
+    _layerOpacityPreviewCapturedSignature = _layerOpacityPreviewSignature(
+      snapshot,
+    );
     setState(() {});
   }
 
@@ -347,8 +353,9 @@ mixin _PaintingBoardLayerMixin
   ) async {
     try {
       final _CanvasHistoryEntry base = await _createHistoryEntry();
-      final List<CanvasLayerData> layers =
-          List<CanvasLayerData>.from(base.layers);
+      final List<CanvasLayerData> layers = List<CanvasLayerData>.from(
+        base.layers,
+      );
       final int index = layers.indexWhere((layer) => layer.id == layerId);
       if (index < 0) {
         return;
@@ -657,6 +664,7 @@ mixin _PaintingBoardLayerMixin
     _disposeLayerPreviewCacheImpl();
   }
 
+  @override
   Widget _buildLayerPanelContent(FluentThemeData theme) {
     return _buildLayerPanelContentImpl(theme);
   }

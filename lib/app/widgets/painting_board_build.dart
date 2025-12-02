@@ -591,7 +591,11 @@ mixin _PaintingBoardBuildMixin
                                             return Stack(
                                               fit: StackFit.expand,
                                               children: [
-                                                const _CheckboardBackground(),
+                                                _CheckboardBackground(
+                                                  cellSize: 8.0,
+                                                  lightColor: theme.brightness.isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5),
+                                                  darkColor: theme.brightness.isDark ? const Color(0xFF1C1C1C) : const Color(0xFFE0E0E0),
+                                                ),
                                                 if (_filterSession != null &&
                                                     _previewActiveLayerImage !=
                                                         null)
@@ -629,21 +633,17 @@ mixin _PaintingBoardBuildMixin
                                                   Positioned.fill(
                                                     child: CustomPaint(
                                                       painter: _ActiveStrokeOverlayPainter(
-                                                        points: _controller
-                                                            .activeStrokePoints,
-                                                        radii: _controller
-                                                            .activeStrokeRadii,
-                                                        color: _controller
-                                                            .activeStrokeColor,
-                                                        shape: _controller
-                                                            .activeStrokeShape,
+                                                        points: _controller.activeStrokePoints,
+                                                        radii: _controller.activeStrokeRadii,
+                                                        color: _controller.activeStrokeColor,
+                                                        shape: _controller.activeStrokeShape,
                                                         committingStrokes:
-                                                            _controller
-                                                                .committingStrokes,
+                                                            _controller.committingStrokes,
                                                         activeStrokeIsEraser:
                                                             activeStrokeIsEraser,
                                                         eraserPreviewColor:
                                                             _kVectorEraserPreviewColor,
+                                                        antialiasLevel: _penAntialiasLevel, // Added missing required parameter
                                                       ),
                                                     ),
                                                   ),
@@ -888,8 +888,9 @@ mixin _PaintingBoardBuildMixin
 
     // Apply Filters
     if (session.type == _FilterPanelType.gaussianBlur) {
-      final double sigma =
-          _gaussianBlurSigmaForRadius(session.gaussianBlur.radius);
+      final double sigma = _gaussianBlurSigmaForRadius(
+        session.gaussianBlur.radius,
+      );
       if (sigma > 0) {
         activeLayerWidget = ImageFiltered(
           imageFilter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
@@ -911,38 +912,40 @@ mixin _PaintingBoardBuildMixin
         }
         if (saturation != 0) {
           activeLayerWidget = ColorFiltered(
-            colorFilter:
-                ColorFilter.matrix(ColorFilterGenerator.saturation(saturation)),
+            colorFilter: ColorFilter.matrix(
+              ColorFilterGenerator.saturation(saturation),
+            ),
             child: activeLayerWidget,
           );
         }
         if (lightness != 0) {
           activeLayerWidget = ColorFiltered(
-            colorFilter:
-                ColorFilter.matrix(ColorFilterGenerator.brightness(lightness)),
+            colorFilter: ColorFilter.matrix(
+              ColorFilterGenerator.brightness(lightness),
+            ),
             child: activeLayerWidget,
           );
         }
       }
     } else if (session.type == _FilterPanelType.brightnessContrast) {
-       final double brightness = session.brightnessContrast.brightness;
-       final double contrast = session.brightnessContrast.contrast;
-       if (brightness != 0 || contrast != 0) {
-          activeLayerWidget = ColorFiltered(
-           colorFilter: ColorFilter.matrix(ColorFilterGenerator.brightnessContrast(brightness, contrast)),
-           child: activeLayerWidget,
-         );
-       }
+      final double brightness = session.brightnessContrast.brightness;
+      final double contrast = session.brightnessContrast.contrast;
+      if (brightness != 0 || contrast != 0) {
+        activeLayerWidget = ColorFiltered(
+          colorFilter: ColorFilter.matrix(
+            ColorFilterGenerator.brightnessContrast(brightness, contrast),
+          ),
+          child: activeLayerWidget,
+        );
+      }
     }
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (_previewBackground != null)
-          RawImage(image: _previewBackground),
+        if (_previewBackground != null) RawImage(image: _previewBackground),
         activeLayerWidget,
-        if (_previewForeground != null)
-          RawImage(image: _previewForeground),
+        if (_previewForeground != null) RawImage(image: _previewForeground),
       ],
     );
   }
@@ -957,8 +960,10 @@ mixin _PaintingBoardBuildMixin
       image: _layerOpacityPreviewActiveLayerImage,
       filterQuality: FilterQuality.low,
     );
-    final double previewOpacity =
-        (_layerOpacityPreviewValue ?? 1.0).clamp(0.0, 1.0);
+    final double previewOpacity = (_layerOpacityPreviewValue ?? 1.0).clamp(
+      0.0,
+      1.0,
+    );
     if (previewOpacity < 0.999) {
       activeLayerWidget = Opacity(
         opacity: previewOpacity,
@@ -969,16 +974,16 @@ mixin _PaintingBoardBuildMixin
       if (_layerOpacityPreviewBackground != null)
         RawImage(image: _layerOpacityPreviewBackground)
       else if (!hasVisibleLowerLayers)
-        const _CheckboardBackground(),
-      activeLayerWidget,
+                                                          const _CheckboardBackground(
+                                                            cellSize: 8.0,
+                                                            lightColor: theme.brightness.isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5),
+                                                            darkColor: theme.brightness.isDark ? const Color(0xFF1C1C1C) : const Color(0xFFE0E0E0),
+                                                          ),      activeLayerWidget,
     ];
     if (_layerOpacityPreviewForeground != null) {
       children.add(RawImage(image: _layerOpacityPreviewForeground));
     }
-    return Stack(
-      fit: StackFit.expand,
-      children: children,
-    );
+    return Stack(fit: StackFit.expand, children: children);
   }
 
   Widget? _buildAntialiasCard() {
@@ -1007,10 +1012,6 @@ mixin _PaintingBoardBuildMixin
           ),
           bodySpacing: 0,
           footerSpacing: 10,
-          child: _AntialiasPanelBody(
-            level: _antialiasCardLevel,
-            onLevelChanged: _handleAntialiasLevelChanged,
-          ),
           footer: Row(
             children: [
               Button(
@@ -1023,6 +1024,10 @@ mixin _PaintingBoardBuildMixin
                 child: const Text('应用'),
               ),
             ],
+          ),
+          child: _AntialiasPanelBody(
+            level: _antialiasCardLevel,
+            onLevelChanged: _handleAntialiasLevelChanged,
           ),
         ),
       ),

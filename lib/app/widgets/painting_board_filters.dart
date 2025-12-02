@@ -15,28 +15,24 @@ const List<String> _kAntialiasLevelDescriptions = <String>[
 enum _FilterPanelType { hueSaturation, brightnessContrast, gaussianBlur }
 
 class _HueSaturationSettings {
-  _HueSaturationSettings({
-    this.hue = 0,
-    this.saturation = 0,
-    this.lightness = 0,
-  });
+  _HueSaturationSettings();
 
-  double hue;
-  double saturation;
-  double lightness;
+  double hue = 0;
+  double saturation = 0;
+  double lightness = 0;
 }
 
 class _BrightnessContrastSettings {
-  _BrightnessContrastSettings({this.brightness = 0, this.contrast = 0});
+  _BrightnessContrastSettings();
 
-  double brightness;
-  double contrast;
+  double brightness = 0;
+  double contrast = 0;
 }
 
 class _GaussianBlurSettings {
-  _GaussianBlurSettings({this.radius = 0});
+  _GaussianBlurSettings();
 
-  double radius;
+  double radius = 0;
 }
 
 class _FilterSession {
@@ -128,7 +124,7 @@ mixin _PaintingBoardFilterMixin
       return;
     }
     _removeFilterOverlay(restoreOriginal: false);
-    
+
     _filterSession = _FilterSession(
       type: type,
       originalLayers: snapshot,
@@ -210,15 +206,17 @@ mixin _PaintingBoardFilterMixin
       return;
     }
     try {
-      final ByteData? byteData =
-          await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      final ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      );
       if (byteData == null) {
         _previewActiveLayerPixels = null;
         return;
       }
-      _previewActiveLayerPixels =
-          Uint8List.fromList(byteData.buffer.asUint8List());
-    } catch (error, stackTrace) {
+      _previewActiveLayerPixels = Uint8List.fromList(
+        byteData.buffer.asUint8List(),
+      );
+    } catch (error) {
       debugPrint('Failed to prepare preview pixels: $error');
       _previewActiveLayerPixels = null;
     }
@@ -277,15 +275,18 @@ mixin _PaintingBoardFilterMixin
       Uint8List processed;
       try {
         processed = await _generateHueSaturationPreviewBytes(args);
-      } catch (error, stackTrace) {
+      } catch (error) {
         debugPrint('Failed to compute hue preview: $error');
         break;
       }
       if (!mounted || token != _previewHueSaturationUpdateToken) {
         break;
       }
-      final ui.Image image =
-          await _decodeImage(processed, baseImage.width, baseImage.height);
+      final ui.Image image = await _decodeImage(
+        processed,
+        baseImage.width,
+        baseImage.height,
+      );
       if (!mounted || token != _previewHueSaturationUpdateToken) {
         image.dispose();
         break;
@@ -308,21 +309,21 @@ mixin _PaintingBoardFilterMixin
   List<double>? _calculateCurrentFilterMatrix() {
     final _FilterSession? session = _filterSession;
     if (session == null) return null;
-    
+
     if (session.type == _FilterPanelType.hueSaturation) {
-       final double hue = session.hueSaturation.hue;
-       final double saturation = session.hueSaturation.saturation;
-       if (hue == 0 && saturation == 0) return null;
-       
-       if (saturation == 0) {
-         return ColorFilterGenerator.hue(hue);
-       }
-       return null; // Handled via chaining in build
+      final double hue = session.hueSaturation.hue;
+      final double saturation = session.hueSaturation.saturation;
+      if (hue == 0 && saturation == 0) return null;
+
+      if (saturation == 0) {
+        return ColorFilterGenerator.hue(hue);
+      }
+      return null; // Handled via chaining in build
     } else if (session.type == _FilterPanelType.brightnessContrast) {
-        final double brightness = session.brightnessContrast.brightness;
-        final double contrast = session.brightnessContrast.contrast;
-        if (brightness == 0 && contrast == 0) return null;
-        return ColorFilterGenerator.brightnessContrast(brightness, contrast);
+      final double brightness = session.brightnessContrast.brightness;
+      final double contrast = session.brightnessContrast.contrast;
+      if (brightness == 0 && contrast == 0) return null;
+      return ColorFilterGenerator.brightnessContrast(brightness, contrast);
     }
     return null;
   }
@@ -336,10 +337,7 @@ mixin _PaintingBoardFilterMixin
   }
 
   void _insertFilterOverlay() {
-    final OverlayState? overlay = Overlay.of(context);
-    if (overlay == null) {
-      return;
-    }
+    final OverlayState overlay = Overlay.of(context);
     final Size size = MediaQuery.sizeOf(context);
     if (_filterPanelOffset == Offset.zero) {
       _filterPanelOffset = Offset(
@@ -396,17 +394,17 @@ mixin _PaintingBoardFilterMixin
             );
             break;
         }
-        
+
         if (_filterLoading) {
-           return Positioned(
-             left: _filterPanelOffset.dx,
-             top: _filterPanelOffset.dy,
-             child: const SizedBox(
-               width: _kFilterPanelWidth,
-               height: 100,
-               child: Center(child: ProgressRing()),
-             ),
-           );
+          return Positioned(
+            left: _filterPanelOffset.dx,
+            top: _filterPanelOffset.dy,
+            child: const SizedBox(
+              width: _kFilterPanelWidth,
+              height: 100,
+              child: Center(child: ProgressRing()),
+            ),
+          );
         }
 
         return Positioned(
@@ -429,7 +427,6 @@ mixin _PaintingBoardFilterMixin
             ),
             bodySpacing: 0,
             footerSpacing: 12,
-            child: panelBody,
             footer: Row(
               children: [
                 Button(
@@ -444,12 +441,17 @@ mixin _PaintingBoardFilterMixin
                 const SizedBox(width: 8),
                 FilledButton(
                   onPressed: _filterApplying ? null : _confirmFilterChanges,
-                  child: _filterApplying 
-                      ? const SizedBox(width: 16, height: 16, child: ProgressRing(strokeWidth: 2)) 
+                  child: _filterApplying
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: ProgressRing(strokeWidth: 2),
+                        )
                       : const Text('应用'),
                 ),
               ],
             ),
+            child: panelBody,
           ),
         );
       },
@@ -569,7 +571,7 @@ mixin _PaintingBoardFilterMixin
       _filterPreviewPendingChange = false;
       return;
     }
-    
+
     final _FilterPreviewWorker? worker = _filterWorker;
     if (worker == null) {
       return;
@@ -620,7 +622,7 @@ mixin _PaintingBoardFilterMixin
     final _FilterPreviewResult result;
     try {
       result = await completer.future;
-    } catch (error, stackTrace) {
+    } catch (error) {
       debugPrint('Filter apply failed: $error');
       _filterApplyCompleter = null;
       if (mounted) {
@@ -642,8 +644,10 @@ mixin _PaintingBoardFilterMixin
   ) async {
     final CanvasLayerData original =
         session.originalLayers[session.activeLayerIndex];
-    final CanvasLayerData adjusted =
-        _buildAdjustedLayerFromResult(original, result);
+    final CanvasLayerData adjusted = _buildAdjustedLayerFromResult(
+      original,
+      result,
+    );
     await _pushUndoSnapshot();
     final int? awaitedGeneration = _controller.frame?.generation;
     _controller.replaceLayer(session.activeLayerId, adjusted);
@@ -672,8 +676,7 @@ mixin _PaintingBoardFilterMixin
       return;
     }
     final int? awaitedGeneration = _filterAwaitedFrameGeneration;
-    if (awaitedGeneration == null ||
-        frame.generation != awaitedGeneration) {
+    if (awaitedGeneration == null || frame.generation != awaitedGeneration) {
       _filterAwaitingFrameSwap = false;
       _filterAwaitedFrameGeneration = null;
       _removeFilterOverlay(restoreOriginal: false);
@@ -728,8 +731,10 @@ mixin _PaintingBoardFilterMixin
     }
     final CanvasLayerData original =
         session.originalLayers[session.activeLayerIndex];
-    final CanvasLayerData adjusted =
-        _buildAdjustedLayerFromResult(original, result);
+    final CanvasLayerData adjusted = _buildAdjustedLayerFromResult(
+      original,
+      result,
+    );
     session.previewLayer = adjusted;
     _controller.replaceLayer(session.activeLayerId, adjusted);
     _controller.setActiveLayer(session.activeLayerId);
@@ -782,13 +787,12 @@ mixin _PaintingBoardFilterMixin
     _filterWorker = null;
     _filterSession = null;
     if (_filterApplyCompleter != null && !_filterApplyCompleter!.isCompleted) {
-      _filterApplyCompleter!
-          .completeError(StateError('滤镜面板已关闭，操作被取消。'));
+      _filterApplyCompleter!.completeError(StateError('滤镜面板已关闭，操作被取消。'));
     }
     _filterApplyCompleter = null;
     _filterAwaitingFrameSwap = false;
     _filterAwaitedFrameGeneration = null;
-    
+
     _previewBackground?.dispose();
     _previewBackground = null;
     _previewActiveLayerImage?.dispose();
@@ -878,8 +882,7 @@ mixin _PaintingBoardFilterMixin
     if (!_ensureAntialiasLayerReady()) {
       return;
     }
-    final bool applied =
-        await applyLayerAntialiasLevel(_antialiasCardLevel);
+    final bool applied = await applyLayerAntialiasLevel(_antialiasCardLevel);
     if (!applied) {
       _showFilterMessage('无法对当前图层应用抗锯齿，图层可能为空或已锁定。');
       return;
@@ -914,11 +917,13 @@ mixin _PaintingBoardFilterMixin
     });
   }
 
+  @override
   bool _isInsideAntialiasCardArea(Offset workspacePosition) {
     if (!_antialiasCardVisible) {
       return false;
     }
-    final Size size = _antialiasCardSize ??
+    final Size size =
+        _antialiasCardSize ??
         const Size(_kAntialiasPanelWidth, _kAntialiasPanelMinHeight);
     final Rect rect = Rect.fromLTWH(
       _antialiasCardOffset.dx,
@@ -1347,7 +1352,7 @@ class _FilterPreviewWorker {
         'bitmapHeight': layer.bitmapHeight,
         'bitmapLeft': layer.bitmapLeft,
         'bitmapTop': layer.bitmapTop,
-        'fillColor': layer.fillColor?.value,
+        'fillColor': layer.fillColor?.toARGB32(),
         'canvasWidth': _canvasWidth,
         'canvasHeight': _canvasHeight,
       },
@@ -1389,7 +1394,7 @@ class _FilterPreviewWorker {
         debugName: 'FilterPreviewWorker',
         errorsAreFatal: false,
       );
-    } on Object catch (error, stackTrace) {
+    } on Object catch (error) {
       await _subscription?.cancel();
       _subscription = null;
       _receivePort = null;
@@ -1405,7 +1410,7 @@ class _FilterPreviewWorker {
     _baseBitmapSnapshot = layer.bitmap != null
         ? Uint8List.fromList(layer.bitmap!)
         : null;
-    _baseFillColorValue = layer.fillColor?.value;
+    _baseFillColorValue = layer.fillColor?.toARGB32();
     _baseBitmapWidth = layer.bitmapWidth ?? _canvasWidth;
     _baseBitmapHeight = layer.bitmapHeight ?? _canvasHeight;
     if (!_readyCompleter.isCompleted) {
@@ -1490,7 +1495,7 @@ class _FilterPreviewWorker {
           blurRadius,
         );
       }
-      if (bitmap != null && !_filterBitmapHasVisiblePixels(bitmap)) {
+      if (!_filterBitmapHasVisiblePixels(bitmap)) {
         bitmap = null;
       }
     }
@@ -1512,7 +1517,7 @@ class _FilterPreviewWorker {
           brightnessContrast.contrast,
         );
       }
-      adjustedFill = output.value;
+      adjustedFill = output.toARGB32();
     }
     final _FilterPreviewResult result = _FilterPreviewResult(
       token: token,
@@ -1558,8 +1563,8 @@ class _FilterPreviewResult {
     TransferableTypedData? bitmapData,
     Uint8List? bitmapBytes,
     this.fillColor,
-  })  : _bitmapData = bitmapData,
-        _bytes = bitmapBytes;
+  }) : _bitmapData = bitmapData,
+       _bytes = bitmapBytes;
 
   final int token;
   final String layerId;
@@ -1592,9 +1597,7 @@ void _filterPreviewWorkerMain(List<Object?> initialMessage) {
       (initData['layer'] as Map<String, Object?>?) ?? const <String, Object?>{};
   final TransferableTypedData? bitmapData =
       layer['bitmap'] as TransferableTypedData?;
-  final Uint8List? baseBitmap = bitmapData != null
-      ? bitmapData.materialize().asUint8List()
-      : null;
+  final Uint8List? baseBitmap = bitmapData?.materialize().asUint8List();
   final int? fillColorValue = layer['fillColor'] as int?;
   final int canvasWidth = layer['canvasWidth'] as int? ?? 0;
   final int canvasHeight = layer['canvasHeight'] as int? ?? 0;
@@ -1677,7 +1680,7 @@ void _filterPreviewWorkerMain(List<Object?> initialMessage) {
           contrastPercent,
         );
       }
-      adjustedFill = adjusted.value;
+      adjustedFill = adjusted.toARGB32();
     }
 
     parent.send(<String, Object?>{
@@ -1702,9 +1705,7 @@ double _filterReadListValue(List<dynamic>? values, int index) {
   return 0.0;
 }
 
-Future<Uint8List> _generateHueSaturationPreviewBytes(
-  List<Object?> args,
-) async {
+Future<Uint8List> _generateHueSaturationPreviewBytes(List<Object?> args) async {
   if (kIsWeb) {
     return _computeHueSaturationPreviewPixels(args);
   }
@@ -1724,12 +1725,7 @@ Uint8List _computeHueSaturationPreviewPixels(List<Object?> args) {
   final double saturation = (args[2] as num).toDouble();
   final double lightness = (args[3] as num).toDouble();
   final Uint8List pixels = Uint8List.fromList(source);
-  _filterApplyHueSaturationToBitmap(
-    pixels,
-    hue,
-    saturation,
-    lightness,
-  );
+  _filterApplyHueSaturationToBitmap(pixels, hue, saturation, lightness);
   return pixels;
 }
 
@@ -2062,11 +2058,7 @@ int _filterUnmultiplyChannelByAlpha(int channel, int alpha) {
 }
 
 class _LayerPreviewImages {
-  const _LayerPreviewImages({
-    this.background,
-    this.active,
-    this.foreground,
-  });
+  const _LayerPreviewImages({this.background, this.active, this.foreground});
 
   final ui.Image? background;
   final ui.Image? active;
@@ -2096,7 +2088,9 @@ Future<_LayerPreviewImages> _captureLayerPreviewImages({
   ui.Image? active;
   ui.Image? foreground;
   try {
-    final int activeIndex = layers.indexWhere((layer) => layer.id == activeLayerId);
+    final int activeIndex = layers.indexWhere(
+      (layer) => layer.id == activeLayerId,
+    );
     if (activeIndex < 0) {
       return const _LayerPreviewImages();
     }

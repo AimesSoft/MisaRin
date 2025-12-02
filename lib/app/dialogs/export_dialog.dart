@@ -5,10 +5,7 @@ import '../../canvas/canvas_settings.dart';
 import 'misarin_dialog.dart';
 
 class CanvasExportOptions {
-  const CanvasExportOptions({
-    required this.width,
-    required this.height,
-  });
+  const CanvasExportOptions({required this.width, required this.height});
 
   final int width;
   final int height;
@@ -18,8 +15,9 @@ Future<CanvasExportOptions?> showCanvasExportDialog({
   required BuildContext context,
   required CanvasSettings settings,
 }) async {
-  final TextEditingController scaleController =
-      TextEditingController(text: '1.0');
+  final TextEditingController scaleController = TextEditingController(
+    text: '1.0',
+  );
   double scale = 1.0;
   String? scaleError;
   StateSetter? dialogSetState;

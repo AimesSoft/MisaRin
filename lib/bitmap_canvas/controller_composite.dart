@@ -20,7 +20,7 @@ void _compositeScheduleRefresh(BitmapCanvasController controller) {
   }
   controller._refreshScheduled = true;
   scheduleMicrotask(() => _compositeProcessScheduled(controller));
-  SchedulerBinding.instance?.ensureVisualUpdate();
+  SchedulerBinding.instance.ensureVisualUpdate();
   controller.notifyListeners();
 }
 
@@ -58,14 +58,15 @@ Future<void> _compositeProcessPending(BitmapCanvasController controller) async {
     if (frame != null) {
       controller._currentFrame = frame;
     }
-    
-    if (controller._nextFrameCompleter != null && !controller._nextFrameCompleter!.isCompleted) {
+
+    if (controller._nextFrameCompleter != null &&
+        !controller._nextFrameCompleter!.isCompleted) {
       controller._nextFrameCompleter!.complete();
       controller._nextFrameCompleter = null;
     }
 
-    final List<ui.Image> pendingDisposals =
-        controller._tileCache.takePendingDisposals();
+    final List<ui.Image> pendingDisposals = controller._tileCache
+        .takePendingDisposals();
     if (pendingDisposals.isNotEmpty) {
       controller._pendingTileDisposals.addAll(pendingDisposals);
       controller._scheduleTileImageDisposal();

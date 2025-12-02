@@ -81,8 +81,7 @@ class _WindowDragAreaState extends State<WindowDragArea> {
     if (_dragStarted || _pointerDownPosition == null || !event.down) {
       return;
     }
-    final double distance =
-        (event.position - _pointerDownPosition!).distance;
+    final double distance = (event.position - _pointerDownPosition!).distance;
     if (distance >= _dragThreshold) {
       _dragStarted = true;
       unawaited(windowManager.startDragging());

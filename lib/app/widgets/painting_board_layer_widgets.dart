@@ -22,10 +22,10 @@ class _LayerTile extends StatefulWidget {
     required this.child,
     required this.backgroundColor,
     required this.borderColor,
-    this.onTap,
     this.onTapDown,
     this.onSecondaryTapDown,
-    this.behavior = HitTestBehavior.opaque,
+    this.onTap, // onTap can be null
+    this.behavior = HitTestBehavior.opaque, // Default value for behavior
   });
 
   final Widget child;
@@ -55,7 +55,7 @@ class _LayerTileState extends State<_LayerTile> {
     final FluentThemeData theme = FluentTheme.of(context);
     final bool isDark = theme.brightness.isDark;
     final Color hoverOverlay = (isDark ? Colors.white : Colors.black)
-        .withOpacity(isDark ? 0.08 : 0.05);
+        .withValues(alpha: isDark ? 0.08 : 0.05);
     final Color background = _hovered
         ? Color.alphaBlend(hoverOverlay, widget.backgroundColor)
         : widget.backgroundColor;
@@ -70,7 +70,7 @@ class _LayerTileState extends State<_LayerTile> {
     final List<BoxShadow>? shadows = _hovered
         ? [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.35 : 0.12),
+              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -161,10 +161,7 @@ class _LayerNameView extends StatelessWidget {
 }
 
 class _LayerSidebarButtons extends StatelessWidget {
-  const _LayerSidebarButtons({
-    required this.primary,
-    required this.secondary,
-  });
+  const _LayerSidebarButtons({required this.primary, required this.secondary});
 
   final Widget primary;
   final Widget secondary;
@@ -176,11 +173,7 @@ class _LayerSidebarButtons extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          primary,
-          const SizedBox(height: 6),
-          secondary,
-        ],
+        children: [primary, const SizedBox(height: 6), secondary],
       ),
     );
   }
@@ -202,23 +195,24 @@ class _LayerClippingToggleButton extends StatelessWidget {
     final FluentThemeData theme = FluentTheme.of(context);
     final Color accent = theme.accentColor.defaultBrushFor(theme.brightness);
     final Color borderColor = theme.resources.controlStrokeColorDefault;
-    final Color baseBackground = Color.lerp(
+    final Color baseBackground =
+        Color.lerp(
           borderColor.withValues(alpha: borderColor.a * 0.1),
           accent,
           0.05,
         ) ??
-        borderColor.withOpacity(0.1);
+        borderColor.withValues(alpha: 0.1);
     final Color background = active
         ? Color.alphaBlend(
-            accent.withOpacity(theme.brightness.isDark ? 0.35 : 0.18),
+            accent.withValues(alpha: theme.brightness.isDark ? 0.35 : 0.18),
             baseBackground,
           )
         : baseBackground;
     final Color iconColor = !enabled
         ? theme.resources.textFillColorDisabled
         : (active
-            ? accent
-            : theme.resources.textFillColorSecondary.withOpacity(0.85));
+              ? accent
+              : theme.resources.textFillColorSecondary.withValues(alpha: 0.85));
 
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -252,10 +246,7 @@ class _LayerClippingToggleButton extends StatelessWidget {
 }
 
 class _LayerPreviewThumbnail extends StatelessWidget {
-  const _LayerPreviewThumbnail({
-    required this.image,
-    required this.theme,
-  });
+  const _LayerPreviewThumbnail({required this.image, required this.theme});
 
   final ui.Image? image;
   final FluentThemeData theme;
@@ -313,10 +304,7 @@ class _LayerPreviewThumbnail extends StatelessWidget {
 }
 
 class _TransparencyGridPainter extends CustomPainter {
-  const _TransparencyGridPainter({
-    required this.light,
-    required this.dark,
-  });
+  const _TransparencyGridPainter({required this.light, required this.dark});
 
   final Color light;
   final Color dark;

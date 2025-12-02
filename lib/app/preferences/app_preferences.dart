@@ -237,7 +237,8 @@ class AppPreferences {
             if (version >= 27 && bytes.length >= 42) {
               final SprayMode decodedSprayMode = _decodeSprayMode(bytes[36]);
               final bool decodedPixelGridVisible = bytes[37] != 0;
-              final int primaryColorValue = bytes[38] |
+              final int primaryColorValue =
+                  bytes[38] |
                   (bytes[39] << 8) |
                   (bytes[40] << 16) |
                   (bytes[41] << 24);

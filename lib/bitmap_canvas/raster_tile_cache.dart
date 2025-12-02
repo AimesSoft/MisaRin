@@ -60,10 +60,7 @@ class RasterTileCache {
 
     final List<_PendingTile> uploads = <_PendingTile>[
       for (final RasterIntRect rect in targets)
-        _PendingTile(
-          rect: rect,
-          bytes: backend.copyTileRgba(rect),
-        ),
+        _PendingTile(rect: rect, bytes: backend.copyTileRgba(rect)),
     ];
 
     if (uploads.isEmpty) {
@@ -122,11 +119,7 @@ class RasterTileCache {
     _pendingDisposals.clear();
   }
 
-  Future<ui.Image> _decodeTile(
-    Uint8List bytes,
-    int width,
-    int height,
-  ) {
+  Future<ui.Image> _decodeTile(Uint8List bytes, int width, int height) {
     final Completer<ui.Image> completer = Completer<ui.Image>();
     ui.decodeImageFromPixels(
       bytes,
@@ -146,20 +139,14 @@ class RasterTileCache {
 }
 
 class _PendingTile {
-  const _PendingTile({
-    required this.rect,
-    required this.bytes,
-  });
+  const _PendingTile({required this.rect, required this.bytes});
 
   final RasterIntRect rect;
   final Uint8List bytes;
 }
 
 class _DecodedTile {
-  const _DecodedTile({
-    required this.rect,
-    required this.image,
-  });
+  const _DecodedTile({required this.rect, required this.image});
 
   final RasterIntRect rect;
   final ui.Image image;

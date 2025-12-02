@@ -42,6 +42,9 @@ dependencies:
   shared_preferences: ^2.3.2
   flutter_localizations:
     sdk: flutter
+  flutter_rust_bridge: 2.11.1
+  rust_lib_misa_rin:
+    path: rust_builder
 
 dev_dependencies:
   flutter_test:
@@ -55,6 +58,8 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   rename: ^2.1.1
   flutter_launcher_icons: ^0.13.1
+  integration_test:
+    sdk: flutter
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

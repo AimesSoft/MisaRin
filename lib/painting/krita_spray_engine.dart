@@ -57,10 +57,7 @@ class KritaSprayEngineSettings {
 
   double radiusForPressure(double pressure) {
     final double clamped = pressure.clamp(0.05, 1.0);
-    return math.max(
-      0.5,
-      (diameter / 2.0) * scale * (0.45 + clamped * 0.55),
-    );
+    return math.max(0.5, (diameter / 2.0) * scale * (0.45 + clamped * 0.55));
   }
 }
 
@@ -73,10 +70,9 @@ class KritaSprayEngine {
     required ClampToCanvas clampToCanvas,
     KritaSprayEngineSettings? settings,
     math.Random? random,
-  })  : _clampToCanvas = clampToCanvas,
-        _settings = settings ??
-            const KritaSprayEngineSettings(diameter: 120.0),
-        _random = random ?? math.Random();
+  }) : _clampToCanvas = clampToCanvas,
+       _settings = settings ?? const KritaSprayEngineSettings(diameter: 120.0),
+       _random = random ?? math.Random();
 
   final BitmapCanvasController controller;
   final ClampToCanvas _clampToCanvas;
@@ -105,8 +101,7 @@ class KritaSprayEngine {
       (particleBudget * _settings.particleMultiplier).round(),
     );
     final bool jitter = _settings.jitterMovement && _settings.jitterAmount > 0;
-    final double jitterRadius =
-        jitter ? radius * _settings.jitterAmount : 0.0;
+    final double jitterRadius = jitter ? radius * _settings.jitterAmount : 0.0;
     controller.runSynchronousRasterization(() {
       for (int i = 0; i < particleCount; i++) {
         final double angle = _random.nextDouble() * math.pi * 2.0;
@@ -130,8 +125,10 @@ class KritaSprayEngine {
         );
         final double opacityScale = _resolveParticleOpacity();
         final Color base = _resolveColor(position, baseColor);
-        final int scaledAlpha =
-            (base.alpha * opacityScale).round().clamp(0, 255);
+        final int scaledAlpha = (base.alpha * opacityScale).round().clamp(
+          0,
+          255,
+        );
         if (scaledAlpha <= 0) {
           continue;
         }
@@ -141,8 +138,7 @@ class KritaSprayEngine {
           radius: particleRadius,
           color: color,
           brushShape: _settings.shape,
-          antialiasLevel:
-              math.max(antialiasLevel, _settings.minAntialiasLevel),
+          antialiasLevel: math.max(antialiasLevel, _settings.minAntialiasLevel),
           erase: erase,
         );
       }
@@ -187,9 +183,7 @@ class KritaSprayEngine {
       case KritaRadialDistributionType.uniform:
       default:
         final double sqrtSample = math.sqrt(uniform);
-        return _settings.radialCenterBiased
-            ? sqrtSample * 0.85
-            : sqrtSample;
+        return _settings.radialCenterBiased ? sqrtSample * 0.85 : sqrtSample;
     }
   }
 
@@ -216,16 +210,16 @@ class KritaSprayEngine {
     if (!_settings.randomSize) {
       return _settings.baseParticleScale;
     }
-    final double value =
-        _randomRange(_settings.minParticleScale, _settings.maxParticleScale);
+    final double value = _randomRange(
+      _settings.minParticleScale,
+      _settings.maxParticleScale,
+    );
     return value.clamp(0.001, 1.0);
   }
 
   double _resolveParticleOpacity() {
-    final double minOpacity =
-        _settings.minParticleOpacity.clamp(0.0, 1.0);
-    final double maxOpacity =
-        _settings.maxParticleOpacity.clamp(0.0, 1.0);
+    final double minOpacity = _settings.minParticleOpacity.clamp(0.0, 1.0);
+    final double maxOpacity = _settings.maxParticleOpacity.clamp(0.0, 1.0);
     if ((maxOpacity - minOpacity).abs() < 1e-4) {
       return maxOpacity;
     }
@@ -237,8 +231,10 @@ class KritaSprayEngine {
     if (!_settings.sampleInputColor) {
       return fallback;
     }
-    final Color sampled =
-        controller.sampleColor(position, sampleAllLayers: true);
+    final Color sampled = controller.sampleColor(
+      position,
+      sampleAllLayers: true,
+    );
     if (sampled.alpha == 0) {
       return fallback;
     }

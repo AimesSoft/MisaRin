@@ -43,8 +43,8 @@ class CanvasRasterBackend {
        _height = height,
        _multithreaded = multithreaded;
 
-  int _width;
-  int _height;
+  final int _width;
+  final int _height;
   final int tileSize;
   final bool _multithreaded;
   CanvasCompositeWorker? _worker;
@@ -55,7 +55,7 @@ class CanvasRasterBackend {
   Rect? _pendingDirtyBounds;
   final List<RasterIntRect> _pendingDirtyTiles = <RasterIntRect>[];
   final Set<int> _pendingDirtyTileKeys = <int>{};
-  
+
   // New state for tracking layer dirtiness
   final Set<String> _pendingDirtyLayerIds = <String>{};
   bool _pendingAllLayersDirty = false;
@@ -69,11 +69,7 @@ class CanvasRasterBackend {
   int get width => _width;
   int get height => _height;
 
-  void markDirty({
-    Rect? region,
-    String? layerId,
-    bool pixelsDirty = true,
-  }) {
+  void markDirty({Rect? region, String? layerId, bool pixelsDirty = true}) {
     _compositeDirty = true;
     if (pixelsDirty) {
       if (layerId != null) {
@@ -270,15 +266,16 @@ class CanvasRasterBackend {
     final List<RasterIntRect> areas = requiresFullSurface
         ? <RasterIntRect>[RasterIntRect(0, 0, _width, _height)]
         : (regions ?? const <RasterIntRect>[]);
-    
+
     _worker ??= CanvasCompositeWorker();
 
     // 1. Sync layers to worker
     for (final BitmapLayerState layer in layers) {
       if (!_workerKnownLayerIds.contains(layer.id)) {
         // New layer, sync full surface
-        final Uint32List? pixels =
-            layer.surface.isClean ? null : layer.surface.pixels;
+        final Uint32List? pixels = layer.surface.isClean
+            ? null
+            : layer.surface.pixels;
         await _worker!.updateLayer(
           id: layer.id,
           width: _width,
@@ -291,18 +288,18 @@ class CanvasRasterBackend {
         // Dirty layer, sync patches
         if (areas.isNotEmpty) {
           for (final RasterIntRect area in areas) {
-             await _worker!.updateLayer(
-               id: layer.id,
-               width: _width,
-               height: _height,
-               pixels: _copyLayerRegion(layer.surface, area),
-               rect: area,
-             );
+            await _worker!.updateLayer(
+              id: layer.id,
+              width: _width,
+              height: _height,
+              pixels: _copyLayerRegion(layer.surface, area),
+              rect: area,
+            );
           }
         }
       }
     }
-    
+
     // Reset dirtiness
     _pendingDirtyLayerIds.clear();
     _pendingAllLayersDirty = false;
@@ -311,19 +308,20 @@ class CanvasRasterBackend {
       return;
     }
 
-    final List<CompositeRegionPayload> payloadRegions =
-        _buildCompositeWork(areas, layers);
-        
-    final List<CompositeRegionResult> results =
-        await _worker!.composite(
-          CompositeWorkPayload(
-            width: _width,
-            height: _height,
-            regions: payloadRegions,
-            requiresFullSurface: requiresFullSurface,
-            translatingLayerId: translatingLayerId,
-          ),
-        );
+    final List<CompositeRegionPayload> payloadRegions = _buildCompositeWork(
+      areas,
+      layers,
+    );
+
+    final List<CompositeRegionResult> results = await _worker!.composite(
+      CompositeWorkPayload(
+        width: _width,
+        height: _height,
+        regions: payloadRegions,
+        requiresFullSurface: requiresFullSurface,
+        translatingLayerId: translatingLayerId,
+      ),
+    );
     if (results.isEmpty) {
       return;
     }
@@ -403,12 +401,7 @@ class CanvasRasterBackend {
     for (int row = 0; row < regionHeight; row++) {
       final int srcOffset = (rect.top + row) * _width + rect.left;
       final int dstOffset = row * regionWidth;
-      pixels.setRange(
-        dstOffset,
-        dstOffset + regionWidth,
-        source,
-        srcOffset,
-      );
+      pixels.setRange(dstOffset, dstOffset + regionWidth, source, srcOffset);
     }
     return pixels;
   }
@@ -419,8 +412,7 @@ class CanvasRasterBackend {
     final int tileHeight = rect.height;
     final Uint8List rgba = Uint8List(tileWidth * tileHeight * 4);
     for (int row = 0; row < tileHeight; row++) {
-      final int srcRow =
-          (rect.top + row) * _width + rect.left;
+      final int srcRow = (rect.top + row) * _width + rect.left;
       final int dstRow = row * tileWidth;
       for (int col = 0; col < tileWidth; col++) {
         final int argb = pixels[srcRow + col];

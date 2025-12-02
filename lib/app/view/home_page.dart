@@ -75,11 +75,7 @@ class _MisarinHomePageState extends State<MisarinHomePage> {
     String message, {
     InfoBarSeverity severity = InfoBarSeverity.info,
   }) {
-    AppNotifications.show(
-      context,
-      message: message,
-      severity: severity,
-    );
+    AppNotifications.show(context, message: message, severity: severity);
   }
 
   @override

@@ -56,7 +56,7 @@ void main() {
 
       expect(previous, isNotNull);
       expect(previous!, greaterThan(0));
-      expect(previous!, lessThanOrEqualTo(1.0));
+      expect(previous, lessThanOrEqualTo(1.0));
     });
   });
 }

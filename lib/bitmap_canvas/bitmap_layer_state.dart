@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 import '../canvas/canvas_layer.dart';
 import 'bitmap_canvas.dart';
 

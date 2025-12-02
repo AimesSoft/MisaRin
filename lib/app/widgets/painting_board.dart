@@ -7,7 +7,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/animation.dart' show AnimationController;
 import 'package:flutter/foundation.dart'
     show
         ValueChanged,
@@ -20,7 +19,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart'
     as material
     show ReorderableDragStartListener, ReorderableListView;
-import 'package:flutter/painting.dart' show MatrixUtils;
 import 'package:flutter/services.dart'
     show
         FilteringTextInputFormatter,
@@ -44,19 +42,8 @@ import 'package:flutter/rendering.dart'
         TextPainter;
 import 'package:flutter/scheduler.dart'
     show SchedulerBinding, Ticker, TickerProvider, TickerProviderStateMixin;
-import 'package:flutter/widgets.dart'
-    show
-        CustomPaint,
-        EditableText,
-        FocusNode,
-        SingleChildRenderObjectWidget,
-        StrutStyle,
-        TextEditingController,
-        TextHeightBehavior,
-        WidgetsBinding;
 import 'package:flutter_localizations/flutter_localizations.dart'
     show GlobalMaterialLocalizations;
-import 'package:vector_math/vector_math_64.dart' show Matrix4;
 import 'package:file_picker/file_picker.dart';
 
 import '../../bitmap_canvas/bitmap_canvas.dart';
@@ -341,7 +328,8 @@ abstract class _PaintingBoardBase extends State<PaintingBoard> {
 
   bool get _includeHistoryOnToolbar => false;
 
-  int get _toolbarButtonCount => CanvasToolbar.buttonCount +
+  int get _toolbarButtonCount =>
+      CanvasToolbar.buttonCount +
       (_includeHistoryOnToolbar ? CanvasToolbar.historyButtonCount : 0);
 
   bool _isInsidePaletteCardArea(Offset workspacePosition) {
@@ -741,9 +729,7 @@ abstract class _PaintingBoardBase extends State<PaintingBoard> {
     final Rect colorRect = _toolbarHitRegions[2];
     final double gap = colorRect.top - toolbarRect.bottom;
     final double fullAvailableHeight =
-        _workspaceSize.height -
-        _toolButtonPadding * 2 -
-        _colorIndicatorSize;
+        _workspaceSize.height - _toolButtonPadding * 2 - _colorIndicatorSize;
     final double safeAvailableHeight =
         fullAvailableHeight - CanvasToolbar.spacing;
     if (!safeAvailableHeight.isFinite || safeAvailableHeight <= 0) {
@@ -753,9 +739,9 @@ abstract class _PaintingBoardBase extends State<PaintingBoard> {
       if (_toolbarLayout.isMultiColumn) {
         final CanvasToolbarLayout candidate =
             CanvasToolbar.layoutForAvailableHeight(
-          safeAvailableHeight,
-          toolCount: _toolbarButtonCount,
-        );
+              safeAvailableHeight,
+              toolCount: _toolbarButtonCount,
+            );
         if (candidate.columns == 1) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) {
@@ -773,9 +759,9 @@ abstract class _PaintingBoardBase extends State<PaintingBoard> {
       }
       final CanvasToolbarLayout wrappedLayout =
           CanvasToolbar.layoutForAvailableHeight(
-        safeAvailableHeight,
-        toolCount: _toolbarButtonCount,
-      );
+            safeAvailableHeight,
+            toolCount: _toolbarButtonCount,
+          );
       _applyToolbarLayout(wrappedLayout);
     });
   }
@@ -885,7 +871,6 @@ abstract class _PaintingBoardBase extends State<PaintingBoard> {
     required String title,
     required Color initialColor,
     required ValueChanged<Color> onSelected,
-    VoidCallback? onCleared,
   });
 
   void _rememberColor(Color color);
@@ -1682,8 +1667,9 @@ class PaintingBoardState extends _PaintingBoardBase
     _layerRenameFocusNode.addListener(_handleLayerRenameFocusChange);
     final AppPreferences prefs = AppPreferences.instance;
     _pixelGridVisible = prefs.pixelGridVisible;
-    AppPreferences.pixelGridVisibleNotifier
-        .addListener(_handlePixelGridPreferenceChanged);
+    AppPreferences.pixelGridVisibleNotifier.addListener(
+      _handlePixelGridPreferenceChanged,
+    );
     _bucketSampleAllLayers = prefs.bucketSampleAllLayers;
     _bucketContiguous = prefs.bucketContiguous;
     _bucketSwallowColorLine = prefs.bucketSwallowColorLine;
@@ -1756,8 +1742,9 @@ class PaintingBoardState extends _PaintingBoardBase
     unawaited(_layoutWorker?.dispose());
     _focusNode.dispose();
     _sprayTicker?.dispose();
-    AppPreferences.pixelGridVisibleNotifier
-        .removeListener(_handlePixelGridPreferenceChanged);
+    AppPreferences.pixelGridVisibleNotifier.removeListener(
+      _handlePixelGridPreferenceChanged,
+    );
     super.dispose();
   }
 
@@ -1773,8 +1760,7 @@ class PaintingBoardState extends _PaintingBoardBase
     if (!mounted) {
       return;
     }
-    final bool visible =
-        AppPreferences.pixelGridVisibleNotifier.value;
+    final bool visible = AppPreferences.pixelGridVisibleNotifier.value;
     if (visible == _pixelGridVisible) {
       return;
     }
@@ -2024,11 +2010,11 @@ class PaintingBoardState extends _PaintingBoardBase
   ToolSettingsSnapshot buildToolSettingsSnapshot() {
     return ToolSettingsSnapshot(
       activeTool: _activeTool,
-      primaryColor: _primaryColor.value,
+      primaryColor: _primaryColor.toARGB32(),
       recentColors: _recentColors
-          .map((color) => color.value)
+          .map((color) => color.toARGB32())
           .toList(growable: false),
-      colorLineColor: _colorLineColor.value,
+      colorLineColor: _colorLineColor.toARGB32(),
       penStrokeWidth: _penStrokeWidth,
       sprayStrokeWidth: _sprayStrokeWidth,
       sprayMode: _sprayMode,
@@ -2089,7 +2075,7 @@ class PaintingBoardState extends _PaintingBoardBase
         ..addAll(snapshot.recentColors.map((value) => Color(value)));
     });
     final Color targetColorLine = Color(snapshot.colorLineColor);
-    if (_colorLineColor.value != targetColorLine.value) {
+    if (_colorLineColor.toARGB32() != targetColorLine.toARGB32()) {
       setState(() => _colorLineColor = targetColorLine);
     }
   }
@@ -2119,7 +2105,8 @@ void _layerOpacityPreviewReset(
   _PaintingBoardBase board, {
   bool notifyListeners = false,
 }) {
-  final bool hadPreview = board._layerOpacityPreviewActive ||
+  final bool hadPreview =
+      board._layerOpacityPreviewActive ||
       board._layerOpacityPreviewLayerId != null ||
       board._layerOpacityPreviewValue != null;
   board._layerOpacityPreviewActive = false;
@@ -2139,7 +2126,8 @@ void _layerOpacityPreviewDeactivate(
   _PaintingBoardBase board, {
   bool notifyListeners = false,
 }) {
-  final bool hadPreview = board._layerOpacityPreviewActive ||
+  final bool hadPreview =
+      board._layerOpacityPreviewActive ||
       board._layerOpacityPreviewValue != null ||
       board._layerOpacityPreviewAwaitedGeneration != null;
   board._layerOpacityPreviewActive = false;

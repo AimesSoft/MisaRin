@@ -55,10 +55,7 @@ class ProjectDocument {
           name: '背景',
           fillColor: settings.backgroundColor,
         ),
-        CanvasLayerData(
-          id: generateLayerId(),
-          name: '图层 2',
-        ),
+        CanvasLayerData(id: generateLayerId(), name: '图层 2'),
       ],
     );
   }

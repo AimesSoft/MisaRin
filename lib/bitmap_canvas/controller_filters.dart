@@ -25,18 +25,16 @@ bool _controllerRunAntialiasPass(
       final int centerB = center & 0xff;
 
       int totalWeight = BitmapCanvasController._kAntialiasCenterWeight;
-      int weightedAlpha = alpha *
-          BitmapCanvasController._kAntialiasCenterWeight;
-      int weightedPremulR = centerR * alpha *
-          BitmapCanvasController._kAntialiasCenterWeight;
-      int weightedPremulG = centerG * alpha *
-          BitmapCanvasController._kAntialiasCenterWeight;
-      int weightedPremulB = centerB * alpha *
-          BitmapCanvasController._kAntialiasCenterWeight;
+      int weightedAlpha =
+          alpha * BitmapCanvasController._kAntialiasCenterWeight;
+      int weightedPremulR =
+          centerR * alpha * BitmapCanvasController._kAntialiasCenterWeight;
+      int weightedPremulG =
+          centerG * alpha * BitmapCanvasController._kAntialiasCenterWeight;
+      int weightedPremulB =
+          centerB * alpha * BitmapCanvasController._kAntialiasCenterWeight;
 
-      for (int i = 0;
-          i < BitmapCanvasController._kAntialiasDx.length;
-          i++) {
+      for (int i = 0; i < BitmapCanvasController._kAntialiasDx.length; i++) {
         final int nx = x + BitmapCanvasController._kAntialiasDx[i];
         final int ny = y + BitmapCanvasController._kAntialiasDy[i];
         if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
@@ -111,8 +109,13 @@ bool _controllerRunEdgeAwareColorSmoothPass(
         continue;
       }
 
-      final double gradient =
-          _controllerComputeEdgeGradient(src, width, height, x, y);
+      final double gradient = _controllerComputeEdgeGradient(
+        src,
+        width,
+        height,
+        x,
+        y,
+      );
       final double weight = _controllerEdgeSmoothWeight(gradient);
       if (weight <= 0) {
         dest[index] = baseColor;
@@ -203,8 +206,8 @@ void _controllerComputeGaussianBlur(
         final int rowOffset = ny * width;
         for (int kx = -2; kx <= 2; kx++) {
           final int nx = (x + kx).clamp(0, width - 1);
-          final int weight = BitmapCanvasController._kGaussianKernel5x5[
-              kernelIndex++];
+          final int weight =
+              BitmapCanvasController._kGaussianKernel5x5[kernelIndex++];
           final int sample = src[rowOffset + nx];
           final int alpha = (sample >> 24) & 0xff;
           if (alpha == 0) {

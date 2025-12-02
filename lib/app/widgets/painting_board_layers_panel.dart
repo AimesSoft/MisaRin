@@ -81,7 +81,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
 
   Widget _buildPanelDividerImpl(FluentThemeData theme) {
     final Color dividerColor = theme.resources.controlStrokeColorDefault
-        .withOpacity(0.35);
+        .withValues(alpha: 0.35);
     return SizedBox(
       height: 1,
       child: DecoratedBox(decoration: BoxDecoration(color: dividerColor)),
@@ -103,7 +103,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
     final Color cursorColor = theme.accentColor.defaultBrushFor(
       theme.brightness,
     );
-    final Color selectionColor = cursorColor.withOpacity(0.35);
+    final Color selectionColor = cursorColor.withValues(alpha: 0.35);
     return SizedBox(
       height: lineHeight,
       child: Align(
@@ -162,7 +162,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
         theme.typography.body?.copyWith(fontSize: 12) ??
         const TextStyle(fontSize: 12);
 
-    Color _historyIconColor(bool enabled) {
+    Color historyIconColor(bool enabled) {
       final Color baseColor =
           theme.typography.body?.color ??
           theme.typography.bodyStrong?.color ??
@@ -170,7 +170,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
       if (enabled) {
         return baseColor;
       }
-      return baseColor.withOpacity(theme.brightness.isDark ? 0.5 : 0.35);
+      return baseColor.withValues(alpha: theme.brightness.isDark ? 0.5 : 0.35);
     }
 
     Widget buildHistoryButton({
@@ -179,7 +179,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
       required bool enabled,
       required VoidCallback onPressed,
     }) {
-      final Color color = _historyIconColor(enabled);
+      final Color color = historyIconColor(enabled);
       return Tooltip(
         message: label,
         child: MouseRegion(
@@ -435,11 +435,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
     ui.Image? image;
     if (pixels != null) {
       try {
-        image = await _decodeImage(
-          pixels.bytes,
-          pixels.width,
-          pixels.height,
-        );
+        image = await _decodeImage(pixels.bytes, pixels.width, pixels.height);
       } catch (error, stackTrace) {
         debugPrint('Failed to build layer preview for $layerId: $error');
         debugPrint('$stackTrace');
@@ -511,7 +507,11 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
         rgba[dest++] = (argb >> 24) & 0xFF;
       }
     }
-    return _LayerPreviewPixels(bytes: rgba, width: targetWidth, height: targetHeight);
+    return _LayerPreviewPixels(
+      bytes: rgba,
+      width: targetWidth,
+      height: targetHeight,
+    );
   }
 
   void _disposeLayerPreviewCacheImpl() {
@@ -643,7 +643,9 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                       );
                       final Color clippingActiveBackground = Color.alphaBlend(
                         (theme.brightness.isDark ? Colors.white : Colors.black)
-                            .withOpacity(theme.brightness.isDark ? 0.18 : 0.08),
+                            .withValues(
+                              alpha: theme.brightness.isDark ? 0.18 : 0.08,
+                            ),
                         background,
                       );
                       clippingButton = Tooltip(
@@ -717,10 +719,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                         required Widget child,
                         required String tooltip,
                       }) {
-                        return Tooltip(
-                          message: tooltip,
-                          child: child,
-                        );
+                        return Tooltip(message: tooltip, child: child);
                       }
 
                       final Widget mergeButton = wrapIconButton(
@@ -805,7 +804,8 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                                             layer: layer,
                                             theme: theme,
                                             isActive: isActive,
-                                            isRenaming: !layerLocked &&
+                                            isRenaming:
+                                                !layerLocked &&
                                                 _renamingLayerId == layer.id,
                                             isLocked: layerLocked,
                                             buildEditor: (style) =>
@@ -833,10 +833,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                                       ),
                                     ),
                                   ),
-                                  if (trailingWidget != null) ...[
-                                    const SizedBox(width: 8),
-                                    trailingWidget!,
-                                  ],
+                                  ...[const SizedBox(width: 8), trailingWidget],
                                 ],
                               ),
                               if (layer.clippingMask)
@@ -879,11 +876,7 @@ class _LayerPreviewPixels {
 }
 
 class _LayerPreviewCacheEntry {
-  _LayerPreviewCacheEntry({
-    required this.requestId,
-    this.revision = -1,
-    this.image,
-  });
+  _LayerPreviewCacheEntry({required this.requestId, this.revision = 0});
 
   int requestId;
   int revision;

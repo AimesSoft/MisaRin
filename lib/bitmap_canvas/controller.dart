@@ -14,7 +14,6 @@ import '../backend/canvas_raster_backend.dart';
 import '../canvas/canvas_layer.dart';
 import '../canvas/canvas_settings.dart';
 import '../canvas/canvas_tools.dart';
-import '../performance/stroke_latency_monitor.dart';
 import 'bitmap_blend_utils.dart' as blend_utils;
 import 'bitmap_canvas.dart';
 import 'bitmap_layer_state.dart';
@@ -23,7 +22,6 @@ import 'raster_tile_cache.dart';
 import 'raster_int_rect.dart';
 import 'stroke_dynamics.dart';
 import 'stroke_pressure_simulator.dart';
-import '../canvas/brush_shape_geometry.dart';
 import '../canvas/vector_stroke_painter.dart';
 
 export 'bitmap_layer_state.dart';
@@ -341,14 +339,7 @@ class BitmapCanvasController extends ChangeNotifier {
     int width,
     int height,
     double blendFactor,
-  ) => _controllerRunAntialiasPass(
-    this,
-    src,
-    dest,
-    width,
-    height,
-    blendFactor,
-  );
+  ) => _controllerRunAntialiasPass(this, src, dest, width, height, blendFactor);
 
   bool _runEdgeAwareColorSmoothPass(
     Uint32List src,
@@ -383,11 +374,9 @@ class BitmapCanvasController extends ChangeNotifier {
     int height,
   ) => _controllerComputeGaussianBlur(src, dest, width, height);
 
-  static double _computeLuma(int color) =>
-      _controllerComputeLuma(color);
+  static double _computeLuma(int color) => _controllerComputeLuma(color);
 
-  static int _lerpArgb(int a, int b, double t) =>
-      _controllerLerpArgb(a, b, t);
+  static int _lerpArgb(int a, int b, double t) => _controllerLerpArgb(a, b, t);
 
   void translateActiveLayer(int dx, int dy) =>
       _translateActiveLayer(this, dx, dy);
@@ -810,8 +799,7 @@ class BitmapCanvasController extends ChangeNotifier {
 
   void _notifyWorkerIdle() => _controllerNotifyWorkerIdle(this);
 
-  void _cancelPendingWorkerTasks() =>
-      _controllerCancelPendingWorkerTasks(this);
+  void _cancelPendingWorkerTasks() => _controllerCancelPendingWorkerTasks(this);
 
   CanvasPaintingWorker _ensurePaintingWorker() {
     return _paintingWorker ??= CanvasPaintingWorker();
@@ -823,8 +811,7 @@ class BitmapCanvasController extends ChangeNotifier {
   Future<void> _ensureWorkerSelectionMaskSynced() =>
       _controllerEnsureWorkerSelectionMaskSynced(this);
 
-  void _resetWorkerSurfaceSync() =>
-      _controllerResetWorkerSurfaceSync(this);
+  void _resetWorkerSurfaceSync() => _controllerResetWorkerSurfaceSync(this);
 
   void _enqueueWorkerPatchFuture(
     Future<PaintingWorkerPatch?> future, {
@@ -860,11 +847,9 @@ class BitmapCanvasController extends ChangeNotifier {
   void _scheduleTileImageDisposal() =>
       _controllerScheduleTileImageDisposal(this);
 
-  void _flushTileImageDisposals() =>
-      _controllerFlushTileImageDisposals(this);
+  void _flushTileImageDisposals() => _controllerFlushTileImageDisposals(this);
 
-  void _disposePendingTileImages() =>
-      _controllerDisposePendingTileImages(this);
+  void _disposePendingTileImages() => _controllerDisposePendingTileImages(this);
 
   BitmapLayerState get _activeLayer => _layers[_activeIndex];
 
@@ -887,8 +872,10 @@ class BitmapCanvasController extends ChangeNotifier {
 
   static Rect _unionRects(Rect a, Rect b) => _controllerUnionRects(a, b);
 
-  static Uint8List _surfaceToMaskedRgba(BitmapSurface surface, Uint8List mask) =>
-      _controllerSurfaceToMaskedRgba(surface, mask);
+  static Uint8List _surfaceToMaskedRgba(
+    BitmapSurface surface,
+    Uint8List mask,
+  ) => _controllerSurfaceToMaskedRgba(surface, mask);
 
   static bool _maskHasCoverage(Uint8List mask) =>
       _controllerMaskHasCoverage(mask);
@@ -909,11 +896,7 @@ class BitmapCanvasController extends ChangeNotifier {
   void _applyPaintingCommandsSynchronously(
     Rect region,
     List<PaintingDrawCommand> commands,
-  ) => _controllerApplyPaintingCommandsSynchronously(
-    this,
-    region,
-    commands,
-  );
+  ) => _controllerApplyPaintingCommandsSynchronously(this, region, commands);
 
   void _applyStampSegmentFallback({
     required BitmapSurface surface,
@@ -927,20 +910,19 @@ class BitmapCanvasController extends ChangeNotifier {
     required Uint8List? mask,
     required int antialias,
     required bool erase,
-  }) =>
-      _controllerApplyStampSegmentFallback(
-        surface: surface,
-        start: start,
-        end: end,
-        startRadius: startRadius,
-        endRadius: endRadius,
-        includeStart: includeStart,
-        shape: shape,
-        color: color,
-        mask: mask,
-        antialias: antialias,
-        erase: erase,
-      );
+  }) => _controllerApplyStampSegmentFallback(
+    surface: surface,
+    start: start,
+    end: end,
+    startRadius: startRadius,
+    endRadius: endRadius,
+    includeStart: includeStart,
+    shape: shape,
+    color: color,
+    mask: mask,
+    antialias: antialias,
+    erase: erase,
+  );
 
   Future<PaintingWorkerPatch?> _executeFloodFill({
     required Offset start,

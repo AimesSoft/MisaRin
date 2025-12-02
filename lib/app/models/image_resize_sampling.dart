@@ -1,7 +1,4 @@
-enum ImageResizeSampling {
-  nearest,
-  bilinear,
-}
+enum ImageResizeSampling { nearest, bilinear }
 
 extension ImageResizeSamplingTexts on ImageResizeSampling {
   String get label {

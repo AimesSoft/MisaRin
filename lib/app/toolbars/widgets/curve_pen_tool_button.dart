@@ -1,5 +1,4 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/widgets.dart' show Image;
 
 import 'toolbar_tool_button_frame.dart';
 

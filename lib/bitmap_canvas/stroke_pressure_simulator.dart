@@ -193,7 +193,8 @@ class StrokePressureSimulator {
     final double base = math.max(baseRadius, 0.1);
     final double taperMax = _needleTipsEnabled ? base * 8.5 : base * 6.5;
     final double taperDynamic =
-        length * (_needleTipsEnabled ? 3.2 : 2.4) + (_needleTipsEnabled ? 4.0 : 2.0);
+        length * (_needleTipsEnabled ? 3.2 : 2.4) +
+        (_needleTipsEnabled ? 4.0 : 2.0);
     final double taperLength = math.min(taperMax, taperDynamic);
     final Offset extension = tip + unit * taperLength;
     final double startRadius = lastRadius > 0.0 ? lastRadius : baseRadius;

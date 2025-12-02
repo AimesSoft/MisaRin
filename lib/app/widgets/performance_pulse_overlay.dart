@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as material;
-import 'package:flutter/widgets.dart';
 import 'package:flutter_performance_pulse/flutter_performance_pulse.dart';
 
 import '../../performance/stroke_latency_monitor.dart';
@@ -50,8 +49,9 @@ class PerformancePulseOverlay extends StatelessWidget {
           ),
           child: material.Material(
             elevation: 10,
-            borderRadius:
-                const material.BorderRadius.all(material.Radius.circular(12)),
+            borderRadius: const material.BorderRadius.all(
+              material.Radius.circular(12),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,8 +92,9 @@ class _LatencyCardState extends State<_LatencyCard> {
   @override
   void initState() {
     super.initState();
-    _subscription =
-        StrokeLatencyMonitor.instance.latencyStream.listen(_handleSample);
+    _subscription = StrokeLatencyMonitor.instance.latencyStream.listen(
+      _handleSample,
+    );
   }
 
   @override
@@ -120,13 +121,16 @@ class _LatencyCardState extends State<_LatencyCard> {
   @override
   Widget build(BuildContext context) {
     final Color textColor = widget.theme.textColor;
-    final double maxValue =
-        _history.isEmpty ? 1 : _history.reduce(math.max).clamp(1, 500).toDouble();
+    final double maxValue = _history.isEmpty
+        ? 1
+        : _history.reduce(math.max).clamp(1, 500).toDouble();
     final bool hasData = _history.isNotEmpty;
-    final double highlightedLatency =
-        hasData ? _latestLatency : StrokeLatencyMonitor.instance.latestLatencyMs;
-    final String latencyLabel =
-        hasData ? '${highlightedLatency.toStringAsFixed(1)} ms' : '-- ms';
+    final double highlightedLatency = hasData
+        ? _latestLatency
+        : StrokeLatencyMonitor.instance.latestLatencyMs;
+    final String latencyLabel = hasData
+        ? '${highlightedLatency.toStringAsFixed(1)} ms'
+        : '-- ms';
     final Color latencyColor = highlightedLatency > 45
         ? widget.theme.warningColor
         : widget.theme.textColor;
@@ -151,11 +155,7 @@ class _LatencyCardState extends State<_LatencyCard> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                material.Icons.timeline,
-                color: latencyColor,
-                size: 16,
-              ),
+              Icon(material.Icons.timeline, color: latencyColor, size: 16),
               const SizedBox(width: 4),
               Text(
                 '延迟: $latencyLabel',
@@ -183,10 +183,7 @@ class _LatencyCardState extends State<_LatencyCard> {
             hasData
                 ? '最近平均：${_averageLatency.toStringAsFixed(1)} ms'
                 : '等待笔迹数据…',
-            style: TextStyle(
-              color: textColor.withOpacity(0.9),
-              fontSize: 12,
-            ),
+            style: TextStyle(color: textColor.withOpacity(0.9), fontSize: 12),
           ),
         ],
       ),
@@ -245,8 +242,9 @@ class _LatencySparklinePainter extends CustomPainter {
     }
 
     final double effectiveMax = maxValue <= 0 ? 1 : maxValue;
-    final double step =
-        samples.length == 1 ? size.width : size.width / (samples.length - 1);
+    final double step = samples.length == 1
+        ? size.width
+        : size.width / (samples.length - 1);
     final List<Offset> points = <Offset>[];
     for (int i = 0; i < samples.length; i++) {
       final double normalized = (samples[i] / effectiveMax).clamp(0.0, 1.0);

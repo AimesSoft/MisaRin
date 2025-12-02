@@ -19,10 +19,7 @@ class ClipboardImageReader {
       if (bytes == null || bytes.isEmpty) {
         return null;
       }
-      return ClipboardImageData(
-        bytes: bytes,
-        fileName: _buildFileName(bytes),
-      );
+      return ClipboardImageData(bytes: bytes, fileName: _buildFileName(bytes));
     } catch (_) {
       return null;
     }
@@ -33,7 +30,16 @@ class ClipboardImageReader {
   }
 
   static String _extensionFromBytes(Uint8List bytes) {
-    if (_matches(bytes, const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) {
+    if (_matches(bytes, const [
+      0x89,
+      0x50,
+      0x4E,
+      0x47,
+      0x0D,
+      0x0A,
+      0x1A,
+      0x0A,
+    ])) {
       return 'png';
     }
     if (_matches(bytes, const [0xFF, 0xD8, 0xFF])) {

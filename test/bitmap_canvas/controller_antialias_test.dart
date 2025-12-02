@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,7 +8,7 @@ import 'package:misa_rin/bitmap_canvas/controller.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  BitmapCanvasController _buildControllerWithDiagonalStroke() {
+  BitmapCanvasController buildControllerWithDiagonalStroke() {
     final BitmapCanvasController controller = BitmapCanvasController(
       width: 3,
       height: 3,
@@ -21,8 +20,7 @@ void main() {
 
     int index(int x, int y) => y * controller.width + x;
     void setPixel(int x, int y) {
-      pixels[index(x, y)] =
-          BitmapSurface.encodeColor(const Color(0xFF000000));
+      pixels[index(x, y)] = BitmapSurface.encodeColor(const Color(0xFF000000));
     }
 
     setPixel(0, 0);
@@ -32,7 +30,7 @@ void main() {
   }
 
   test('antialias lowers opaque diagonal edge alpha', () {
-    final controller = _buildControllerWithDiagonalStroke();
+    final controller = buildControllerWithDiagonalStroke();
     final BitmapLayerState layer = controller.layers.last;
     final Uint32List pixels = layer.surface.pixels;
 
@@ -50,7 +48,7 @@ void main() {
   });
 
   test('antialias adds blended coverage to neighboring pixels', () {
-    final controller = _buildControllerWithDiagonalStroke();
+    final controller = buildControllerWithDiagonalStroke();
     final BitmapLayerState layer = controller.layers.last;
     final Uint32List pixels = layer.surface.pixels;
 

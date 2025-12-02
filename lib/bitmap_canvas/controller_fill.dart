@@ -32,7 +32,7 @@ void _fillFloodFill(
 
   final bool shouldSwallow = swallowColors != null && swallowColors.isNotEmpty;
   final List<int>? swallowArgb = shouldSwallow
-      ? swallowColors!
+      ? swallowColors
             .map((color) => BitmapSurface.encodeColor(color))
             .toList(growable: false)
       : null;
@@ -213,11 +213,7 @@ Color _fillSampleColor(
     return const Color(0x00000000);
   }
   if (sampleAllLayers) {
-    return _fillColorAtComposite(
-      controller,
-      position,
-      preferRealtime: true,
-    );
+    return _fillColorAtComposite(controller, position, preferRealtime: true);
   }
   return _fillColorAtSurface(controller, controller._activeSurface, x, y);
 }
@@ -486,12 +482,7 @@ Uint8List? _fillFloodFillSingleLayerWithMask(
   // Expand mask by 1 pixel to cover anti-aliased edges (only if tolerance > 0)
   Uint8List finalMask = mask;
   if (tolerance > 0) {
-    finalMask = _fillExpandMask(
-      mask,
-      width,
-      height,
-      radius: 1,
-    );
+    finalMask = _fillExpandMask(mask, width, height, radius: 1);
   }
 
   int minX = width;
@@ -751,10 +742,7 @@ bool _fillRunMaskedAntialiasPass(
   return maskChanged;
 }
 
-Rect? _fillMaskBounds(
-  BitmapCanvasController controller,
-  Uint8List mask,
-) {
+Rect? _fillMaskBounds(BitmapCanvasController controller, Uint8List mask) {
   if (mask.isEmpty) {
     return null;
   }

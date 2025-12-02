@@ -106,8 +106,9 @@ class _ImageSizeDialogState extends State<_ImageSizeDialog> {
     if (!_lockAspectRatio) {
       return;
     }
-    final String sourceText =
-        fromWidth ? _widthController.text : _heightController.text;
+    final String sourceText = fromWidth
+        ? _widthController.text
+        : _heightController.text;
     final int? sourceValue = int.tryParse(sourceText);
     if (sourceValue == null || sourceValue <= 0) {
       return;
@@ -225,10 +226,7 @@ class _ImageSizeDialogState extends State<_ImageSizeDialog> {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            _sampling.description,
-            style: theme.typography.caption,
-          ),
+          Text(_sampling.description, style: theme.typography.caption),
           const SizedBox(height: 12),
           Text(
             '当前尺寸：${_widthController.text} × ${_heightController.text} 像素',

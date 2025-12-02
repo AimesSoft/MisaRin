@@ -1,6 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 
 /// 在 Web 平台上请求用户输入导出的文件名。
 Future<String?> showWebFileNameDialog({
@@ -13,8 +12,9 @@ Future<String?> showWebFileNameDialog({
   if (!kIsWeb) {
     return null;
   }
-  final TextEditingController controller =
-      TextEditingController(text: suggestedFileName);
+  final TextEditingController controller = TextEditingController(
+    text: suggestedFileName,
+  );
   String? error;
   final String? result = await showDialog<String>(
     context: context,
@@ -31,7 +31,7 @@ Future<String?> showWebFileNameDialog({
                 if (description != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(description!),
+                    child: Text(description),
                   ),
                 TextBox(
                   controller: controller,

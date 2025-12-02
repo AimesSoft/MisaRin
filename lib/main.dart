@@ -10,6 +10,8 @@ import 'app/app.dart';
 import 'app/menu/macos_menu_shell.dart';
 import 'app/preferences/app_preferences.dart';
 import 'app/utils/tablet_input_bridge.dart';
+import 'src/rust/frb_generated.dart'; // Rust Generated Code
+import 'src/rust/api/blend_utils.dart' as rust_blend; // Rust Blend Utils API
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +45,7 @@ Future<void> main() async {
 }
 
 Future<void> _preloadCoreServices() async {
+  await RustLib.init(); // Initialize Rust
   await AppPreferences.load();
   if (!kIsWeb) {
     await _initializePerformancePulse();

@@ -23,8 +23,8 @@ class LayerVisibilityButton extends StatelessWidget {
     final Color iconColor = visible
         ? accent
         : theme.brightness.isDark
-            ? const Color(0xFFC0C0C0)
-            : const Color(0xFF666666);
+        ? const Color(0xFFC0C0C0)
+        : const Color(0xFF666666);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,

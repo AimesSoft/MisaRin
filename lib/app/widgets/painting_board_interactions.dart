@@ -103,6 +103,7 @@ mixin _PaintingBoardInteractionMixin
         boardLocal.dy < _canvasSize.height;
   }
 
+  @override
   void _setActiveTool(CanvasTool tool) {
     if (_guardTransformInProgress(message: '请先完成当前自由变换。')) {
       return;
@@ -170,6 +171,7 @@ mixin _PaintingBoardInteractionMixin
     _updateSelectionAnimation();
   }
 
+  @override
   void _updatePenStrokeWidth(double value) {
     final double clamped = _penStrokeSliderRange.clamp(value);
     if ((_penStrokeWidth - clamped).abs() < 0.0005) {
@@ -181,6 +183,7 @@ mixin _PaintingBoardInteractionMixin
     unawaited(AppPreferences.save());
   }
 
+  @override
   void _updateSprayStrokeWidth(double value) {
     final double clamped = value.clamp(kSprayStrokeMin, kSprayStrokeMax);
     if ((_sprayStrokeWidth - clamped).abs() < 0.0005) {
@@ -321,6 +324,7 @@ mixin _PaintingBoardInteractionMixin
     unawaited(AppPreferences.save());
   }
 
+  @override
   void _updateBucketSampleAllLayers(bool value) {
     if (_bucketSampleAllLayers == value) {
       return;
@@ -331,6 +335,7 @@ mixin _PaintingBoardInteractionMixin
     unawaited(AppPreferences.save());
   }
 
+  @override
   void _updateBucketContiguous(bool value) {
     if (_bucketContiguous == value) {
       return;
@@ -575,8 +580,10 @@ mixin _PaintingBoardInteractionMixin
   /// (`plugins/paintops/spray`) but tweaks a few constants so the Flutter
   /// rasterizer produces similar densities.
   KritaSprayEngineSettings _buildKritaSpraySettings() {
-    final double clampedDiameter =
-        _sprayStrokeWidth.clamp(kSprayStrokeMin, kSprayStrokeMax);
+    final double clampedDiameter = _sprayStrokeWidth.clamp(
+      kSprayStrokeMin,
+      kSprayStrokeMax,
+    );
     return KritaSprayEngineSettings(
       diameter: clampedDiameter,
       scale: 1.0,
@@ -728,8 +735,8 @@ mixin _PaintingBoardInteractionMixin
     }
     final KritaSprayEngine engine = _ensureKritaSprayEngine();
     final bool erase = _isBrushEraserEnabled;
-    final Color color = _activeSprayColor ??
-        (erase ? const Color(0xFFFFFFFF) : _primaryColor);
+    final Color color =
+        _activeSprayColor ?? (erase ? const Color(0xFFFFFFFF) : _primaryColor);
     engine.paintParticles(
       center: center,
       particleBudget: count,
@@ -783,24 +790,28 @@ mixin _PaintingBoardInteractionMixin
   }
 
   double _resolveSoftSprayRadius() {
-    final double normalized =
-        _sprayStrokeWidth.clamp(kSprayStrokeMin, kSprayStrokeMax);
+    final double normalized = _sprayStrokeWidth.clamp(
+      kSprayStrokeMin,
+      kSprayStrokeMax,
+    );
     return math.max(normalized * 0.5, 0.5);
   }
 
   void _stampSoftSpray(Offset position, double radius, double pressure) {
     final bool erase = _isBrushEraserEnabled;
-    final Color baseColor = _activeSprayColor ??
-        (erase ? const Color(0xFFFFFFFF) : _primaryColor);
-    final double opacityScale =
-        (0.35 + pressure.clamp(0.0, 1.0) * 0.65).clamp(0.0, 1.0);
+    final Color baseColor =
+        _activeSprayColor ?? (erase ? const Color(0xFFFFFFFF) : _primaryColor);
+    final double opacityScale = (0.35 + pressure.clamp(0.0, 1.0) * 0.65).clamp(
+      0.0,
+      1.0,
+    );
     if (opacityScale <= 0.0) {
       return;
     }
     _controller.drawBrushStamp(
       center: position,
       radius: radius,
-      color: baseColor.withOpacity(opacityScale),
+      color: baseColor.withValues(alpha: opacityScale),
       brushShape: BrushShape.circle,
       antialiasLevel: 3,
       erase: erase,
@@ -1560,6 +1571,7 @@ mixin _PaintingBoardInteractionMixin
     );
   }
 
+  @override
   void _handlePointerDown(PointerDownEvent event) async {
     if (!_isPrimaryPointer(event)) {
       return;
@@ -1650,6 +1662,7 @@ mixin _PaintingBoardInteractionMixin
     }
   }
 
+  @override
   void _handlePointerMove(PointerMoveEvent event) {
     if (!_isPrimaryPointer(event)) {
       return;
@@ -1714,6 +1727,7 @@ mixin _PaintingBoardInteractionMixin
     }
   }
 
+  @override
   void _handlePointerUp(PointerUpEvent event) async {
     if (_layerTransformModeActive) {
       _handleLayerTransformPointerUp();
@@ -1778,6 +1792,7 @@ mixin _PaintingBoardInteractionMixin
     }
   }
 
+  @override
   void _handlePointerCancel(PointerCancelEvent event) {
     if (_layerTransformModeActive) {
       _handleLayerTransformPointerCancel();
@@ -1823,6 +1838,7 @@ mixin _PaintingBoardInteractionMixin
     }
   }
 
+  @override
   void _handlePointerHover(PointerHoverEvent event) {
     _recordWorkspacePointer(event.localPosition);
     _updateToolCursorOverlay(event.localPosition);
@@ -1943,6 +1959,7 @@ mixin _PaintingBoardInteractionMixin
     });
   }
 
+  @override
   void _handlePointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) {
       return;
@@ -1962,6 +1979,7 @@ mixin _PaintingBoardInteractionMixin
     _applyZoom(targetScale, focalPoint);
   }
 
+  @override
   void _handleScaleStart(ScaleStartDetails details) {
     final RenderBox? box = context.findRenderObject() as RenderBox?;
     if (box == null) {
@@ -1978,6 +1996,7 @@ mixin _PaintingBoardInteractionMixin
     _applyZoom(_viewport.scale, focalPoint);
   }
 
+  @override
   void _handleScaleUpdate(ScaleUpdateDetails details) {
     if (!_isScalingGesture) {
       return;
@@ -1991,10 +2010,12 @@ mixin _PaintingBoardInteractionMixin
     _applyZoom(targetScale, focalPoint);
   }
 
+  @override
   void _handleScaleEnd(ScaleEndDetails details) {
     _isScalingGesture = false;
   }
 
+  @override
   void _handleUndo() {
     unawaited(_performUndo());
   }
@@ -2005,6 +2026,7 @@ mixin _PaintingBoardInteractionMixin
     }
   }
 
+  @override
   void _handleRedo() {
     unawaited(_performRedo());
   }

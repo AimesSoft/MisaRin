@@ -1,6 +1,4 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 
 class WorkspaceSplitHandle extends StatelessWidget {
   const WorkspaceSplitHandle.horizontal({
@@ -30,8 +28,9 @@ class WorkspaceSplitHandle extends StatelessWidget {
         : SystemMouseCursors.resizeColumn;
     final double width = horizontal ? double.infinity : hitExtent;
     final double height = horizontal ? hitExtent : double.infinity;
-    final Color strokeColor =
-        FluentTheme.of(context).resources.controlStrokeColorDefault;
+    final Color strokeColor = FluentTheme.of(
+      context,
+    ).resources.controlStrokeColorDefault;
 
     return MouseRegion(
       cursor: cursor,

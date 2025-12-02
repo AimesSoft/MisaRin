@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../widgets/window_drag_area.dart';
@@ -116,9 +115,9 @@ class _CustomMenuBarState extends State<CustomMenuBar> {
   Widget build(BuildContext context) {
     final List<MenuDefinition> visibleMenus = widget.showMenus
         ? widget.menus
-            .map(CustomMenuBar._pruneMenu)
-            .whereType<MenuDefinition>()
-            .toList(growable: false)
+              .map(CustomMenuBar._pruneMenu)
+              .whereType<MenuDefinition>()
+              .toList(growable: false)
         : const <MenuDefinition>[];
     final theme = FluentTheme.of(context);
     final bool canDrag = CustomMenuBar._supportsWindowDragArea();

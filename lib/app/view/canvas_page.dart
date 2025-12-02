@@ -6,12 +6,6 @@ import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/widgets.dart'
-    show
-        StatefulBuilder,
-        StateSetter,
-        TextEditingController,
-        WidgetsBinding;
 
 import '../../canvas/canvas_exporter.dart';
 import '../../canvas/canvas_settings.dart';
@@ -803,10 +797,7 @@ class CanvasPageState extends State<CanvasPage> {
       } else {
         final file = File(normalizedPath!);
         await file.writeAsBytes(bytes, flush: true);
-        _showInfoBar(
-          '已导出到 $normalizedPath',
-          severity: InfoBarSeverity.success,
-        );
+        _showInfoBar('已导出到 $normalizedPath', severity: InfoBarSeverity.success);
       }
       return true;
     } catch (error) {
@@ -1098,8 +1089,9 @@ class CanvasPageState extends State<CanvasPage> {
   }
 
   Future<String?> _showProjectRenameDialog(String currentName) async {
-    final TextEditingController controller =
-        TextEditingController(text: currentName);
+    final TextEditingController controller = TextEditingController(
+      text: currentName,
+    );
     String? errorText;
     StateSetter? dialogSetState;
 
@@ -1154,10 +1146,7 @@ class CanvasPageState extends State<CanvasPage> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('取消'),
         ),
-        FilledButton(
-          onPressed: submit,
-          child: const Text('重命名'),
-        ),
+        FilledButton(onPressed: submit, child: const Text('重命名')),
       ],
     );
     controller.dispose();
@@ -1216,8 +1205,9 @@ class CanvasPageState extends State<CanvasPage> {
       externalCanRedo: _canRedoDocumentFor(id),
       onResizeImage: _handleResizeImage,
       onResizeCanvas: _handleResizeCanvas,
-      onReadyChanged:
-          kIsWeb ? (ready) => _handleBoardReadyChanged(id, ready) : null,
+      onReadyChanged: kIsWeb
+          ? (ready) => _handleBoardReadyChanged(id, ready)
+          : null,
       toolbarLayoutStyle: _toolbarLayoutStyle,
     );
   }

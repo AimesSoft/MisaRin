@@ -3,10 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../bitmap_canvas/raster_frame.dart';
 
 class BitmapCanvasSurface extends StatelessWidget {
-  const BitmapCanvasSurface({
-    super.key,
-    required this.frame,
-  });
+  const BitmapCanvasSurface({super.key, required this.frame});
 
   final BitmapCanvasFrame? frame;
 

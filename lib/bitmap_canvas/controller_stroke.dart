@@ -121,11 +121,12 @@ void _strokeBegin(
       );
     }
   }
-  
+
   // Determine starting radius based on simulation or stylus input
   final double startRadius;
   if (controller._strokePressureSimulator.isSimulatingStroke) {
-    startRadius = stylusSeedRadius ??
+    startRadius =
+        stylusSeedRadius ??
         simulatedInitialRadius ??
         controller._currentStrokeRadius;
     controller._currentStrokeLastRadius = startRadius;
@@ -134,7 +135,7 @@ void _strokeBegin(
     controller._currentStrokeLastRadius = controller._currentStrokeRadius;
   }
   controller._currentStrokeRadii.add(startRadius);
-  
+
   controller._currentStrokeColor = color;
   controller._currentStrokeEraseMode = erase;
 }
@@ -192,17 +193,19 @@ void _strokeExtend(
       preferImmediate: controller._strokePressureSimulator.usesDevicePressure,
     );
     controller._currentStrokeRadii.add(resolvedRadius);
-    
+
     // Anti-swallow logic for Sharp Start:
     if (controller._currentStrokePoints.length == 2) {
       final Offset p0 = controller._currentStrokePoints[0];
       final Offset p1 = controller._currentStrokePoints[1];
       final double r0 = controller._currentStrokeRadii[0];
       final double r1 = controller._currentStrokeRadii[1];
-      
+
       final double dist = (p1 - p0).distance;
       if (dist + r0 < r1) {
-        final Offset direction = dist > 0.001 ? (p0 - p1) / dist : const Offset(-1, -1);
+        final Offset direction = dist > 0.001
+            ? (p0 - p1) / dist
+            : const Offset(-1, -1);
         final double mag = direction.distance;
         final Offset normDir = mag > 0 ? direction / mag : direction;
         final double targetDist = r1 - r0 + 1.0;
@@ -216,17 +219,18 @@ void _strokeExtend(
             controller._currentStrokeLastRadius > 0.0
         ? controller._currentStrokeLastRadius
         : controller._currentStrokeRadius;
-    
+
     final bool directionChanged = _strokeDirectionChanged(
       controller,
       last,
       position,
     );
-    final bool restartCaps = firstSegment ||
+    final bool restartCaps =
+        firstSegment ||
         _strokeNeedsRestartCaps(previousRadius, resolvedRadius) ||
         directionChanged;
     final double startRadius = restartCaps ? resolvedRadius : previousRadius;
-    
+
     if (useCircularBrush) {
       controller._deferredStrokeCommands.add(
         PaintingDrawCommand.variableLine(
@@ -311,25 +315,29 @@ void _strokeEnd(BitmapCanvasController controller) {
       if (tailInstruction.isLine) {
         Offset end = tailInstruction.end!;
         final double endRadius = tailInstruction.endRadius!;
-        
+
         // Anti-swallow logic for Sharp Tail:
         final Offset lastPoint = controller._currentStrokePoints.last;
         final double lastRadius = controller._currentStrokeRadii.last;
         final double dist = (end - lastPoint).distance;
-        
+
         if (dist + endRadius < lastRadius) {
-           final Offset rawDir = (end - lastPoint);
-           final double rawDist = rawDir.distance;
-           final Offset direction = rawDist > 0.001 ? rawDir / rawDist : (end - tip);
-           final double dirMag = direction.distance;
-           final Offset normDir = dirMag > 0.0001 ? direction / dirMag : direction;
-           
-           if (normDir.distanceSquared > 0.0001) {
-              final double targetDist = lastRadius - endRadius + 1.5;
-              end = lastPoint + normDir * targetDist;
-           }
+          final Offset rawDir = (end - lastPoint);
+          final double rawDist = rawDir.distance;
+          final Offset direction = rawDist > 0.001
+              ? rawDir / rawDist
+              : (end - tip);
+          final double dirMag = direction.distance;
+          final Offset normDir = dirMag > 0.0001
+              ? direction / dirMag
+              : direction;
+
+          if (normDir.distanceSquared > 0.0001) {
+            final double targetDist = lastRadius - endRadius + 1.5;
+            end = lastPoint + normDir * targetDist;
+          }
         }
-        
+
         // Append tail segment to vector stroke data
         controller._currentStrokePoints.add(end);
         controller._currentStrokeRadii.add(endRadius);
@@ -459,9 +467,8 @@ bool _strokeSegmentShouldSnapToPoint(double length, double radius) {
 void _strokeDrawPoint(
   BitmapCanvasController controller,
   Offset position,
-  double radius, {
-  bool markDirty = true,
-}) {
+  double radius,
+) {
   if (controller._activeLayer.locked) {
     return;
   }
@@ -520,22 +527,22 @@ bool _strokeDirectionChanged(
   // So points: ..., previous, last, current.
   // The function args passed are 'last' (the point before current) and 'position' (current).
   // We need the point before 'last'.
-  
+
   final int count = controller._currentStrokePoints.length;
   // [..., p2, p1, p0]
   // current = p0
   // last = p1
   // previous = p2
   // We need index count - 3.
-  
+
   final Offset previous = controller._currentStrokePoints[count - 3];
   final Offset v1 = last - previous;
   final Offset v2 = current - last;
-  
+
   if (v1.distanceSquared < 0.0001 || v2.distanceSquared < 0.0001) {
     return false;
   }
-  
+
   final double dot = v1.dx * v2.dx + v1.dy * v2.dy;
   final double mag = math.sqrt(v1.distanceSquared * v2.distanceSquared);
   // cos(theta) = dot / mag

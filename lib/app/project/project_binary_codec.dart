@@ -67,12 +67,14 @@ class ProjectBinaryCodec {
         writer.writeUint32(layer.bitmapWidth!);
         writer.writeUint32(layer.bitmapHeight!);
         final Uint8List rawBitmap = Uint8List.fromList(layer.bitmap!);
-        final Uint8List compressedBitmap =
-            Uint8List.fromList(_encoder.encode(rawBitmap));
+        final Uint8List compressedBitmap = Uint8List.fromList(
+          _encoder.encode(rawBitmap),
+        );
         final bool useCompression = compressedBitmap.length < rawBitmap.length;
         writer.writeUint8(useCompression ? _compressionZlib : _compressionRaw);
-        final Uint8List storedBitmap =
-            useCompression ? compressedBitmap : rawBitmap;
+        final Uint8List storedBitmap = useCompression
+            ? compressedBitmap
+            : rawBitmap;
         writer.writeUint32(storedBitmap.length);
         writer.writeBytes(storedBitmap);
       }
@@ -84,14 +86,15 @@ class ProjectBinaryCodec {
     if (previewRaw.isEmpty) {
       writer.writeBool(false);
     } else {
-      final Uint8List compressedPreview =
-          Uint8List.fromList(_encoder.encode(previewRaw));
-      final bool useCompression =
-          compressedPreview.length < previewRaw.length;
+      final Uint8List compressedPreview = Uint8List.fromList(
+        _encoder.encode(previewRaw),
+      );
+      final bool useCompression = compressedPreview.length < previewRaw.length;
       writer.writeBool(true);
       writer.writeUint8(useCompression ? _compressionZlib : _compressionRaw);
-      final Uint8List storedPreview =
-          useCompression ? compressedPreview : previewRaw;
+      final Uint8List storedPreview = useCompression
+          ? compressedPreview
+          : previewRaw;
       writer.writeUint32(storedPreview.length);
       writer.writeBytes(storedPreview);
     }
@@ -107,10 +110,12 @@ class ProjectBinaryCodec {
 
     final String id = reader.readString();
     final String name = reader.readString();
-    final DateTime createdAt =
-        DateTime.fromMicrosecondsSinceEpoch(reader.readInt64());
-    final DateTime updatedAt =
-        DateTime.fromMicrosecondsSinceEpoch(reader.readInt64());
+    final DateTime createdAt = DateTime.fromMicrosecondsSinceEpoch(
+      reader.readInt64(),
+    );
+    final DateTime updatedAt = DateTime.fromMicrosecondsSinceEpoch(
+      reader.readInt64(),
+    );
 
     final double width = reader.readFloat32();
     final double height = reader.readFloat32();
@@ -134,8 +139,9 @@ class ProjectBinaryCodec {
       final double opacity = reader.readFloat32();
       final bool locked = reader.readBool();
       final bool clippingMask = reader.readBool();
-      final CanvasLayerBlendMode blendMode =
-          _decodeBlendMode(reader.readUint8());
+      final CanvasLayerBlendMode blendMode = _decodeBlendMode(
+        reader.readUint8(),
+      );
 
       Color? fillColor;
       if (reader.readBool()) {
@@ -162,21 +168,23 @@ class ProjectBinaryCodec {
             : encoded;
       }
 
-      layers.add(CanvasLayerData(
-        id: layerId,
-        name: layerName,
-        visible: visible,
-        opacity: opacity,
-        locked: locked,
-        clippingMask: clippingMask,
-        blendMode: blendMode,
-        fillColor: fillColor,
-        bitmap: bitmap,
-        bitmapWidth: bitmapWidth,
-        bitmapHeight: bitmapHeight,
-        bitmapLeft: bitmap != null ? bitmapLeft : null,
-        bitmapTop: bitmap != null ? bitmapTop : null,
-      ));
+      layers.add(
+        CanvasLayerData(
+          id: layerId,
+          name: layerName,
+          visible: visible,
+          opacity: opacity,
+          locked: locked,
+          clippingMask: clippingMask,
+          blendMode: blendMode,
+          fillColor: fillColor,
+          bitmap: bitmap,
+          bitmapWidth: bitmapWidth,
+          bitmapHeight: bitmapHeight,
+          bitmapLeft: bitmap != null ? bitmapLeft : null,
+          bitmapTop: bitmap != null ? bitmapTop : null,
+        ),
+      );
     }
 
     Uint8List? preview;
@@ -214,8 +222,9 @@ class ProjectBinaryCodec {
     final String id = reader.readString();
     final String name = reader.readString();
     reader.readInt64(); // createdAt，无需展示
-    final DateTime updatedAt =
-        DateTime.fromMicrosecondsSinceEpoch(reader.readInt64());
+    final DateTime updatedAt = DateTime.fromMicrosecondsSinceEpoch(
+      reader.readInt64(),
+    );
 
     final double width = reader.readFloat32();
     final double height = reader.readFloat32();
@@ -466,8 +475,7 @@ BigInt _intToUnsignedBigInt64(int value) {
 }
 
 int _composeSignedInt64(int high, int low) {
-  BigInt value =
-      (BigInt.from(high) << _kUint32Bits) | BigInt.from(low);
+  BigInt value = (BigInt.from(high) << _kUint32Bits) | BigInt.from(low);
   if (high >= _kInt64SignBit) {
     value -= _kBigUint64;
   }

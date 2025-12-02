@@ -1,8 +1,6 @@
 part of 'controller.dart';
 
-void _controllerFlushDeferredStrokeCommands(
-  BitmapCanvasController controller,
-) {
+void _controllerFlushDeferredStrokeCommands(BitmapCanvasController controller) {
   if (!controller._vectorDrawingEnabled) {
     controller._commitDeferredStrokeCommandsAsRaster();
     return;
@@ -12,10 +10,10 @@ void _controllerFlushDeferredStrokeCommands(
     return;
   }
 
-  final List<Offset> points =
-      List<Offset>.from(controller._currentStrokePoints);
-  final List<double> radii =
-      List<double>.from(controller._currentStrokeRadii);
+  final List<Offset> points = List<Offset>.from(
+    controller._currentStrokePoints,
+  );
+  final List<double> radii = List<double>.from(controller._currentStrokeRadii);
   final Color color = controller._currentStrokeColor;
   final BrushShape shape = controller._currentBrushShape;
   final bool erase = controller._currentStrokeEraseMode;
@@ -52,8 +50,12 @@ void _controllerFlushDeferredStrokeCommands(
     if (point.dy > maxY) maxY = point.dy;
   }
 
-  final Rect dirtyRegion = Rect.fromLTRB(minX, minY, maxX, maxY)
-      .inflate(maxRadius + 2.0);
+  final Rect dirtyRegion = Rect.fromLTRB(
+    minX,
+    minY,
+    maxX,
+    maxY,
+  ).inflate(maxRadius + 2.0);
 
   controller
       ._rasterizeVectorStroke(
@@ -110,8 +112,9 @@ Future<void> _controllerRasterizeVectorStroke(
 
   final ui.Picture picture = recorder.endRecording();
   final ui.Image image = await picture.toImage(safeWidth, safeHeight);
-  final ByteData? byteData =
-      await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+  final ByteData? byteData = await image.toByteData(
+    format: ui.ImageByteFormat.rawRgba,
+  );
 
   if (byteData == null) {
     image.dispose();
@@ -128,7 +131,7 @@ Future<void> _controllerRasterizeVectorStroke(
         TransferableTypedData.fromList(<Uint8List>[pixels]);
     await controller._ensureWorkerSurfaceSynced();
     await controller._ensureWorkerSelectionMaskSynced();
-    final PaintingWorkerPatch? patch = await controller
+    final PaintingWorkerPatch patch = await controller
         ._ensurePaintingWorker()
         .mergePatch(
           PaintingMergePatchRequest(
@@ -140,10 +143,8 @@ Future<void> _controllerRasterizeVectorStroke(
             erase: erase,
           ),
         );
-    if (patch != null) {
-      controller._applyWorkerPatch(patch);
-      await controller._waitForNextFrame();
-    }
+    controller._applyWorkerPatch(patch);
+    await controller._waitForNextFrame();
   } else {
     final bool applied = controller._mergeVectorPatchOnMainThread(
       rgbaPixels: pixels,
@@ -159,9 +160,7 @@ Future<void> _controllerRasterizeVectorStroke(
   }
 }
 
-void _controllerFlushRealtimeStrokeCommands(
-  BitmapCanvasController controller,
-) {
+void _controllerFlushRealtimeStrokeCommands(BitmapCanvasController controller) {
   if (controller._vectorDrawingEnabled) {
     return;
   }
@@ -232,10 +231,9 @@ void _controllerDispatchDirectPaintCommand(
     controller._enqueuePaintingWorkerCommand(region: bounds, command: command);
     return;
   }
-  controller._applyPaintingCommandsSynchronously(
-    bounds,
-    <PaintingDrawCommand>[command],
-  );
+  controller._applyPaintingCommandsSynchronously(bounds, <PaintingDrawCommand>[
+    command,
+  ]);
 }
 
 Rect? _controllerDirtyRectForCommand(
@@ -349,10 +347,14 @@ bool _controllerMergeVectorPatchOnMainThread(
   }
   final int clampedLeft = math.max(0, math.min(left, controller._width));
   final int clampedTop = math.max(0, math.min(top, controller._height));
-  final int clampedRight =
-      math.max(0, math.min(left + width, controller._width));
-  final int clampedBottom =
-      math.max(0, math.min(top + height, controller._height));
+  final int clampedRight = math.max(
+    0,
+    math.min(left + width, controller._width),
+  );
+  final int clampedBottom = math.max(
+    0,
+    math.min(top + height, controller._height),
+  );
   if (clampedRight <= clampedLeft || clampedBottom <= clampedTop) {
     return false;
   }

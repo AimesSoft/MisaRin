@@ -105,11 +105,7 @@ class ProjectRepository {
     final String fileName = _buildFileName(decoded);
     final String virtualPath = _buildVirtualPath(fileName);
     final ProjectDocument resolved = decoded.copyWith(path: virtualPath);
-    await _webStore!.write(
-      virtualPath,
-      resolved,
-      lastOpened: DateTime.now(),
-    );
+    await _webStore!.write(virtualPath, resolved, lastOpened: DateTime.now());
     return resolved;
   }
 

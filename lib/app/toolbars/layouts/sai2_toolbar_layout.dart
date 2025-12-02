@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:fluent_ui/fluent_ui.dart'
     show Colors, Divider, FluentTheme, Scrollbar;
@@ -52,10 +51,7 @@ class Sai2ToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(child: Text(title, style: theme.typography.bodyStrong)),
-          if (trailing != null) ...[
-            const SizedBox(width: 8),
-            trailing,
-          ],
+          if (trailing != null) ...[const SizedBox(width: 8), trailing],
         ],
       );
     }
@@ -105,7 +101,8 @@ class Sai2ToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: WorkspaceSplitHandle.horizontal(
           onDragUpdate: (delta) {
-            final double base = (currentSplits?.sai2ColorPanelHeight ??
+            final double base =
+                (currentSplits?.sai2ColorPanelHeight ??
                         currentSplits?.sai2ColorPanelMeasuredHeight)
                     ?.clamp(0.0, double.infinity) ??
                 _sai2ColorMinHeight;
@@ -154,8 +151,7 @@ class Sai2ToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
                 ? constraints.maxHeight
                 : 0;
             final double ratio =
-                currentSplits?.sai2ToolbarSectionRatio.clamp(0.0, 1.0) ??
-                    0.5;
+                currentSplits?.sai2ToolbarSectionRatio.clamp(0.0, 1.0) ?? 0.5;
             final int toolbarFlex = math.max(1, (ratio * 1000).round());
             final int settingsFlex = math.max(1, 1000 - toolbarFlex);
             return Column(
@@ -173,19 +169,23 @@ class Sai2ToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
                       if (availableHeight <= 0) {
                         return;
                       }
-                      final double minFraction = (_sai2ToolbarMinHeight /
-                              availableHeight)
-                          .clamp(0.0, 0.9);
-                      final double maxFraction = 1 -
-                          (_sai2ToolSettingsMinHeight / availableHeight)
-                              .clamp(0.0, 0.9);
+                      final double minFraction =
+                          (_sai2ToolbarMinHeight / availableHeight).clamp(
+                            0.0,
+                            0.9,
+                          );
+                      final double maxFraction =
+                          1 -
+                          (_sai2ToolSettingsMinHeight / availableHeight).clamp(
+                            0.0,
+                            0.9,
+                          );
                       if (maxFraction <= minFraction) {
                         return;
                       }
                       final double next = (ratio + delta / availableHeight)
                           .clamp(minFraction, maxFraction);
-                      currentSplits
-                          ?.onSai2ToolbarSectionRatioChanged(next);
+                      currentSplits?.onSai2ToolbarSectionRatioChanged(next);
                     },
                   ),
                 ),
@@ -209,10 +209,7 @@ class Sai2ToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
           Text(elements.layerPanel.title, style: theme.typography.subtitle),
           if (trailing != null) ...[
             const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: trailing,
-            ),
+            Align(alignment: Alignment.centerLeft, child: trailing),
           ],
           const SizedBox(height: 14),
           Expanded(child: elements.layerPanel.child),
@@ -250,12 +247,11 @@ class Sai2ToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
         backgroundColor = fallbackColor;
       }
       final Color borderColor = theme.brightness == Brightness.dark
-        ? Colors.white.withOpacity(0.12)
-        : Colors.black.withOpacity(0.08);
+          ? Colors.white.withOpacity(0.12)
+          : Colors.black.withOpacity(0.08);
 
       Widget buildVerticalSplitHandle() {
-        final Color dividerColor =
-            theme.resources.controlStrokeColorSecondary;
+        final Color dividerColor = theme.resources.controlStrokeColorSecondary;
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -272,8 +268,11 @@ class Sai2ToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
                 if (layerAvailableWidth <= 0) {
                   return;
                 }
-                final double next = (normalizedRatio + delta / layerAvailableWidth)
-                    .clamp(minRatio, 1.0);
+                final double next =
+                    (normalizedRatio + delta / layerAvailableWidth).clamp(
+                      minRatio,
+                      1.0,
+                    );
                 splits?.onSai2LayerPanelWidthRatioChanged(next);
               },
             ),
@@ -340,10 +339,7 @@ class Sai2ToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
     final Widget? exitButton = elements.exitButton;
     final bool hasExitButton = exitButton != null;
     final double exitTop = hasExitButton
-        ? math.max(
-          padding,
-          indicatorTop - gutter - indicatorSize,
-        )
+        ? math.max(padding, indicatorTop - gutter - indicatorSize)
         : 0.0;
 
     final Widget dockedControls = Positioned(
@@ -353,10 +349,7 @@ class Sai2ToolbarLayoutDelegate extends PaintingToolbarLayoutDelegate {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (hasExitButton) ...[
-            exitButton!,
-            SizedBox(height: gutter),
-          ],
+          if (hasExitButton) ...[exitButton, SizedBox(height: gutter)],
           elements.colorIndicator,
         ],
       ),
@@ -417,10 +410,7 @@ class _Sai2ToolbarScrollAreaState extends State<_Sai2ToolbarScrollArea> {
       controller: _controller,
       child: SingleChildScrollView(
         controller: _controller,
-        child: Align(
-          alignment: Alignment.topLeft,
-          child: widget.child,
-        ),
+        child: Align(alignment: Alignment.topLeft, child: widget.child),
       ),
     );
   }

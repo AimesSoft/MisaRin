@@ -20,10 +20,7 @@ class PsdImporter {
 
   Future<ProjectDocument> importFile(String path, {String? displayName}) async {
     final Uint8List data = await File(path).readAsBytes();
-    return importBytes(
-      data,
-      displayName: displayName ?? _nameFromPath(path),
-    );
+    return importBytes(data, displayName: displayName ?? _nameFromPath(path));
   }
 
   Future<ProjectDocument> importBytes(

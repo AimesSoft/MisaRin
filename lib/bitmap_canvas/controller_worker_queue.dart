@@ -37,7 +37,9 @@ void _controllerScheduleWorkerDrawFlush(
     return;
   }
   controller._pendingWorkerDrawScheduled = true;
-  scheduleMicrotask(() => _controllerProcessPendingWorkerDrawCommands(controller));
+  scheduleMicrotask(
+    () => _controllerProcessPendingWorkerDrawCommands(controller),
+  );
 }
 
 void _controllerProcessPendingWorkerDrawCommands(
@@ -51,8 +53,9 @@ void _controllerProcessPendingWorkerDrawCommands(
   }
   controller._pendingWorkerDrawBatch = null;
   final Rect region = batch.region;
-  final List<PaintingDrawCommand> commands =
-      List<PaintingDrawCommand>.from(batch.commands);
+  final List<PaintingDrawCommand> commands = List<PaintingDrawCommand>.from(
+    batch.commands,
+  );
   controller._enqueueWorkerPatchFuture(
     controller._executeWorkerDraw(region: region, commands: commands),
     onError: () =>
@@ -60,7 +63,9 @@ void _controllerProcessPendingWorkerDrawCommands(
   );
 }
 
-void _controllerFlushPendingPaintingCommands(BitmapCanvasController controller) {
+void _controllerFlushPendingPaintingCommands(
+  BitmapCanvasController controller,
+) {
   if (controller._pendingWorkerDrawBatch == null ||
       controller._pendingWorkerDrawBatch!.commands.isEmpty) {
     controller._pendingWorkerDrawBatch = null;
@@ -99,8 +104,8 @@ void _controllerNotifyWorkerIdle(BitmapCanvasController controller) {
   if (controller._paintingWorkerIdleWaiters.isEmpty) {
     return;
   }
-  for (final Completer<void> completer in
-      controller._paintingWorkerIdleWaiters) {
+  for (final Completer<void> completer
+      in controller._paintingWorkerIdleWaiters) {
     if (!completer.isCompleted) {
       completer.complete();
     }
@@ -229,11 +234,16 @@ void _controllerApplyWorkerPatch(
   if (patch.width <= 0 || patch.height <= 0 || patch.pixels.isEmpty) {
     return;
   }
-  final int effectiveLeft = math.max(0, math.min(patch.left, controller._width));
+  final int effectiveLeft = math.max(
+    0,
+    math.min(patch.left, controller._width),
+  );
   final int effectiveTop = math.max(0, math.min(patch.top, controller._height));
   final int maxRight = math.min(effectiveLeft + patch.width, controller._width);
-  final int maxBottom =
-      math.min(effectiveTop + patch.height, controller._height);
+  final int maxBottom = math.min(
+    effectiveTop + patch.height,
+    controller._height,
+  );
   if (maxRight <= effectiveLeft || maxBottom <= effectiveTop) {
     return;
   }
@@ -276,14 +286,10 @@ void _controllerScheduleTileImageDisposal(BitmapCanvasController controller) {
     return;
   }
   controller._tileDisposalScheduled = true;
-  final SchedulerBinding? scheduler = SchedulerBinding.instance;
-  if (scheduler == null) {
-    scheduleMicrotask(() => _controllerFlushTileImageDisposals(controller));
-  } else {
-    scheduler.addPostFrameCallback(
-      (_) => _controllerFlushTileImageDisposals(controller),
-    );
-  }
+  final SchedulerBinding scheduler = SchedulerBinding.instance;
+  scheduler.addPostFrameCallback(
+    (_) => _controllerFlushTileImageDisposals(controller),
+  );
 }
 
 void _controllerFlushTileImageDisposals(BitmapCanvasController controller) {
@@ -368,7 +374,8 @@ Future<Uint8List?> _controllerExecuteSelectionMask(
   final TransferableTypedData pixelData = TransferableTypedData.fromList(
     <Uint8List>[Uint8List.view(pixels.buffer)],
   );
-  final Uint8List mask = await controller._ensurePaintingWorker()
+  final Uint8List mask = await controller
+      ._ensurePaintingWorker()
       .computeSelectionMask(
         PaintingSelectionMaskRequest(
           width: controller._width,
@@ -385,8 +392,7 @@ Future<Uint8List?> _controllerExecuteSelectionMask(
 RasterIntRect _controllerClipRectToSurface(
   BitmapCanvasController controller,
   Rect rect,
-) =>
-    controller._rasterBackend.clipRectToSurface(rect);
+) => controller._rasterBackend.clipRectToSurface(rect);
 
 bool _controllerIsSurfaceEmpty(BitmapSurface surface) {
   for (final int pixel in surface.pixels) {

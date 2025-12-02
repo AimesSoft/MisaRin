@@ -16,9 +16,7 @@ class StrokeLatencyMonitor {
 
   void recordStrokeStart() {
     _pendingSamples.add(
-      _LatencySample(
-        startMicros: DateTime.now().microsecondsSinceEpoch,
-      ),
+      _LatencySample(startMicros: DateTime.now().microsecondsSinceEpoch),
     );
   }
 

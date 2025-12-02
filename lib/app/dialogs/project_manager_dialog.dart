@@ -220,8 +220,9 @@ class _ProjectManagerContentState extends State<_ProjectManagerContent> {
             Tooltip(
               message: '打开所选项目所在文件夹',
               child: Button(
-                onPressed:
-                    !_revealing && hasSelection ? () => _revealSelected() : null,
+                onPressed: !_revealing && hasSelection
+                    ? () => _revealSelected()
+                    : null,
                 child: _revealing
                     ? const SizedBox(
                         height: 14,

@@ -604,12 +604,8 @@ mixin _PaintingBoardLayerTransformMixin on _PaintingBoardBase {
       }
     }
 
-    final SchedulerBinding? scheduler = SchedulerBinding.instance;
-    if (scheduler != null) {
-      await scheduler.endOfFrame;
-    } else {
-      await Future<void>.delayed(Duration.zero);
-    }
+    final SchedulerBinding scheduler = SchedulerBinding.instance;
+    await scheduler.endOfFrame;
   }
 
   Future<_LayerTransformRenderResult> _renderLayerTransformResult(
@@ -850,7 +846,7 @@ mixin _PaintingBoardLayerTransformMixin on _PaintingBoardBase {
     final Offset? nextPosition = shouldShow
         ? _boardRect.topLeft +
               Offset(
-                boardLocal!.dx * _viewport.scale,
+                boardLocal.dx * _viewport.scale,
                 boardLocal.dy * _viewport.scale,
               )
         : null;
@@ -1162,36 +1158,13 @@ mixin _PaintingBoardLayerTransformMixin on _PaintingBoardBase {
             horizontal: 12,
             vertical: 8,
           ),
-          child: ready
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '旋转：${(state!.rotation * 180 / math.pi).toStringAsFixed(1)}°',
-                      style: theme.typography.body,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '缩放：${(state.scaleX * 100).toStringAsFixed(1)}% × '
-                      '${(state.scaleY * 100).toStringAsFixed(1)}%',
-                      style: theme.typography.body,
-                    ),
-                  ],
-                )
-              : Row(
-                  children: const [
-                    ProgressRing(),
-                    SizedBox(width: 8),
-                    Text('正在准备图层…'),
-                  ],
-                ),
           footer: Row(
             children: [
               Button(
                 onPressed: ready && !_layerTransformApplying
                     ? () {
                         setState(() {
-                          state!.reset();
+                          state.reset();
                           _layerTransformRevision++;
                         });
                       }
@@ -1216,6 +1189,29 @@ mixin _PaintingBoardLayerTransformMixin on _PaintingBoardBase {
               ),
             ],
           ),
+          child: ready
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '旋转：${(state.rotation * 180 / math.pi).toStringAsFixed(1)}°',
+                      style: theme.typography.body,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '缩放：${(state.scaleX * 100).toStringAsFixed(1)}% × '
+                      '${(state.scaleY * 100).toStringAsFixed(1)}%',
+                      style: theme.typography.body,
+                    ),
+                  ],
+                )
+              : Row(
+                  children: const [
+                    ProgressRing(),
+                    SizedBox(width: 8),
+                    Text('正在准备图层…'),
+                  ],
+                ),
         ),
       ),
     );

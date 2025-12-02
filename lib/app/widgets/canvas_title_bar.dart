@@ -1,11 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
-import 'package:flutter/widgets.dart'
-    show
-        ClampingScrollPhysics,
-        ReorderableDragStartListener,
-        ReorderableListView;
 import 'package:window_manager/window_manager.dart';
 
 import '../workspace/canvas_workspace_controller.dart';
@@ -335,10 +330,8 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
         theme.typography.body?.color ??
         theme.typography.bodyStrong?.color ??
         inactiveTextColor;
-    final Color textColor =
-        highlight ? hoverTextColor : inactiveTextColor;
-    final Color closeIconColor =
-        textColor.withOpacity(highlight ? 0.95 : 0.75);
+    final Color textColor = highlight ? hoverTextColor : inactiveTextColor;
+    final Color closeIconColor = textColor.withOpacity(highlight ? 0.95 : 0.75);
     final List<BoxShadow>? shadows = highlight
         ? [
             BoxShadow(
