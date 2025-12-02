@@ -954,6 +954,13 @@ mixin _PaintingBoardBuildMixin
     if (_layerOpacityPreviewActiveLayerImage == null) {
       return const SizedBox.shrink();
     }
+    final theme = FluentTheme.of(context);
+    final Color checkerLightColor = theme.brightness.isDark
+        ? const Color(0xFF242424)
+        : const Color(0xFFF5F5F5);
+    final Color checkerDarkColor = theme.brightness.isDark
+        ? const Color(0xFF1C1C1C)
+        : const Color(0xFFE0E0E0);
     final bool hasVisibleLowerLayers =
         _layerOpacityPreviewHasVisibleLowerLayers;
     Widget activeLayerWidget = RawImage(
@@ -974,11 +981,12 @@ mixin _PaintingBoardBuildMixin
       if (_layerOpacityPreviewBackground != null)
         RawImage(image: _layerOpacityPreviewBackground)
       else if (!hasVisibleLowerLayers)
-                                                          const _CheckboardBackground(
-                                                            cellSize: 8.0,
-                                                            lightColor: theme.brightness.isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5),
-                                                            darkColor: theme.brightness.isDark ? const Color(0xFF1C1C1C) : const Color(0xFFE0E0E0),
-                                                          ),      activeLayerWidget,
+        _CheckboardBackground(
+          cellSize: 8.0,
+          lightColor: checkerLightColor,
+          darkColor: checkerDarkColor,
+        ),
+      activeLayerWidget,
     ];
     if (_layerOpacityPreviewForeground != null) {
       children.add(RawImage(image: _layerOpacityPreviewForeground));
