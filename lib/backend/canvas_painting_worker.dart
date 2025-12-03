@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:ui'; // Keep dart:ui for Color, but DO NOT use Canvas/PictureRecorder here.
 
 import '../bitmap_canvas/bitmap_canvas.dart';
+import '../bitmap_canvas/soft_spray_stamp.dart';
 import '../canvas/canvas_tools.dart';
 import '../canvas/brush_shape_geometry.dart';
 // Removed vector_stroke_painter import as we don't draw vectors in worker anymore.
@@ -16,6 +17,7 @@ enum PaintingDrawCommandType {
   stampSegment,
   vectorStroke, // Kept for enum stability, but unused in worker
   filledPolygon,
+  softSprayStamp,
 }
 
 class PaintingDrawCommand {
@@ -35,6 +37,10 @@ class PaintingDrawCommand {
     this.points,
     this.radii,
     this.softness,
+    this.stampAlpha,
+    this.stampSize,
+    this.stampOuterScale,
+    this.softSprayStamp,
   });
 
   factory PaintingDrawCommand.brushStamp({
@@ -55,6 +61,27 @@ class PaintingDrawCommand {
       radius: radius,
       shapeIndex: shapeIndex,
       softness: softness,
+    );
+  }
+
+  factory PaintingDrawCommand.softSprayStamp({
+    required Offset center,
+    required double radius,
+    required int colorValue,
+    required bool erase,
+    required SoftSprayStamp stamp,
+  }) {
+    return PaintingDrawCommand._(
+      type: PaintingDrawCommandType.softSprayStamp,
+      color: colorValue,
+      antialiasLevel: 0,
+      erase: erase,
+      center: center,
+      radius: radius,
+      stampAlpha: stamp.alpha,
+      stampSize: stamp.size,
+      stampOuterScale: stamp.outerRadiusScale,
+      softSprayStamp: stamp,
     );
   }
 
@@ -174,6 +201,10 @@ class PaintingDrawCommand {
   final bool? includeStartCap;
   final List<Offset>? points;
   final double? softness;
+  final Uint8List? stampAlpha;
+  final int? stampSize;
+  final double? stampOuterScale;
+  final SoftSprayStamp? softSprayStamp;
   final List<double>? radii;
 
   Map<String, Object?> toJson() {
@@ -193,6 +224,9 @@ class PaintingDrawCommand {
       'includeStartCap': includeStartCap,
       'points': points?.map((p) => <double>[p.dx, p.dy]).toList(),
       'radii': radii,
+      'stampAlpha': stampAlpha,
+      'stampSize': stampSize,
+      'stampOuterScale': stampOuterScale,
     };
   }
 }
@@ -1135,6 +1169,34 @@ void _paintingWorkerApplyCommand({
         color: color,
         mask: mask,
         antialiasLevel: antialias,
+        erase: erase,
+      );
+      break;
+    case PaintingDrawCommandType.softSprayStamp:
+      final List<double>? centerData =
+          (command['center'] as List<dynamic>?)?.cast<double>();
+      final double radius = (command['radius'] as num? ?? 0).toDouble();
+      final Uint8List? stampAlpha = command['stampAlpha'] as Uint8List?;
+      final int stampSize = command['stampSize'] as int? ?? 0;
+      final double stampOuterScale =
+          (command['stampOuterScale'] as num? ?? 1.0).toDouble();
+      if (centerData == null ||
+          stampAlpha == null ||
+          stampSize <= 0 ||
+          stampOuterScale <= 0) {
+        break;
+      }
+      final SoftSprayStamp stamp = SoftSprayStamp(
+        size: stampSize,
+        alpha: stampAlpha,
+        outerRadiusScale: stampOuterScale,
+      );
+      surface.drawSoftSprayStamp(
+        center: _relativeOffset(centerData, originX, originY),
+        radius: radius,
+        color: color,
+        stamp: stamp,
+        mask: mask,
         erase: erase,
       );
       break;

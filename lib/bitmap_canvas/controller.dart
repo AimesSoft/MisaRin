@@ -22,6 +22,7 @@ import 'raster_frame.dart';
 import 'raster_tile_cache.dart';
 import 'raster_int_rect.dart';
 import 'soft_brush_profile.dart';
+import 'soft_spray_stamp.dart';
 import 'stroke_dynamics.dart';
 import 'stroke_pressure_simulator.dart';
 import '../canvas/brush_shape_geometry.dart';
@@ -551,6 +552,23 @@ class BitmapCanvasController extends ChangeNotifier {
     );
     _dispatchDirectPaintCommand(command);
   }
+
+  void drawSoftSprayStamp({
+    required Offset center,
+    required double radius,
+    required Color color,
+    required SoftSprayStamp stamp,
+    bool erase = false,
+  }) =>
+      _dispatchDirectPaintCommand(
+        PaintingDrawCommand.softSprayStamp(
+          center: center,
+          radius: radius,
+          colorValue: color.value,
+          erase: erase,
+          stamp: stamp,
+        ),
+      );
 
   bool applyAntialiasToActiveLayer(int level, {bool previewOnly = false}) =>
       _controllerApplyAntialiasToActiveLayer(

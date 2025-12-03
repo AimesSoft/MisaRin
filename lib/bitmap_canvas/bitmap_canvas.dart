@@ -6,6 +6,7 @@ import 'dart:ui';
 import '../canvas/brush_shape_geometry.dart';
 import '../canvas/canvas_tools.dart';
 import 'soft_brush_profile.dart';
+import 'soft_spray_stamp.dart';
 
 const double _kSubpixelRadiusLimit = 0.6;
 const double _kHalfPixel = 0.5;
@@ -112,6 +113,64 @@ class BitmapSurface {
           continue;
         }
         if (coverage >= 0.999 && softnessClamped <= 0.0) {
+          _blendPixelWithArgb(x, y, baseColor, erase: erase);
+          continue;
+        }
+        final int adjustedAlpha = (baseAlpha * coverage).round().clamp(0, 255);
+        if (adjustedAlpha == 0) {
+          continue;
+        }
+        final int encoded = (adjustedAlpha << 24) | baseRgb;
+        _blendPixelWithArgb(x, y, encoded, erase: erase);
+      }
+    }
+  }
+
+  void drawSoftSprayStamp({
+    required Offset center,
+    required double radius,
+    required Color color,
+    required SoftSprayStamp stamp,
+    Uint8List? mask,
+    bool erase = false,
+  }) {
+    if (radius <= 0) {
+      return;
+    }
+    final double outerRadius = radius * stamp.outerRadiusScale;
+    final double extent = outerRadius + 1.5;
+    final int minX = math.max(0, (center.dx - extent).floor());
+    final int maxX = math.min(width - 1, (center.dx + extent).ceil());
+    final int minY = math.max(0, (center.dy - extent).floor());
+    final int maxY = math.min(height - 1, (center.dy + extent).ceil());
+    if (minX > maxX || minY > maxY) {
+      return;
+    }
+    final double sampleScale = (stamp.size - 1) / (outerRadius * 2.0);
+    final double originX = center.dx - outerRadius;
+    final double originY = center.dy - outerRadius;
+    final int baseColor = color.toARGB32();
+    final int baseAlpha = (baseColor >> 24) & 0xff;
+    final int baseRgb = baseColor & 0x00ffffff;
+    for (int y = minY; y <= maxY; y++) {
+      final double sampleY = (y + 0.5 - originY) * sampleScale;
+      if (sampleY < 0 || sampleY > stamp.size - 1) {
+        continue;
+      }
+      final int rowIndex = y * width;
+      for (int x = minX; x <= maxX; x++) {
+        if (mask != null && mask[rowIndex + x] == 0) {
+          continue;
+        }
+        final double sampleX = (x + 0.5 - originX) * sampleScale;
+        if (sampleX < 0 || sampleX > stamp.size - 1) {
+          continue;
+        }
+        final double coverage = stamp.sample(sampleX, sampleY);
+        if (coverage <= 0.0) {
+          continue;
+        }
+        if (coverage >= 0.999) {
           _blendPixelWithArgb(x, y, baseColor, erase: erase);
           continue;
         }

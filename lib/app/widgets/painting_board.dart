@@ -75,6 +75,8 @@ import '../toolbars/widgets/tool_settings_card.dart';
 import '../toolbars/layouts/layouts.dart';
 import '../toolbars/widgets/measured_size.dart';
 import '../../painting/krita_spray_engine.dart';
+import '../../painting/soft_spray_stamp_cache.dart';
+import '../../bitmap_canvas/soft_spray_stamp.dart';
 import 'tool_cursor_overlay.dart';
 import 'bitmap_canvas_surface.dart';
 import '../shortcuts/toolbar_shortcuts.dart';
@@ -1735,6 +1737,9 @@ class PaintingBoardState extends _PaintingBoardBase
       widget.onReadyChanged?.call(true);
     }
     _resetHistory();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SoftSprayStampCache.instance.ensure(1.0);
+    });
   }
 
   @override

@@ -9,6 +9,9 @@ mixin _PaintingBoardInteractionMixin
         _PaintingBoardShapeMixin,
         _PaintingBoardReferenceMixin,
         TickerProvider {
+  final SoftSprayStampCache _softSprayStampCache = SoftSprayStampCache.instance;
+  bool _softSprayLoggedGpuUsage = false;
+  bool _softSprayLoggedCpuFallback = false;
   void clear() async {
     await _pushUndoSnapshot();
     _controller.clear();
@@ -794,20 +797,47 @@ mixin _PaintingBoardInteractionMixin
     if (opacityScale <= 0.0) {
       return;
     }
+    const double softness = 1.0;
+    final SoftSprayStamp? stamp = _softSprayStampCache.resolve(softness);
+    final Color resolvedColor = baseColor.withOpacity(opacityScale);
+    if (stamp != null) {
+      if (!_softSprayLoggedGpuUsage) {
+        debugPrint(
+          '[SoftSpray] 使用 GPU 烘焙贴图绘制 (size=${stamp.size}, scale=${stamp.outerRadiusScale.toStringAsFixed(2)})',
+        );
+        _softSprayLoggedGpuUsage = true;
+      }
+      _controller.drawSoftSprayStamp(
+        center: position,
+        radius: radius,
+        color: resolvedColor,
+        stamp: stamp,
+        erase: erase,
+      );
+      _softSprayLoggedCpuFallback = false;
+      return;
+    }
+    if (!_softSprayLoggedCpuFallback) {
+      debugPrint('[SoftSpray] GPU 贴图尚未准备好，退化到 CPU 绘制软刷');
+      _softSprayLoggedCpuFallback = true;
+    }
+    _softSprayStampCache.ensure(softness);
     _controller.drawBrushStamp(
       center: position,
       radius: radius,
-      color: baseColor.withOpacity(opacityScale),
+      color: resolvedColor,
       brushShape: BrushShape.circle,
       antialiasLevel: 3,
       erase: erase,
-      softness: 1.0,
+      softness: softness,
     );
   }
 
   double _softSpraySpacingForRadius(double radius) {
-    final double scaled = radius * 0.28;
-    return scaled.clamp(0.45, math.max(0.45, radius * 0.55));
+    final double minSpacing = math.max(0.75, radius * 0.45);
+    final double scaled = radius * 0.75;
+    final double maxSpacing = math.max(minSpacing, radius * 0.95);
+    return scaled.clamp(minSpacing, maxSpacing);
   }
 
   void _emitReleaseSamples({

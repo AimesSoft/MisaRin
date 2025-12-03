@@ -315,6 +315,21 @@ Rect? _controllerDirtyRectForCommand(
       }
       final double padding = 2.0 + command.antialiasLevel.clamp(0, 3) * 1.2;
       return Rect.fromLTRB(minX, minY, maxX, maxY).inflate(padding);
+    case PaintingDrawCommandType.softSprayStamp:
+      final Offset? center = command.center;
+      final double? radius = command.radius;
+      final double outerScale =
+          command.softSprayStamp?.outerRadiusScale ??
+          command.stampOuterScale ??
+          1.0;
+      if (center == null || radius == null) {
+        return null;
+      }
+      final double outerRadius = radius * outerScale;
+      return Rect.fromCircle(
+        center: center,
+        radius: outerRadius,
+      ).inflate(2.0);
   }
 }
 
@@ -568,22 +583,40 @@ void _controllerApplyPaintingCommandsSynchronously(
         break;
       case PaintingDrawCommandType.vectorStroke:
         break;
-      case PaintingDrawCommandType.filledPolygon:
-        final List<Offset>? points = command.points;
-        if (points == null || points.length < 3) {
-          continue;
-        }
-        surface.drawFilledPolygon(
-          vertices: points,
-          color: color,
-          mask: mask,
-          antialiasLevel: command.antialiasLevel,
-          erase: erase,
-        );
-        anyChange = true;
-        break;
-    }
+    case PaintingDrawCommandType.filledPolygon:
+      final List<Offset>? points = command.points;
+      if (points == null || points.length < 3) {
+        continue;
+      }
+      surface.drawFilledPolygon(
+        vertices: points,
+        color: color,
+        mask: mask,
+        antialiasLevel: command.antialiasLevel,
+        erase: erase,
+      );
+      anyChange = true;
+      break;
+    case PaintingDrawCommandType.softSprayStamp:
+      final Offset? center = command.center;
+      final double? radius = command.radius;
+      final SoftSprayStamp? stamp = command.softSprayStamp ??
+          _commandSoftSprayStampFromPayload(command);
+      if (center == null || radius == null || stamp == null) {
+        continue;
+      }
+      _controllerDrawSoftSprayStamp(
+        controller,
+        center: center,
+        radius: radius,
+        color: color,
+        stamp: stamp,
+        erase: erase,
+      );
+      anyChange = true;
+      break;
   }
+}
   if (!anyChange) {
     return;
   }
@@ -591,6 +624,53 @@ void _controllerApplyPaintingCommandsSynchronously(
   controller._activeLayer.revision += 1;
   controller._markDirty(
     region: region,
+    layerId: controller._activeLayer.id,
+    pixelsDirty: true,
+  );
+}
+
+SoftSprayStamp? _commandSoftSprayStampFromPayload(
+  PaintingDrawCommand command,
+) {
+  final Uint8List? alpha = command.stampAlpha;
+  final int? size = command.stampSize;
+  final double? scale = command.stampOuterScale;
+  if (alpha == null || size == null || scale == null) {
+    return null;
+  }
+  return SoftSprayStamp(
+    size: size,
+    alpha: alpha,
+    outerRadiusScale: scale,
+  );
+}
+
+void _controllerDrawSoftSprayStamp(
+  BitmapCanvasController controller, {
+  required Offset center,
+  required double radius,
+  required Color color,
+  required SoftSprayStamp stamp,
+  bool erase = false,
+}) {
+  if (controller._layers.isEmpty || controller._activeLayer.locked) {
+    return;
+  }
+  final double outerRadius = radius * stamp.outerRadiusScale;
+  final Rect dirtyRegion =
+      Rect.fromCircle(center: center, radius: outerRadius).inflate(2.0);
+  controller._activeSurface.drawSoftSprayStamp(
+        center: center,
+        radius: radius,
+        color: color,
+        stamp: stamp,
+        mask: controller._selectionMask,
+        erase: erase,
+      );
+  controller._resetWorkerSurfaceSync();
+  controller._activeLayer.revision += 1;
+  controller._markDirty(
+    region: dirtyRegion,
     layerId: controller._activeLayer.id,
     pixelsDirty: true,
   );
