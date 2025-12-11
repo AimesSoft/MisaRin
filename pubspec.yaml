@@ -81,6 +81,7 @@ flutter:
   shaders:
     - shaders/antialias_alpha.frag
     - shaders/antialias_edge.frag
+    - shaders/gpu_brush.frag
 
   # To add assets to your application, add an assets section, like this:
   # assets:

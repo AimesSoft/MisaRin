@@ -87,6 +87,7 @@ import '../toolbars/widgets/tool_settings_card.dart';
 import '../toolbars/layouts/layouts.dart';
 import '../toolbars/widgets/measured_size.dart';
 import '../../painting/krita_spray_engine.dart';
+import 'canvas_board_client.dart';
 import 'tool_cursor_overlay.dart';
 import 'bitmap_canvas_surface.dart';
 import '../shortcuts/toolbar_shortcuts.dart';
@@ -1088,6 +1089,9 @@ abstract class _PaintingBoardBase extends State<PaintingBoard> {
 
   List<CanvasLayerData> snapshotLayers() => _controller.snapshotLayers();
 
+  @override
+  Future<List<CanvasLayerData>> exportLayers() async => snapshotLayers();
+
   CanvasRotationResult? rotateCanvas(CanvasRotation rotation) {
     final int width = _controller.width;
     final int height = _controller.height;
@@ -1866,7 +1870,8 @@ class PaintingBoardState extends _PaintingBoardBase
         _PaintingBoardClipboardMixin,
         _PaintingBoardInteractionMixin,
         _PaintingBoardFilterMixin,
-        _PaintingBoardBuildMixin {
+        _PaintingBoardBuildMixin
+    implements CanvasBoardClient {
   @override
   void initState() {
     super.initState();

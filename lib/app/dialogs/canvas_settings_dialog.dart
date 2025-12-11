@@ -113,6 +113,7 @@ class _CanvasSettingsDialogState extends State<_CanvasSettingsDialog> {
   late Color _selectedColor;
   _ResolutionPreset? _selectedPreset;
   WorkspacePreset _selectedWorkspacePreset = WorkspacePreset.none;
+  CanvasRenderBackend _selectedRenderBackend = CanvasRenderBackend.cpu;
   String? _errorMessage;
 
   @override
@@ -132,6 +133,7 @@ class _CanvasSettingsDialogState extends State<_CanvasSettingsDialog> {
       widget.initialSettings.width.round(),
       widget.initialSettings.height.round(),
     );
+    _selectedRenderBackend = widget.initialSettings.renderBackend;
   }
 
   @override
@@ -170,6 +172,7 @@ class _CanvasSettingsDialogState extends State<_CanvasSettingsDialog> {
           width: width.toDouble(),
           height: height.toDouble(),
           backgroundColor: _selectedColor,
+          renderBackend: _selectedRenderBackend,
         ),
         workspacePreset: _selectedWorkspacePreset,
       ),
@@ -219,6 +222,42 @@ class _CanvasSettingsDialogState extends State<_CanvasSettingsDialog> {
                     ),
                     const SizedBox(height: 8),
                     _buildPresetDescription(theme),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              InfoLabel(
+                label: '渲染后端',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ComboBox<CanvasRenderBackend>(
+                      isExpanded: true,
+                      value: _selectedRenderBackend,
+                      items: const [
+                        ComboBoxItem(
+                          value: CanvasRenderBackend.cpu,
+                          child: Text('CPU（默认稳定）'),
+                        ),
+                        ComboBoxItem(
+                          value: CanvasRenderBackend.gpu,
+                          child: Text('GPU（实验性，仅基础画笔）'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+                        setState(() => _selectedRenderBackend = value);
+                      },
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'GPU 画布走独立的着色器渲染路径，目前只有基础画笔功能，后续会逐步完善。',
+                      style:
+                          theme.typography.caption ??
+                          const TextStyle(fontSize: 12),
+                    ),
                   ],
                 ),
               ),

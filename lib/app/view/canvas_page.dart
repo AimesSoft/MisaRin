@@ -37,7 +37,9 @@ import '../project/project_repository.dart';
 import '../psd/psd_exporter.dart';
 import '../toolbars/layouts/painting_toolbar_layout.dart';
 import '../widgets/app_notification.dart';
+import '../widgets/canvas_board_client.dart';
 import '../widgets/canvas_title_bar.dart';
+import '../widgets/gpu_painting_board.dart';
 import '../widgets/painting_board.dart';
 import '../workspace/canvas_workspace_controller.dart';
 import '../workspace/workspace_shared_state.dart';
@@ -72,8 +74,10 @@ class _ImportedPaletteEntry {
 }
 
 class CanvasPageState extends State<CanvasPage> {
-  final Map<String, GlobalKey<PaintingBoardState>> _boardKeys =
+  final Map<String, GlobalKey<PaintingBoardState>> _cpuBoardKeys =
       <String, GlobalKey<PaintingBoardState>>{};
+  final Map<String, GlobalKey<GpuPaintingBoardState>> _gpuBoardKeys =
+      <String, GlobalKey<GpuPaintingBoardState>>{};
   final CanvasExporter _exporter = CanvasExporter();
   final ProjectRepository _repository = ProjectRepository.instance;
   final CanvasWorkspaceController _workspace =
@@ -109,7 +113,11 @@ class CanvasPageState extends State<CanvasPage> {
   Widget? _menuOverlay;
   bool _initialBoardReadyDispatched = false;
 
-  PaintingBoardState? get _activeBoard => _boardFor(_document.id);
+  CanvasBoardClient? get _activeBoard => _boardFor(_document.id);
+  PaintingBoardState? get _activeCpuBoard =>
+      _cpuBoardKeys[_document.id]?.currentState;
+  bool get _isGpuCanvas =>
+      _document.settings.renderBackend == CanvasRenderBackend.gpu;
   bool get _supportsFileDrops =>
       !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
 
@@ -197,33 +205,27 @@ class CanvasPageState extends State<CanvasPage> {
     _workspace.markDirty(entry.id, true);
   }
 
-  void _snapshotWorkspaceState([PaintingBoardState? board]) {
-    final PaintingBoardState? source = board ?? _activeBoard;
-    if (source == null) {
+  void _snapshotWorkspaceState([CanvasBoardClient? board]) {
+    final CanvasBoardClient? candidate = board ?? _activeBoard;
+    if (candidate is! PaintingBoardState) {
       return;
     }
-    _sharedOverlaySnapshot = source.buildWorkspaceOverlaySnapshot();
-    _sharedToolSettingsSnapshot = source.buildToolSettingsSnapshot();
+    _sharedOverlaySnapshot = candidate.buildWorkspaceOverlaySnapshot();
+    _sharedToolSettingsSnapshot = candidate.buildToolSettingsSnapshot();
   }
 
   void _restoreWorkspaceStateFor(String id) {
-    final PaintingBoardState? board = _boardFor(id);
-    if (board == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        _restoreWorkspaceStateFor(id);
-      });
+    final CanvasBoardClient? candidate = _boardFor(id);
+    if (candidate is! PaintingBoardState) {
       return;
     }
     final ToolSettingsSnapshot? toolSnapshot = _sharedToolSettingsSnapshot;
     if (toolSnapshot != null) {
-      board.applyToolSettingsSnapshot(toolSnapshot);
+      candidate.applyToolSettingsSnapshot(toolSnapshot);
     }
     final WorkspaceOverlaySnapshot? overlaySnapshot = _sharedOverlaySnapshot;
     if (overlaySnapshot != null) {
-      unawaited(board.restoreWorkspaceOverlaySnapshot(overlaySnapshot));
+      unawaited(candidate.restoreWorkspaceOverlaySnapshot(overlaySnapshot));
     }
   }
 
@@ -276,16 +278,33 @@ class CanvasPageState extends State<CanvasPage> {
     return _sanitizeFileName(raw);
   }
 
-  GlobalKey<PaintingBoardState> _ensureBoardKey(String id) {
-    return _boardKeys.putIfAbsent(id, () => GlobalKey<PaintingBoardState>());
+  GlobalKey<PaintingBoardState> _ensureCpuBoardKey(String id) {
+    return _cpuBoardKeys.putIfAbsent(id, () => GlobalKey<PaintingBoardState>());
   }
 
-  PaintingBoardState? _boardFor(String id) {
-    return _boardKeys[id]?.currentState;
+  GlobalKey<GpuPaintingBoardState> _ensureGpuBoardKey(String id) {
+    return _gpuBoardKeys.putIfAbsent(id, () => GlobalKey<GpuPaintingBoardState>());
+  }
+
+  CanvasBoardClient? _boardFor(String id) {
+    return _gpuBoardKeys[id]?.currentState ?? _cpuBoardKeys[id]?.currentState;
+  }
+
+  void _ensureBoardKeyForDocument(ProjectDocument document) {
+    if (document.settings.renderBackend == CanvasRenderBackend.gpu) {
+      _ensureGpuBoardKey(document.id);
+    } else {
+      _ensureCpuBoardKey(document.id);
+    }
+  }
+
+  void _ensureBoardKeyForEntry(CanvasWorkspaceEntry entry) {
+    _ensureBoardKeyForDocument(entry.document);
   }
 
   void _removeBoardKey(String id) {
-    _boardKeys.remove(id);
+    _cpuBoardKeys.remove(id);
+    _gpuBoardKeys.remove(id);
     _boardReadyCompleters.remove(id)?.complete();
     _removeDocumentHistory(id);
   }
@@ -296,7 +315,7 @@ class CanvasPageState extends State<CanvasPage> {
     }
     final Completer<void> completer = Completer<void>();
     _boardReadyCompleters[id] = completer;
-    final PaintingBoardState? board = _boardFor(id);
+    final CanvasBoardClient? board = _boardFor(id);
     if (board != null && board.isBoardReady) {
       scheduleMicrotask(() {
         _boardReadyCompleters.remove(id)?.complete();
@@ -400,7 +419,7 @@ class CanvasPageState extends State<CanvasPage> {
       setState(() {
         _importedPalettes.add(entry);
       });
-      final PaintingBoardState? board = _activeBoard;
+      final PaintingBoardState? board = _activeCpuBoard;
       board?.showPaletteFromColors(title: entry.name, colors: entry.colors);
       if (!mounted) {
         return;
@@ -436,7 +455,7 @@ class CanvasPageState extends State<CanvasPage> {
     if (entry == null) {
       return;
     }
-    final PaintingBoardState? board = _activeBoard;
+    final PaintingBoardState? board = _activeCpuBoard;
     board?.showPaletteFromColors(title: entry.name, colors: entry.colors);
   }
 
@@ -471,7 +490,7 @@ class CanvasPageState extends State<CanvasPage> {
     _document = widget.document;
     _workspace.open(_document, activate: true);
     _workspace.markDirty(_document.id, false);
-    _ensureBoardKey(_document.id);
+    _ensureBoardKeyForDocument(_document);
     _updateMenuOverlay();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureInitialSave();
@@ -508,7 +527,7 @@ class CanvasPageState extends State<CanvasPage> {
     if (_isAutoSaving) {
       return false;
     }
-    final PaintingBoardState? board = _activeBoard;
+    final CanvasBoardClient? board = _activeBoard;
     if (board == null) {
       return false;
     }
@@ -523,7 +542,7 @@ class CanvasPageState extends State<CanvasPage> {
     }
     setState(() => _isAutoSaving = true);
     try {
-      final layers = board.snapshotLayers();
+      final layers = await board.exportLayers();
       final preview = await _exporter.exportToPng(
         settings: _document.settings,
         layers: layers,
@@ -587,7 +606,7 @@ class CanvasPageState extends State<CanvasPage> {
     if (!mounted || _isSaving || _isAutoSaving) {
       return false;
     }
-    final PaintingBoardState? board = _activeBoard;
+    final CanvasBoardClient? board = _activeBoard;
     if (board == null) {
       _showInfoBar('画布尚未准备好，无法保存。', severity: InfoBarSeverity.error);
       return false;
@@ -633,7 +652,7 @@ class CanvasPageState extends State<CanvasPage> {
 
     setState(() => _isSaving = true);
     try {
-      final layers = board.snapshotLayers();
+      final layers = await board.exportLayers();
       final perspective = board.snapshotPerspectiveGuide();
       final preview = await _exporter.exportToPng(
         settings: _document.settings,
@@ -690,13 +709,13 @@ class CanvasPageState extends State<CanvasPage> {
   }
 
   Future<bool> _saveProjectAsOnWeb({
-    required PaintingBoardState board,
+    required CanvasBoardClient board,
     required _ExportChoice choice,
     required String fileName,
   }) async {
     setState(() => _isSaving = true);
     try {
-      final layers = board.snapshotLayers();
+      final layers = await board.exportLayers();
       final perspective = board.snapshotPerspectiveGuide();
       final Uint8List preview = await _exporter.exportToPng(
         settings: _document.settings,
@@ -789,7 +808,7 @@ class CanvasPageState extends State<CanvasPage> {
   }
 
   Future<bool> _exportProject() async {
-    final PaintingBoardState? board = _activeBoard;
+    final CanvasBoardClient? board = _activeBoard;
     if (board == null) {
       _showInfoBar('画布尚未准备好，无法导出。', severity: InfoBarSeverity.error);
       return false;
@@ -832,7 +851,7 @@ class CanvasPageState extends State<CanvasPage> {
 
     try {
       setState(() => _isSaving = true);
-      final layers = board.snapshotLayers();
+      final layers = await board.exportLayers();
       final Uint8List bytes = exportVector
           ? await _exporter.exportToSvg(
               settings: _document.settings,
@@ -877,7 +896,11 @@ class CanvasPageState extends State<CanvasPage> {
   }
 
   void _applyCanvasRotation(CanvasRotation rotation) {
-    final PaintingBoardState? board = _activeBoard;
+    if (_isGpuCanvas) {
+      _showInfoBar('GPU 画布暂不支持图像旋转。', severity: InfoBarSeverity.warning);
+      return;
+    }
+    final PaintingBoardState? board = _activeCpuBoard;
     if (board == null) {
       _showInfoBar('画布尚未准备好，无法执行图像变换。', severity: InfoBarSeverity.warning);
       return;
@@ -905,7 +928,11 @@ class CanvasPageState extends State<CanvasPage> {
   }
 
   Future<void> _handleResizeImage() async {
-    final PaintingBoardState? board = _activeBoard;
+    if (_isGpuCanvas) {
+      _showInfoBar('GPU 画布暂不支持调整图像大小。', severity: InfoBarSeverity.warning);
+      return;
+    }
+    final PaintingBoardState? board = _activeCpuBoard;
     if (board == null) {
       _showInfoBar('画布尚未准备好，无法调整图像大小。', severity: InfoBarSeverity.warning);
       return;
@@ -931,23 +958,35 @@ class CanvasPageState extends State<CanvasPage> {
   }
 
   Future<void> _handleUndo() async {
-    final PaintingBoardState? board = _activeBoard;
+    final CanvasBoardClient? board = _activeBoard;
     if (board != null && await board.undo()) {
+      return;
+    }
+    if (_isGpuCanvas) {
+      _showInfoBar('GPU 画布暂不支持撤销。', severity: InfoBarSeverity.warning);
       return;
     }
     _undoDocumentChange();
   }
 
   Future<void> _handleRedo() async {
-    final PaintingBoardState? board = _activeBoard;
+    final CanvasBoardClient? board = _activeBoard;
     if (board != null && await board.redo()) {
+      return;
+    }
+    if (_isGpuCanvas) {
+      _showInfoBar('GPU 画布暂不支持重做。', severity: InfoBarSeverity.warning);
       return;
     }
     _redoDocumentChange();
   }
 
   Future<void> _handleResizeCanvas() async {
-    final PaintingBoardState? board = _activeBoard;
+    if (_isGpuCanvas) {
+      _showInfoBar('GPU 画布暂不支持调整画布大小。', severity: InfoBarSeverity.warning);
+      return;
+    }
+    final PaintingBoardState? board = _activeCpuBoard;
     if (board == null) {
       _showInfoBar('画布尚未准备好，无法调整画布大小。', severity: InfoBarSeverity.warning);
       return;
@@ -1074,6 +1113,7 @@ class CanvasPageState extends State<CanvasPage> {
 
   Future<void> openDocument(ProjectDocument document) async {
     final Completer<void>? readyCompleter = _trackBoardReady(document.id);
+    _ensureBoardKeyForDocument(document);
     _workspace.open(document, activate: true);
     _switchToEntry(_workspace.entryById(document.id));
     if (readyCompleter != null) {
@@ -1100,7 +1140,7 @@ class CanvasPageState extends State<CanvasPage> {
       _workspace.remove(id);
       return;
     }
-    final PaintingBoardState? previousBoard = _activeBoard;
+    final CanvasBoardClient? previousBoard = _activeBoard;
     final CanvasWorkspaceEntry? neighbor = _workspace.neighborFor(id);
     if (_hasUnsavedChanges) {
       final bool canLeave = await _ensureCanLeave(
@@ -1221,13 +1261,13 @@ class CanvasPageState extends State<CanvasPage> {
 
   void _switchToEntry(
     CanvasWorkspaceEntry? entry, {
-    PaintingBoardState? previousBoard,
+    CanvasBoardClient? previousBoard,
   }) {
     if (entry == null) {
       return;
     }
     _snapshotWorkspaceState(previousBoard);
-    _ensureBoardKey(entry.id);
+    _ensureBoardKeyForEntry(entry);
     setState(() {
       _document = entry.document;
       _hasUnsavedChanges = entry.isDirty;
@@ -1305,7 +1345,11 @@ class CanvasPageState extends State<CanvasPage> {
     if (!_supportsFileDrops || items.isEmpty) {
       return;
     }
-    final PaintingBoardState? board = _activeBoard;
+    if (_isGpuCanvas) {
+      _showInfoBar('GPU 画布暂不支持拖放插入图像。', severity: InfoBarSeverity.warning);
+      return;
+    }
+    final PaintingBoardState? board = _activeCpuBoard;
     if (board == null || !board.isBoardReady) {
       _showInfoBar('画布尚未准备好，暂无法插入拖放图像。', severity: InfoBarSeverity.warning);
       return;
@@ -1479,8 +1523,17 @@ class CanvasPageState extends State<CanvasPage> {
 
   Widget _buildBoard(CanvasWorkspaceEntry entry) {
     final String id = entry.id;
+    if (entry.document.settings.renderBackend == CanvasRenderBackend.gpu) {
+      return GpuPaintingBoard(
+        key: _ensureGpuBoardKey(id),
+        settings: entry.document.settings,
+        onRequestExit: _handleExitRequest,
+        onDirtyChanged: (dirty) => _handleDirtyChanged(id, dirty),
+        onReadyChanged: (ready) => _handleBoardReadyChanged(id, ready),
+      );
+    }
     return PaintingBoard(
-      key: _ensureBoardKey(id),
+      key: _ensureCpuBoardKey(id),
       settings: entry.document.settings,
       onRequestExit: _handleExitRequest,
       onDirtyChanged: (dirty) => _handleDirtyChanged(id, dirty),
@@ -1497,9 +1550,38 @@ class CanvasPageState extends State<CanvasPage> {
     );
   }
 
+  MenuActionHandler _buildGpuMenuHandler(BuildContext context) {
+    return MenuActionHandler(
+      newProject: () => AppMenuActions.createProject(context),
+      open: () => AppMenuActions.openProjectFromDisk(context),
+      closeAll: _handleExitRequest,
+      preferences: () => AppMenuActions.openSettings(context),
+      about: () => AppMenuActions.showAbout(context),
+      save: () async {
+        if (_document.path == null) {
+          await _saveProjectAs();
+        } else {
+          await _saveProject(force: true, showMessage: true);
+        }
+      },
+      saveAs: () async {
+        await _saveProjectAs();
+      },
+      export: () async {
+        await _exportProject();
+      },
+      undo: _handleUndo,
+      redo: _handleRedo,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final handler = MenuActionHandler(
+    late final MenuActionHandler handler;
+    if (_isGpuCanvas) {
+      handler = _buildGpuMenuHandler(context);
+    } else {
+      handler = MenuActionHandler(
       newProject: () => AppMenuActions.createProject(context),
       open: () => AppMenuActions.openProjectFromDisk(context),
       closeAll: _handleExitRequest,
@@ -1521,25 +1603,25 @@ class CanvasPageState extends State<CanvasPage> {
       undo: _handleUndo,
       redo: _handleRedo,
       cut: () async {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board != null) {
           await board.cut();
         }
       },
       copy: () async {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board != null) {
           await board.copy();
         }
       },
       paste: () async {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board != null) {
           await board.paste();
         }
       },
       newLayer: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.addLayerAboveActiveLayer();
       },
       importPalette: () => _importPaletteFromDisk(),
@@ -1548,50 +1630,50 @@ class CanvasPageState extends State<CanvasPage> {
           .toList(growable: false),
       selectPaletteFromMenu: (id) => _activateImportedPalette(id),
       createReferenceImage: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         unawaited(board?.createReferenceImageCard());
       },
       importReferenceImage: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         unawaited(board?.importReferenceImageCard());
       },
       zoomIn: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.zoomIn();
       },
       zoomOut: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.zoomOut();
       },
       togglePixelGrid: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           return;
         }
         board.togglePixelGridVisibility();
         setState(() {});
       },
-      pixelGridVisible: _activeBoard?.isPixelGridVisible ?? false,
+      pixelGridVisible: _activeCpuBoard?.isPixelGridVisible ?? false,
       toggleViewBlackWhite: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           return;
         }
         board.toggleViewBlackWhiteOverlay();
         setState(() {});
       },
-      viewBlackWhiteEnabled: _activeBoard?.isViewBlackWhiteEnabled ?? false,
+      viewBlackWhiteEnabled: _activeCpuBoard?.isViewBlackWhiteEnabled ?? false,
       toggleViewMirror: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           return;
         }
         board.toggleViewMirrorOverlay();
         setState(() {});
       },
-      viewMirrorEnabled: _activeBoard?.isViewMirrorEnabled ?? false,
+      viewMirrorEnabled: _activeCpuBoard?.isViewMirrorEnabled ?? false,
       togglePerspectiveGuide: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           return;
         }
@@ -1599,23 +1681,23 @@ class CanvasPageState extends State<CanvasPage> {
         setState(() {});
       },
       setPerspectiveOnePoint: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.setPerspectiveGuideMode(PerspectiveGuideMode.onePoint);
         setState(() {});
       },
       setPerspectiveTwoPoint: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.setPerspectiveGuideMode(PerspectiveGuideMode.twoPoint);
         setState(() {});
       },
       setPerspectiveThreePoint: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.setPerspectiveGuideMode(PerspectiveGuideMode.threePoint);
         setState(() {});
       },
       perspectiveMode:
-          _activeBoard?.perspectiveGuideMode ?? PerspectiveGuideMode.off,
-      perspectiveVisible: _activeBoard?.isPerspectiveGuideVisible ?? false,
+          _activeCpuBoard?.perspectiveGuideMode ?? PerspectiveGuideMode.off,
+      perspectiveVisible: _activeCpuBoard?.isPerspectiveGuideVisible ?? false,
       rotateCanvas90Clockwise: () {
         _applyCanvasRotation(CanvasRotation.clockwise90);
       },
@@ -1632,23 +1714,23 @@ class CanvasPageState extends State<CanvasPage> {
         await _exportProject();
       },
       generatePalette: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.showPaletteGenerator();
       },
       generateGradientPalette: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.showGradientPaletteFromPrimaryColor();
       },
       showLayerAntialiasPanel: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.showLayerAntialiasPanel();
       },
       gaussianBlur: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.showGaussianBlurAdjustments();
       },
       removeColorLeak: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           _showInfoBar('画布尚未准备好，无法去除漏色。', severity: InfoBarSeverity.warning);
           return;
@@ -1658,11 +1740,11 @@ class CanvasPageState extends State<CanvasPage> {
       resizeImage: _handleResizeImage,
       resizeCanvas: _handleResizeCanvas,
       mergeLayerDown: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.mergeActiveLayerDown();
       },
       rasterizeLayer: () async {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           _showInfoBar('画布尚未准备好，无法栅格化图层。', severity: InfoBarSeverity.warning);
           return;
@@ -1676,11 +1758,11 @@ class CanvasPageState extends State<CanvasPage> {
         }
       },
       rasterizeLayerEnabled: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         return board?.canRasterizeActiveLayer ?? false;
       },
       binarizeLayer: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           _showInfoBar('画布尚未准备好，无法二值化。', severity: InfoBarSeverity.warning);
           return;
@@ -1688,19 +1770,19 @@ class CanvasPageState extends State<CanvasPage> {
         board.showBinarizeAdjustments();
       },
       layerFreeTransform: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.toggleLayerFreeTransform();
       },
       selectAll: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.selectEntireCanvas();
       },
       invertSelection: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.invertSelection();
       },
       adjustHueSaturation: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           _showInfoBar(
             '画布尚未准备好，无法调节色相/饱和度。',
@@ -1711,7 +1793,7 @@ class CanvasPageState extends State<CanvasPage> {
         board.showHueSaturationAdjustments();
       },
       adjustBrightnessContrast: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           _showInfoBar(
             '画布尚未准备好，无法调节亮度/对比度。',
@@ -1722,7 +1804,7 @@ class CanvasPageState extends State<CanvasPage> {
         board.showBrightnessContrastAdjustments();
       },
       narrowLines: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           _showInfoBar('画布尚未准备好，无法收窄线条。', severity: InfoBarSeverity.warning);
           return;
@@ -1730,7 +1812,7 @@ class CanvasPageState extends State<CanvasPage> {
         board.showLineNarrowAdjustments();
       },
       expandFill: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           _showInfoBar('画布尚未准备好，无法拉伸填色。', severity: InfoBarSeverity.warning);
           return;
@@ -1738,7 +1820,7 @@ class CanvasPageState extends State<CanvasPage> {
         board.showFillExpandAdjustments();
       },
       adjustBlackWhite: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           _showInfoBar('画布尚未准备好，无法调节黑白。', severity: InfoBarSeverity.warning);
           return;
@@ -1746,7 +1828,7 @@ class CanvasPageState extends State<CanvasPage> {
         board.showBlackWhiteAdjustments();
       },
       colorRange: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           _showInfoBar('画布尚未准备好，无法设置色彩范围。', severity: InfoBarSeverity.warning);
           return;
@@ -1754,7 +1836,7 @@ class CanvasPageState extends State<CanvasPage> {
         unawaited(board.showColorRangeCard());
       },
       invertColors: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         if (board == null) {
           _showInfoBar('画布尚未准备好，无法颜色反转。', severity: InfoBarSeverity.warning);
           return;
@@ -1764,10 +1846,11 @@ class CanvasPageState extends State<CanvasPage> {
       workspaceLayoutPreference: _workspaceLayoutPreference,
       switchWorkspaceLayout: _setWorkspaceLayoutPreference,
       resetWorkspaceLayout: () {
-        final board = _activeBoard;
+        final board = _activeCpuBoard;
         board?.resetWorkspaceLayout();
       },
     );
+    }
 
     Widget titleBar = CanvasTitleBar(
       onSelectTab: _handleTabSelected,
@@ -1837,7 +1920,7 @@ class CanvasPageState extends State<CanvasPage> {
 class _CanvasStatusOverlay extends StatelessWidget {
   const _CanvasStatusOverlay({required this.board});
 
-  final PaintingBoardState? board;
+  final CanvasBoardClient? board;
 
   @override
   Widget build(BuildContext context) {

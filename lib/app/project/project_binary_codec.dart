@@ -16,14 +16,14 @@ const int _kInt64SignBit = 0x80000000;
 final BigInt _kBigUint64 = BigInt.one << 64;
 final BigInt _kBigUint32Mask = BigInt.from(_kUint32Mask);
 
-/// `.rin` 二进制编解码器（v9，向后兼容 v4）
+/// `.rin` 二进制编解码器（v10，向后兼容 v4）
 ///
 /// 结构参考 PSD 分块思路：头部 + 文档元数据 + 图层块 + 预览块。
 /// 所有字符串按 UTF-8 存储并携带 32bit 长度前缀；位图数据按需使用
 /// zlib 压缩，避免 JSON 与 Base64 的额外开销。
 class ProjectBinaryCodec {
   static const String _magic = 'MISARIN';
-  static const int _version = 9;
+  static const int _version = 10;
   static const int _minSupportedVersion = 4;
 
   static final ZLibEncoder _encoder = ZLibEncoder();
@@ -46,6 +46,7 @@ class ProjectBinaryCodec {
     writer.writeFloat32(document.settings.height);
     writer.writeUint32(document.settings.backgroundColor.value);
     writer.writeUint8(document.settings.creationLogic.index);
+    writer.writeUint8(document.settings.renderBackend.index);
 
     writer.writeUint32(document.layers.length);
     for (final CanvasLayerData layer in document.layers) {
@@ -126,11 +127,15 @@ class ProjectBinaryCodec {
     final CanvasCreationLogic creationLogic = version >= 6
         ? _decodeCreationLogic(reader.readUint8())
         : CanvasCreationLogic.singleThread;
+    final CanvasRenderBackend renderBackend = version >= 10
+        ? _decodeRenderBackend(reader.readUint8())
+        : CanvasRenderBackend.cpu;
     final CanvasSettings settings = CanvasSettings(
       width: width,
       height: height,
       backgroundColor: backgroundColor,
       creationLogic: creationLogic,
+      renderBackend: renderBackend,
     );
 
     final int layerCount = reader.readUint32();
@@ -246,6 +251,9 @@ class ProjectBinaryCodec {
     final CanvasCreationLogic creationLogic = version >= 6
         ? _decodeCreationLogic(reader.readUint8())
         : CanvasCreationLogic.singleThread;
+    final CanvasRenderBackend renderBackend = version >= 10
+        ? _decodeRenderBackend(reader.readUint8())
+        : CanvasRenderBackend.cpu;
 
     final int layerCount = reader.readUint32();
     for (int i = 0; i < layerCount; i++) {
@@ -305,6 +313,7 @@ class ProjectBinaryCodec {
         height: height,
         backgroundColor: backgroundColor,
         creationLogic: creationLogic,
+        renderBackend: renderBackend,
       ),
       previewBytes: preview,
     );
@@ -322,6 +331,13 @@ class ProjectBinaryCodec {
       return CanvasCreationLogic.singleThread;
     }
     return CanvasCreationLogic.values[raw];
+  }
+
+  static CanvasRenderBackend _decodeRenderBackend(int raw) {
+    if (raw < 0 || raw >= CanvasRenderBackend.values.length) {
+      return CanvasRenderBackend.cpu;
+    }
+    return CanvasRenderBackend.values[raw];
   }
 
   static void _writePerspectiveGuide(
