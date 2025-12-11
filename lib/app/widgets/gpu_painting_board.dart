@@ -45,9 +45,20 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
   Offset? _hoverPosition;
   double _scale = 1.0;
   Color _brushColor = _defaultBrushColor;
-  Future<void> _strokeQueue = Future<void>.value();
+  final List<Offset> _pendingPoints = <Offset>[];
+  Future<void>? _renderingTask;
+  bool _isRenderingStroke = false;
 
   late final ValueNotifier<CanvasViewInfo> _viewInfoNotifier;
+  late final Paint _brushPaint = Paint()
+    ..color = _brushColor
+    ..isAntiAlias = true
+    ..blendMode = BlendMode.srcOver
+    ..style = PaintingStyle.fill
+    ..maskFilter = ui.MaskFilter.blur(
+      ui.BlurStyle.normal,
+      _brushRadius * 0.5,
+    );
 
   @override
   void initState() {
@@ -112,7 +123,7 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
 
   @override
   Future<List<CanvasLayerData>> exportLayers() async {
-    await _strokeQueue;
+    await _waitPendingStrokes();
     final ui.Image? surface = _surface;
     if (surface == null) {
       return const <CanvasLayerData>[];
@@ -163,7 +174,7 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
 
   void _startStroke(Offset position, double scale) {
     _lastPosition = _toCanvasPosition(position, scale);
-    _applyStrokePoint(_lastPosition!);
+    _queueStrokePoints(<Offset>[_lastPosition!]);
     _updateCursor(position, scale);
   }
 
@@ -171,16 +182,93 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
     final Offset current = _toCanvasPosition(position, scale);
     final Offset? last = _lastPosition;
     _lastPosition = current;
-    if (last == null) {
-      _applyStrokePoint(current);
-      return;
-    }
-    _drawLine(last, current);
+    final List<Offset> points = <Offset>[
+      if (last == null) current else ..._sampleLine(last, current),
+    ];
+    _queueStrokePoints(points);
     _updateCursor(position, scale);
   }
 
   void _endStroke() {
     _lastPosition = null;
+  }
+
+  List<Offset> _sampleLine(Offset from, Offset to) {
+    final double distance = (to - from).distance;
+    final int steps = math.max(1, (distance / 2.2).round());
+    final List<Offset> points = <Offset>[];
+    for (int i = 0; i <= steps; i++) {
+      final double t = i / steps;
+      points.add(
+        Offset(
+          ui.lerpDouble(from.dx, to.dx, t) ?? to.dx,
+          ui.lerpDouble(from.dy, to.dy, t) ?? to.dy,
+        ),
+      );
+    }
+    return points;
+  }
+
+  void _queueStrokePoints(List<Offset> points) {
+    if (points.isEmpty) {
+      return;
+    }
+    _pendingPoints.addAll(points);
+    _renderingTask ??= _processStrokeQueue();
+  }
+
+  Future<void> _waitPendingStrokes() async {
+    if (_pendingPoints.isEmpty && _renderingTask == null) {
+      return;
+    }
+    _renderingTask ??= _processStrokeQueue();
+    await _renderingTask;
+  }
+
+  Future<void> _processStrokeQueue() async {
+    if (_isRenderingStroke) {
+      return;
+    }
+    _isRenderingStroke = true;
+    try {
+      while (_pendingPoints.isNotEmpty) {
+        final List<Offset> batch = _pendingPoints.length > 96
+            ? _pendingPoints.sublist(0, 96)
+            : List<Offset>.from(_pendingPoints);
+        _pendingPoints.removeRange(0, batch.length);
+        await _renderBatch(batch);
+      }
+    } finally {
+      _isRenderingStroke = false;
+      _renderingTask = null;
+    }
+  }
+
+  Future<void> _renderBatch(List<Offset> points) async {
+    final ui.Image? base = _surface;
+    if (base == null || points.isEmpty) {
+      return;
+    }
+    _brushPaint.color = _brushColor;
+    final ui.PictureRecorder recorder = ui.PictureRecorder();
+    final ui.Canvas canvas = ui.Canvas(recorder);
+    canvas.drawImage(base, Offset.zero, Paint());
+    for (final Offset point in points) {
+      canvas.drawCircle(point, _brushRadius, _brushPaint);
+    }
+    final ui.Picture picture = recorder.endRecording();
+    final ui.Image next = await picture.toImage(base.width, base.height);
+    picture.dispose();
+    base.dispose();
+    if (!mounted) {
+      next.dispose();
+      return;
+    }
+    setState(() {
+      _surface = next;
+      _isDirty = true;
+    });
+    widget.onDirtyChanged?.call(true);
   }
 
   Offset _toCanvasPosition(Offset localPosition, double scale) {
@@ -197,45 +285,6 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
     _hoverPosition =
         localPosition == null ? null : _toCanvasPosition(localPosition, scale);
     _refreshViewInfo(scale: scale);
-  }
-
-  Future<void> _applyStrokePoint(Offset position) {
-    _strokeQueue = _strokeQueue.then((_) async {
-      final ui.Image? base = _surface;
-      if (base == null) {
-        return;
-      }
-      final ui.Image next = await _GpuBrushRenderer.paint(
-        base: base,
-        position: position,
-        radius: _brushRadius,
-        color: _brushColor,
-      );
-      base.dispose();
-      if (!mounted) {
-        next.dispose();
-        return;
-      }
-      setState(() {
-        _surface = next;
-        _isDirty = true;
-      });
-      widget.onDirtyChanged?.call(true);
-    });
-    return _strokeQueue;
-  }
-
-  Future<void> _drawLine(Offset from, Offset to) async {
-    final double distance = (to - from).distance;
-    final int steps = math.max(1, (distance / 2.2).round());
-    for (int i = 0; i <= steps; i++) {
-      final double t = i / steps;
-      final Offset point = Offset(
-        ui.lerpDouble(from.dx, to.dx, t) ?? to.dx,
-        ui.lerpDouble(from.dy, to.dy, t) ?? to.dy,
-      );
-      await _applyStrokePoint(point);
-    }
   }
 
   double _computeScale(Size canvasSize, Size available) {
