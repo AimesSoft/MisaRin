@@ -293,6 +293,8 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
     this.antialiasLevel = 1,
     required this.activeStrokeIsEraser,
     this.eraserPreviewColor = _kVectorEraserPreviewColor,
+    this.viewportScale = 1.0,
+    this.devicePixelRatio = 1.0,
   });
 
   final List<Offset> points;
@@ -303,15 +305,40 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
   final int antialiasLevel;
   final bool activeStrokeIsEraser;
   final Color eraserPreviewColor;
+  final double viewportScale;
+  final double devicePixelRatio;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw committing strokes (fading out/waiting for raster) first
+    if (points.isEmpty && committingStrokes.isEmpty) return;
+
+    // Try to apply a pixelate shader as an ImageFilter so the preview matches
+    // canvas resolution without doing CPU-side toImage().
+    final ui.FragmentProgram? program =
+        _PreviewPixelatePrograms.programOrNull;
+    final Rect canvasRect = Rect.fromLTWH(0, 0, size.width, size.height);
+    if (program != null && !kIsWeb) {
+      final double scale = viewportScale.abs() < 0.0001 ? 1.0 : viewportScale;
+      final double dpr = devicePixelRatio.abs() < 0.0001 ? 1.0 : devicePixelRatio;
+      final double physicalW = size.width * scale * dpr;
+      final double physicalH = size.height * scale * dpr;
+      final double pixelStep = scale * dpr;
+      final ui.FragmentShader shader = program.fragmentShader()
+        // Resolution of the filtered layer in physical pixels.
+        ..setFloat(0, physicalW)
+        ..setFloat(1, physicalH)
+        // Quantize in physical pixel space so one canvas pixel becomes a block.
+        ..setFloat(2, pixelStep);
+      final Paint layerPaint = Paint()
+        ..imageFilter = ui.ImageFilter.shader(shader);
+      canvas.saveLayer(canvasRect, layerPaint);
+    }
+
+    // Draw committing strokes (fading out/waiting for raster) first.
     for (final PaintingDrawCommand command in committingStrokes) {
       if (command.points == null || command.radii == null) continue;
-      final Color commandColor = command.erase
-          ? eraserPreviewColor
-          : Color(command.color);
+      final Color commandColor =
+          command.erase ? eraserPreviewColor : Color(command.color);
       VectorStrokePainter.paint(
         canvas: canvas,
         points: command.points!,
@@ -322,11 +349,10 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
       );
     }
 
-    // Draw active stroke on top
+    // Draw active stroke on top.
     if (points.isNotEmpty) {
-      final Color activeColor = activeStrokeIsEraser
-          ? eraserPreviewColor
-          : color;
+      final Color activeColor =
+          activeStrokeIsEraser ? eraserPreviewColor : color;
       VectorStrokePainter.paint(
         canvas: canvas,
         points: points,
@@ -335,6 +361,10 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
         shape: shape,
         antialiasLevel: antialiasLevel,
       );
+    }
+
+    if (program != null && !kIsWeb) {
+      canvas.restore();
     }
   }
 
@@ -349,6 +379,23 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
         oldDelegate.activeStrokeIsEraser != activeStrokeIsEraser ||
         oldDelegate.eraserPreviewColor != eraserPreviewColor;
   }
+}
+
+class _PreviewPixelatePrograms {
+  static ui.FragmentProgram? get programOrNull {
+    // Kick off lazy load once. We don't await here; painting will fall back
+    // to normal vector preview until the program is ready.
+    _programFuture ??= ui.FragmentProgram.fromAsset(
+      'shaders/preview_pixelate.frag',
+    ).then((ui.FragmentProgram p) {
+      _program = p;
+      return p;
+    });
+    return _program;
+  }
+
+  static Future<ui.FragmentProgram>? _programFuture;
+  static ui.FragmentProgram? _program;
 }
 
 class _BucketOptionTile extends StatelessWidget {

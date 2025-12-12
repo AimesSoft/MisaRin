@@ -795,6 +795,12 @@ mixin _PaintingBoardBuildMixin
                                                             activeStrokeIsEraser,
                                                         eraserPreviewColor:
                                                             _kVectorEraserPreviewColor,
+                                                        viewportScale:
+                                                            _viewport.scale,
+                                                        devicePixelRatio:
+                                                            MediaQuery.devicePixelRatioOf(
+                                                              context,
+                                                            ),
                                                       ),
                                                     ),
                                                   ),
