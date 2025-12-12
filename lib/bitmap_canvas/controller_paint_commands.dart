@@ -30,12 +30,21 @@ void _controllerFlushDeferredStrokeCommands(
     radii = smoothed.radii;
   }
 
+  // Snap to pixel centers so preview and committed raster share the same
+  // alignment. Radii remain continuous to preserve pressure dynamics.
+  points = VectorStrokePainter.snapPointsToPixelCenters(
+    points,
+    maxX: controller._width.toDouble(),
+    maxY: controller._height.toDouble(),
+  );
+
   final PaintingDrawCommand vectorCommand = PaintingDrawCommand.vectorStroke(
     points: points,
     radii: radii,
     colorValue: color.value,
     shapeIndex: shape.index,
     erase: erase,
+    antialiasLevel: antialiasLevel,
   );
   controller._committingStrokes.add(vectorCommand);
 

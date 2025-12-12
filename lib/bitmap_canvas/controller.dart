@@ -221,6 +221,7 @@ class BitmapCanvasController extends ChangeNotifier {
   double get activeStrokeRadius => _currentStrokeRadius;
   BrushShape get activeStrokeShape => _currentBrushShape;
   bool get activeStrokeEraseMode => _currentStrokeEraseMode;
+  int get activeStrokeAntialiasLevel => _currentStrokeAntialiasLevel;
 
   String? get activeLayerId =>
       _layers.isEmpty ? null : _layers[_activeIndex].id;

@@ -5,6 +5,35 @@ import 'canvas_tools.dart';
 import 'brush_shape_geometry.dart';
 
 class VectorStrokePainter {
+  /// Snap stroke sample points to canvas pixel centers (n + 0.5). This makes
+  /// preview and rasterized output share the same "pixel grid" alignment.
+  ///
+  /// `maxX/maxY` should be the canvas size in pixels.
+  static List<Offset> snapPointsToPixelCenters(
+    List<Offset> points, {
+    double? maxX,
+    double? maxY,
+  }) {
+    if (points.isEmpty) return const <Offset>[];
+
+    final double maxDx = (maxX ?? double.infinity) - 0.5;
+    final double maxDy = (maxY ?? double.infinity) - 0.5;
+    final List<Offset> snapped = List<Offset>.filled(points.length, Offset.zero);
+    for (int i = 0; i < points.length; i++) {
+      final Offset p = points[i];
+      double dx = (p.dx - 0.5).roundToDouble() + 0.5;
+      double dy = (p.dy - 0.5).roundToDouble() + 0.5;
+      if (maxX != null) {
+        dx = dx.clamp(0.5, maxDx);
+      }
+      if (maxY != null) {
+        dy = dy.clamp(0.5, maxDy);
+      }
+      snapped[i] = Offset(dx, dy);
+    }
+    return snapped;
+  }
+
   static void paint({
     required Canvas canvas,
     required List<Offset> points,

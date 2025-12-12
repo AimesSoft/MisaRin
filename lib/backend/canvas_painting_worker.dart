@@ -133,11 +133,12 @@ class PaintingDrawCommand {
     required int colorValue,
     required int shapeIndex,
     required bool erase,
+    int antialiasLevel = 0,
   }) {
     return PaintingDrawCommand._(
       type: PaintingDrawCommandType.vectorStroke,
       color: colorValue,
-      antialiasLevel: 0,
+      antialiasLevel: antialiasLevel,
       erase: erase,
       points: points,
       radii: radii,

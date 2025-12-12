@@ -791,16 +791,13 @@ mixin _PaintingBoardBuildMixin
                                                         committingStrokes:
                                                             _controller
                                                                 .committingStrokes,
+                                                        antialiasLevel:
+                                                            _controller
+                                                                .activeStrokeAntialiasLevel,
                                                         activeStrokeIsEraser:
                                                             activeStrokeIsEraser,
                                                         eraserPreviewColor:
                                                             _kVectorEraserPreviewColor,
-                                                        viewportScale:
-                                                            _viewport.scale,
-                                                        devicePixelRatio:
-                                                            MediaQuery.devicePixelRatioOf(
-                                                              context,
-                                                            ),
                                                       ),
                                                     ),
                                                   ),

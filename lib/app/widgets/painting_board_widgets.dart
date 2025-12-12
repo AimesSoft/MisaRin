@@ -239,6 +239,68 @@ class _PreviewPathPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Web 端直接矢量预览。
+    if (kIsWeb) {
+      _paintVector(canvas);
+      return;
+    }
+
+    try {
+      final double clampedStroke =
+          strokeWidth.clamp(kPenStrokeMin, kPenStrokeMax);
+      Rect bounds = path.getBounds().inflate(clampedStroke / 2 + 2.0);
+      bounds = bounds.intersect(Offset.zero & size);
+      if (bounds.isEmpty) {
+        _paintVector(canvas);
+        return;
+      }
+
+      final int left = bounds.left.floor();
+      final int top = bounds.top.floor();
+      final int right = bounds.right.ceil();
+      final int bottom = bounds.bottom.ceil();
+      final int width = (right - left).clamp(1, size.width.ceil());
+      final int height = (bottom - top).clamp(1, size.height.ceil());
+
+      final ui.PictureRecorder recorder = ui.PictureRecorder();
+      final ui.Canvas offCanvas = ui.Canvas(
+        recorder,
+        ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+      );
+      offCanvas.translate(-left.toDouble(), -top.toDouble());
+
+      if (fill) {
+        final Paint fillPaint = Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
+        offCanvas.drawPath(path, fillPaint);
+      }
+      final Paint paint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = clampedStroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+      offCanvas.drawPath(path, paint);
+
+      final ui.Picture picture = recorder.endRecording();
+      final ui.Image image = picture.toImageSync(width, height);
+      final Paint imagePaint = Paint()
+        ..isAntiAlias = false
+        ..filterQuality = ui.FilterQuality.none;
+      canvas.drawImage(
+        image,
+        Offset(left.toDouble(), top.toDouble()),
+        imagePaint,
+      );
+      image.dispose();
+      picture.dispose();
+    } catch (_) {
+      _paintVector(canvas);
+    }
+  }
+
+  void _paintVector(Canvas canvas) {
     if (fill) {
       final Paint fillPaint = Paint()
         ..color = color
@@ -293,8 +355,6 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
     this.antialiasLevel = 1,
     required this.activeStrokeIsEraser,
     this.eraserPreviewColor = _kVectorEraserPreviewColor,
-    this.viewportScale = 1.0,
-    this.devicePixelRatio = 1.0,
   });
 
   final List<Offset> points;
@@ -305,43 +365,76 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
   final int antialiasLevel;
   final bool activeStrokeIsEraser;
   final Color eraserPreviewColor;
-  final double viewportScale;
-  final double devicePixelRatio;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty && committingStrokes.isEmpty) return;
 
-    // Try to apply a pixelate shader as an ImageFilter so the preview matches
-    // canvas resolution without doing CPU-side toImage().
-    final ui.FragmentProgram? program =
-        _PreviewPixelatePrograms.programOrNull;
-    final Rect canvasRect = Rect.fromLTWH(0, 0, size.width, size.height);
-    if (program != null && !kIsWeb) {
-      final double scale = viewportScale.abs() < 0.0001 ? 1.0 : viewportScale;
-      final double dpr = devicePixelRatio.abs() < 0.0001 ? 1.0 : devicePixelRatio;
-      final double physicalW = size.width * scale * dpr;
-      final double physicalH = size.height * scale * dpr;
-      final double pixelStep = scale * dpr;
-      final ui.FragmentShader shader = program.fragmentShader()
-        // Resolution of the filtered layer in physical pixels.
-        ..setFloat(0, physicalW)
-        ..setFloat(1, physicalH)
-        // Quantize in physical pixel space so one canvas pixel becomes a block.
-        ..setFloat(2, pixelStep);
-      final Paint layerPaint = Paint()
-        ..imageFilter = ui.ImageFilter.shader(shader);
-      canvas.saveLayer(canvasRect, layerPaint);
+    // Web 端没有稳定的 toImageSync，直接走矢量预览。
+    if (kIsWeb) {
+      _paintVectorStrokes(canvas, size);
+      return;
     }
 
+    try {
+      final Rect? unionBounds = _computeUnionBounds(size);
+      if (unionBounds == null || unionBounds.isEmpty) {
+        _paintVectorStrokes(canvas, size);
+        return;
+      }
+
+      final int left = unionBounds.left.floor();
+      final int top = unionBounds.top.floor();
+      final int right = unionBounds.right.ceil();
+      final int bottom = unionBounds.bottom.ceil();
+      final int width = (right - left).clamp(1, size.width.ceil());
+      final int height = (bottom - top).clamp(1, size.height.ceil());
+
+      final ui.PictureRecorder recorder = ui.PictureRecorder();
+      final ui.Canvas offCanvas = ui.Canvas(
+        recorder,
+        ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+      );
+      offCanvas.translate(-left.toDouble(), -top.toDouble());
+
+      // 仍然用矢量逻辑绘制，但先光栅到“画布逻辑像素”分辨率，
+      // 再用 nearest-neighbor 放大，从而让锯齿与最终位图一致。
+      _paintVectorStrokes(offCanvas, size);
+
+      final ui.Picture picture = recorder.endRecording();
+      final ui.Image image = picture.toImageSync(width, height);
+
+      final Paint imagePaint = Paint()
+        ..isAntiAlias = false
+        ..filterQuality = ui.FilterQuality.none;
+      canvas.drawImage(
+        image,
+        Offset(left.toDouble(), top.toDouble()),
+        imagePaint,
+      );
+
+      image.dispose();
+      picture.dispose();
+    } catch (_) {
+      _paintVectorStrokes(canvas, size);
+    }
+  }
+
+  void _paintVectorStrokes(Canvas canvas, Size size) {
     // Draw committing strokes (fading out/waiting for raster) first.
     for (final PaintingDrawCommand command in committingStrokes) {
       if (command.points == null || command.radii == null) continue;
       final Color commandColor =
           command.erase ? eraserPreviewColor : Color(command.color);
+      final List<Offset> snapped =
+          VectorStrokePainter.snapPointsToPixelCenters(
+            command.points!,
+            maxX: size.width,
+            maxY: size.height,
+          );
       VectorStrokePainter.paint(
         canvas: canvas,
-        points: command.points!,
+        points: snapped,
         radii: command.radii!,
         color: commandColor,
         shape: BrushShape.values[command.shapeIndex ?? 0],
@@ -353,19 +446,75 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
     if (points.isNotEmpty) {
       final Color activeColor =
           activeStrokeIsEraser ? eraserPreviewColor : color;
+      final List<Offset> snapped =
+          VectorStrokePainter.snapPointsToPixelCenters(
+            points,
+            maxX: size.width,
+            maxY: size.height,
+          );
       VectorStrokePainter.paint(
         canvas: canvas,
-        points: points,
+        points: snapped,
         radii: radii,
         color: activeColor,
         shape: shape,
         antialiasLevel: antialiasLevel,
       );
     }
+  }
 
-    if (program != null && !kIsWeb) {
-      canvas.restore();
+  Rect? _computeUnionBounds(Size size) {
+    Rect? union;
+
+    for (final PaintingDrawCommand command in committingStrokes) {
+      final List<Offset>? pts = command.points;
+      final List<double>? rs = command.radii;
+      if (pts == null || rs == null || pts.isEmpty) continue;
+      final Rect? b = _boundsForStroke(pts, rs, command.antialiasLevel);
+      if (b == null) continue;
+      union = union == null ? b : union!.expandToInclude(b);
     }
+
+    if (points.isNotEmpty && radii.isNotEmpty) {
+      final Rect? b = _boundsForStroke(points, radii, antialiasLevel);
+      if (b != null) {
+        union = union == null ? b : union!.expandToInclude(b);
+      }
+    }
+
+    if (union == null) return null;
+    return union!.intersect(Offset.zero & size);
+  }
+
+  Rect? _boundsForStroke(
+    List<Offset> pts,
+    List<double> rs,
+    int aaLevel,
+  ) {
+    if (pts.isEmpty) return null;
+    double minX = pts.first.dx;
+    double maxX = pts.first.dx;
+    double minY = pts.first.dy;
+    double maxY = pts.first.dy;
+    double maxR = rs.isNotEmpty ? rs.first : 0.0;
+
+    for (int i = 0; i < pts.length; i++) {
+      final Offset p = pts[i];
+      if (p.dx < minX) minX = p.dx;
+      if (p.dx > maxX) maxX = p.dx;
+      if (p.dy < minY) minY = p.dy;
+      if (p.dy > maxY) maxY = p.dy;
+      if (i < rs.length && rs[i] > maxR) {
+        maxR = rs[i];
+      }
+    }
+
+    double sigma = 0.0;
+    if (aaLevel > 1) {
+      sigma = (aaLevel - 1) * 0.6;
+    }
+    final double padding = maxR + 2.0 + sigma * 3.0;
+    return Rect.fromLTRB(minX, minY, maxX, maxY).inflate(padding);
   }
 
   @override
@@ -379,23 +528,6 @@ class _ActiveStrokeOverlayPainter extends CustomPainter {
         oldDelegate.activeStrokeIsEraser != activeStrokeIsEraser ||
         oldDelegate.eraserPreviewColor != eraserPreviewColor;
   }
-}
-
-class _PreviewPixelatePrograms {
-  static ui.FragmentProgram? get programOrNull {
-    // Kick off lazy load once. We don't await here; painting will fall back
-    // to normal vector preview until the program is ready.
-    _programFuture ??= ui.FragmentProgram.fromAsset(
-      'shaders/preview_pixelate.frag',
-    ).then((ui.FragmentProgram p) {
-      _program = p;
-      return p;
-    });
-    return _program;
-  }
-
-  static Future<ui.FragmentProgram>? _programFuture;
-  static ui.FragmentProgram? _program;
 }
 
 class _BucketOptionTile extends StatelessWidget {
