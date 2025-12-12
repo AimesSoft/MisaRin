@@ -11,8 +11,12 @@ import 'package:flutter/services.dart';
 
 import '../../canvas/canvas_layer.dart';
 import '../../canvas/canvas_settings.dart';
+import '../../canvas/canvas_tools.dart';
+import '../../canvas/canvas_viewport.dart';
 import '../../canvas/perspective_guide.dart';
 import '../models/canvas_view_info.dart';
+import '../toolbars/widgets/hand_tool_button.dart';
+import '../toolbars/widgets/pen_tool_button.dart';
 import 'canvas_board_client.dart';
 
 class GpuPaintingBoard extends StatefulWidget {
@@ -35,7 +39,8 @@ class GpuPaintingBoard extends StatefulWidget {
 
 class GpuPaintingBoardState extends State<GpuPaintingBoard>
     implements CanvasBoardClient {
-  static const double _brushRadius = 8.0;
+  static const double _defaultBrushRadius = 8.0;
+  static const double _defaultBrushSoftness = 0.5;
   static const Color _defaultBrushColor = Color(0xFF111111);
 
   ui.Image? _surface;
@@ -43,8 +48,16 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
   bool _isDirty = false;
   Offset? _lastPosition;
   Offset? _hoverPosition;
-  double _scale = 1.0;
   Color _brushColor = _defaultBrushColor;
+  double _brushRadius = _defaultBrushRadius;
+  double _brushSoftness = _defaultBrushSoftness;
+  CanvasTool _activeTool = CanvasTool.pen;
+  final CanvasViewport _viewport = CanvasViewport();
+  bool _viewportInitialized = false;
+  Size _workspaceSize = Size.zero;
+  bool _isDraggingBoard = false;
+  double _scaleGestureInitialScale = 1.0;
+  bool _isScalingGesture = false;
   final List<Offset> _pendingPoints = <Offset>[];
   Future<void>? _renderingTask;
   bool _isRenderingStroke = false;
@@ -54,17 +67,28 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
     ..color = _brushColor
     ..isAntiAlias = true
     ..blendMode = BlendMode.srcOver
-    ..style = PaintingStyle.fill
-    ..maskFilter = ui.MaskFilter.blur(
-      ui.BlurStyle.normal,
-      _brushRadius * 0.5,
-    );
+    ..style = PaintingStyle.fill;
 
   @override
   void initState() {
     super.initState();
     _viewInfoNotifier = ValueNotifier<CanvasViewInfo>(_buildViewInfo());
+    _refreshBrushPaint();
     _initSurface();
+  }
+
+  @override
+  void didUpdateWidget(covariant GpuPaintingBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.settings.size != widget.settings.size ||
+        oldWidget.settings.backgroundColor !=
+            widget.settings.backgroundColor) {
+      _surface?.dispose();
+      _surface = null;
+      _viewport.reset();
+      _viewportInitialized = false;
+      _initSurface();
+    }
   }
 
   @override
@@ -284,10 +308,10 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
   void _updateCursor(Offset? localPosition, double scale) {
     _hoverPosition =
         localPosition == null ? null : _toCanvasPosition(localPosition, scale);
-    _refreshViewInfo(scale: scale);
+    _refreshViewInfo();
   }
 
-  double _computeScale(Size canvasSize, Size available) {
+  double _computeFitScale(Size canvasSize, Size available) {
     final double scale = math.min(
       available.width / canvasSize.width,
       available.height / canvasSize.height,
@@ -301,7 +325,7 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
   CanvasViewInfo _buildViewInfo() {
     return CanvasViewInfo(
       canvasSize: widget.settings.size,
-      scale: _scale,
+      scale: _viewport.scale,
       cursorPosition: _hoverPosition,
       pixelGridVisible: false,
       viewBlackWhiteEnabled: false,
@@ -312,11 +336,147 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
     );
   }
 
-  void _refreshViewInfo({double? scale}) {
-    if (scale != null && (scale - _scale).abs() > 1e-6) {
-      _scale = scale;
-    }
+  void _refreshViewInfo() {
     _viewInfoNotifier.value = _buildViewInfo();
+  }
+
+  void _refreshBrushPaint() {
+    final double softness = _brushSoftness.clamp(0.0, 1.0);
+    if (softness <= 0.001) {
+      _brushPaint.maskFilter = null;
+      return;
+    }
+    final double sigma = (_brushRadius * softness).clamp(0.0, 256.0);
+    _brushPaint.maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, sigma);
+  }
+
+  Offset _baseOriginForScale(double scale) {
+    final Size canvasSize = widget.settings.size;
+    final double displayWidth = canvasSize.width * scale;
+    final double displayHeight = canvasSize.height * scale;
+    if (_workspaceSize.isEmpty) {
+      return Offset.zero;
+    }
+    final double dx = (_workspaceSize.width - displayWidth) / 2;
+    final double dy = (_workspaceSize.height - displayHeight) / 2;
+    return Offset(
+      dx.isFinite ? dx : 0.0,
+      dy.isFinite ? dy : 0.0,
+    );
+  }
+
+  void _applyZoom(double targetScale, Offset workspaceFocalPoint) {
+    if (_workspaceSize.isEmpty) {
+      return;
+    }
+    final double currentScale = _viewport.scale;
+    final double clamped = _viewport.clampScale(targetScale);
+    if ((clamped - currentScale).abs() < 0.0005) {
+      return;
+    }
+    final Offset currentBase = _baseOriginForScale(currentScale);
+    final Offset currentOrigin = currentBase + _viewport.offset;
+    final Offset canvasLocal =
+        (workspaceFocalPoint - currentOrigin) / currentScale;
+
+    final Offset newBase = _baseOriginForScale(clamped);
+    final Offset newOrigin = workspaceFocalPoint - canvasLocal * clamped;
+    final Offset newOffset = newOrigin - newBase;
+
+    setState(() {
+      _viewport.setScale(clamped);
+      _viewport.setOffset(newOffset);
+    });
+    _refreshViewInfo();
+  }
+
+  void _handlePointerSignal(PointerSignalEvent signal) {
+    if (signal is! PointerScrollEvent) {
+      return;
+    }
+    final RenderBox? box = context.findRenderObject() as RenderBox?;
+    if (box == null) {
+      return;
+    }
+    final double scrollDelta = signal.scrollDelta.dy;
+    if (scrollDelta == 0) {
+      return;
+    }
+    final Offset focalPoint = box.globalToLocal(signal.position);
+    const double sensitivity = 0.0015;
+    final double targetScale =
+        _viewport.scale * (1 - scrollDelta * sensitivity);
+    _applyZoom(targetScale, focalPoint);
+  }
+
+  void _handleScaleStart(ScaleStartDetails details) {
+    final bool shouldScale =
+        details.pointerCount == 0 || details.pointerCount > 1;
+    _isScalingGesture = shouldScale;
+    if (!shouldScale) {
+      return;
+    }
+    _scaleGestureInitialScale = _viewport.scale;
+    final RenderBox? box = context.findRenderObject() as RenderBox?;
+    if (box == null) {
+      return;
+    }
+    final Offset focalPoint = box.globalToLocal(details.focalPoint);
+    _applyZoom(_viewport.scale, focalPoint);
+  }
+
+  void _handleScaleUpdate(ScaleUpdateDetails details) {
+    if (!_isScalingGesture) {
+      return;
+    }
+    final RenderBox? box = context.findRenderObject() as RenderBox?;
+    if (box == null) {
+      return;
+    }
+    final Offset focalPoint = box.globalToLocal(details.focalPoint);
+    final double targetScale = _scaleGestureInitialScale * details.scale;
+    _applyZoom(targetScale, focalPoint);
+  }
+
+  void _handleScaleEnd(ScaleEndDetails details) {
+    _isScalingGesture = false;
+  }
+
+  void _handlePointerDown(PointerDownEvent event, double scale) {
+    if (_activeTool == CanvasTool.hand) {
+      setState(() => _isDraggingBoard = true);
+      return;
+    }
+    if (event.buttons == kPrimaryButton || event.buttons == 0) {
+      _startStroke(event.localPosition, scale);
+    }
+  }
+
+  void _handlePointerMove(PointerMoveEvent event, double scale) {
+    if (_activeTool == CanvasTool.hand) {
+      if (!_isDraggingBoard) {
+        return;
+      }
+      setState(() {
+        _viewport.translate(event.delta);
+      });
+      _refreshViewInfo();
+      return;
+    }
+    if (_lastPosition == null) {
+      return;
+    }
+    _extendStroke(event.localPosition, scale);
+  }
+
+  void _handlePointerUp() {
+    if (_activeTool == CanvasTool.hand) {
+      if (_isDraggingBoard) {
+        setState(() => _isDraggingBoard = false);
+      }
+      return;
+    }
+    _endStroke();
   }
 
   KeyEventResult _handleKey(FocusNode _, KeyEvent event) {
@@ -336,24 +496,32 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
       onKeyEvent: _handleKey,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final double scale = _computeScale(
-            canvasSize,
-            Size(
-              constraints.maxWidth.isFinite
-                  ? constraints.maxWidth
-                  : canvasSize.width,
-              constraints.maxHeight.isFinite
-                  ? constraints.maxHeight
-                  : canvasSize.height,
-            ),
+          final Size available = Size(
+            constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : canvasSize.width,
+            constraints.maxHeight.isFinite
+                ? constraints.maxHeight
+                : canvasSize.height,
           );
-          _refreshViewInfo(scale: scale);
+          _workspaceSize = available;
+          final double fitScale = _computeFitScale(
+            canvasSize,
+            available,
+          );
+          if (!_viewportInitialized) {
+            _viewport.setScale(fitScale);
+            _viewportInitialized = true;
+          }
+          final double scale = _viewport.scale;
+          _refreshViewInfo();
           final double displayWidth = canvasSize.width * scale;
           final double displayHeight = canvasSize.height * scale;
-          final Offset origin = Offset(
-            (constraints.maxWidth - displayWidth) / 2,
-            (constraints.maxHeight - displayHeight) / 2,
+          final Offset baseOrigin = Offset(
+            (available.width - displayWidth) / 2,
+            (available.height - displayHeight) / 2,
           );
+          final Offset origin = baseOrigin + _viewport.offset;
           final Widget canvasSurface = _buildCanvasSurface(
             displayWidth,
             displayHeight,
@@ -368,6 +536,11 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
                   width: displayWidth,
                   height: displayHeight,
                   child: _buildInputRegion(canvasSurface, scale),
+                ),
+                Positioned(
+                  left: 16,
+                  top: 16,
+                  child: _buildToolOverlay(),
                 ),
                 Positioned(
                   left: 16,
@@ -392,27 +565,34 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
   }
 
   Widget _buildInputRegion(Widget child, double scale) {
-    return MouseRegion(
-      onHover: (event) => _updateCursor(event.localPosition, scale),
-      onExit: (_) => _updateCursor(null, scale),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onPanStart: (details) => _startStroke(details.localPosition, scale),
-        onPanUpdate: (details) => _extendStroke(details.localPosition, scale),
-        onPanEnd: (_) => _endStroke(),
+    final MouseCursor cursor = _activeTool == CanvasTool.hand
+        ? (_isDraggingBoard
+            ? SystemMouseCursors.grabbing
+            : SystemMouseCursors.grab)
+        : SystemMouseCursors.precise;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onScaleStart: _handleScaleStart,
+      onScaleUpdate: _handleScaleUpdate,
+      onScaleEnd: _handleScaleEnd,
+      child: MouseRegion(
+        cursor: cursor,
+        onHover: (event) => _updateCursor(event.localPosition, scale),
+        onExit: (_) => _updateCursor(null, scale),
         child: Listener(
-          onPointerSignal: (signal) {
-            if (signal is PointerScrollEvent &&
-                signal.kind == PointerDeviceKind.mouse &&
-                signal.scrollDelta.dy != 0) {
-              // 阻止父级滚动，将滚动意图吞掉。
-            }
-          },
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (event) => _handlePointerDown(event, scale),
+          onPointerMove: (event) => _handlePointerMove(event, scale),
+          onPointerUp: (_) => _handlePointerUp(),
+          onPointerCancel: (_) => _handlePointerUp(),
+          onPointerSignal: _handlePointerSignal,
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(
-                color: FluentTheme.of(context).resources.controlStrokeColorDefault,
+                color: FluentTheme.of(context)
+                    .resources
+                    .controlStrokeColorDefault,
               ),
               boxShadow: const [
                 BoxShadow(
@@ -425,6 +605,101 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
             child: child,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildToolOverlay() {
+    final FluentThemeData theme = FluentTheme.of(context);
+    final Color panelColor =
+        theme.micaBackgroundColor.withOpacity(0.9);
+    final TextStyle labelStyle =
+        theme.typography.bodyStrong ?? const TextStyle(fontSize: 14);
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: panelColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.resources.controlStrokeColorDefault,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PenToolButton(
+                isSelected: _activeTool == CanvasTool.pen,
+                onPressed: () {
+                  if (_activeTool != CanvasTool.pen) {
+                    setState(() => _activeTool = CanvasTool.pen);
+                  }
+                },
+              ),
+              const SizedBox(width: 8),
+              HandToolButton(
+                isSelected: _activeTool == CanvasTool.hand,
+                onPressed: () {
+                  if (_activeTool != CanvasTool.hand) {
+                    setState(() {
+                      _activeTool = CanvasTool.hand;
+                      _lastPosition = null;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text('粗细', style: labelStyle),
+          Slider(
+            value: _brushRadius,
+            min: 1.0,
+            max: 64.0,
+            onChanged: _activeTool == CanvasTool.pen
+                ? (value) {
+                    setState(() {
+                      _brushRadius = value.clamp(1.0, 64.0);
+                      _refreshBrushPaint();
+                    });
+                  }
+                : null,
+          ),
+          Text(
+            _brushRadius.toStringAsFixed(1),
+            style: theme.typography.caption,
+          ),
+          const SizedBox(height: 8),
+          Text('边缘柔化', style: labelStyle),
+          Slider(
+            value: _brushSoftness,
+            min: 0.0,
+            max: 1.0,
+            onChanged: _activeTool == CanvasTool.pen
+                ? (value) {
+                    setState(() {
+                      _brushSoftness = value.clamp(0.0, 1.0);
+                      _refreshBrushPaint();
+                    });
+                  }
+                : null,
+          ),
+          Text(
+            '${(_brushSoftness * 100).round()}%',
+            style: theme.typography.caption,
+          ),
+        ],
       ),
     );
   }
