@@ -36,6 +36,7 @@ class ToolSettingsCard extends StatefulWidget {
     required this.onPenPressureProfileChanged,
     required this.brushAntialiasLevel,
     required this.onBrushAntialiasChanged,
+    this.brushAntialiasMaxLevel = 3,
     required this.autoSharpPeakEnabled,
     required this.onAutoSharpPeakChanged,
     required this.bucketSampleAllLayers,
@@ -46,6 +47,7 @@ class ToolSettingsCard extends StatefulWidget {
     required this.onBucketContiguousChanged,
     required this.onBucketSwallowColorLineChanged,
     required this.onBucketAntialiasChanged,
+    this.bucketAntialiasMaxLevel = 3,
     required this.bucketTolerance,
     required this.onBucketToleranceChanged,
     required this.layerAdjustCropOutside,
@@ -111,12 +113,14 @@ class ToolSettingsCard extends StatefulWidget {
   final ValueChanged<StrokePressureProfile> onPenPressureProfileChanged;
   final int brushAntialiasLevel;
   final ValueChanged<int> onBrushAntialiasChanged;
+  final int brushAntialiasMaxLevel;
   final bool autoSharpPeakEnabled;
   final ValueChanged<bool> onAutoSharpPeakChanged;
   final bool bucketSampleAllLayers;
   final bool bucketContiguous;
   final bool bucketSwallowColorLine;
   final int bucketAntialiasLevel;
+  final int bucketAntialiasMaxLevel;
   final ValueChanged<bool> onBucketSampleAllLayersChanged;
   final ValueChanged<bool> onBucketContiguousChanged;
   final ValueChanged<bool> onBucketSwallowColorLineChanged;
@@ -1383,6 +1387,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     return _buildAntialiasRow(
       theme,
       value: widget.brushAntialiasLevel,
+      maxLevel: widget.brushAntialiasMaxLevel,
       onChanged: widget.onBrushAntialiasChanged,
     );
   }
@@ -1391,6 +1396,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     return _buildAntialiasRow(
       theme,
       value: widget.bucketAntialiasLevel,
+      maxLevel: widget.bucketAntialiasMaxLevel,
       onChanged: widget.onBucketAntialiasChanged,
     );
   }
@@ -1398,19 +1404,22 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
   Widget _buildAntialiasRow(
     FluentThemeData theme, {
     required int value,
+    required int maxLevel,
     required ValueChanged<int> onChanged,
   }) {
+    final int safeMaxLevel = maxLevel.clamp(1, 50).toInt();
+    final int clampedValue = value.clamp(0, safeMaxLevel).toInt();
     final Slider slider = Slider(
-      value: value.toDouble(),
+      value: clampedValue.toDouble(),
       min: 0,
-      max: 3,
-      divisions: 3,
-      onChanged: (raw) => onChanged(raw.round()),
+      max: safeMaxLevel.toDouble(),
+      divisions: safeMaxLevel,
+      onChanged: (raw) => onChanged(raw.round().clamp(0, safeMaxLevel)),
     );
     if (!widget.compactLayout) {
       final Widget sliderControl = _wrapSliderTooltip(
         label: '边缘柔化',
-        valueText: '等级 $value',
+        valueText: '等级 $clampedValue',
         child: SizedBox(width: _defaultSliderWidth, child: slider),
       );
       return Row(
@@ -1423,7 +1432,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
           SizedBox(
             width: 64,
             child: Text(
-              '等级 $value',
+              '等级 $clampedValue',
               style: theme.typography.caption,
               textAlign: TextAlign.end,
             ),
@@ -1434,9 +1443,9 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     return _buildSliderSection(
       theme,
       label: '边缘柔化',
-      valueText: '等级 $value',
+      valueText: '等级 $clampedValue',
       slider: slider,
-      tooltipText: '边缘柔化：等级 $value',
+      tooltipText: '边缘柔化：等级 $clampedValue',
     );
   }
 

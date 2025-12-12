@@ -1530,6 +1530,7 @@ class CanvasPageState extends State<CanvasPage> {
         onRequestExit: _handleExitRequest,
         onDirtyChanged: (dirty) => _handleDirtyChanged(id, dirty),
         onReadyChanged: (ready) => _handleBoardReadyChanged(id, ready),
+        toolbarLayoutStyle: _toolbarLayoutStyle,
       );
     }
     return PaintingBoard(

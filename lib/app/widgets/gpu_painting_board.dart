@@ -9,14 +9,18 @@ import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier;
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 
+import '../../bitmap_canvas/stroke_dynamics.dart' show StrokePressureProfile;
 import '../../canvas/canvas_layer.dart';
 import '../../canvas/canvas_settings.dart';
 import '../../canvas/canvas_tools.dart';
 import '../../canvas/canvas_viewport.dart';
 import '../../canvas/perspective_guide.dart';
+import '../../canvas/text_renderer.dart' show CanvasTextOrientation;
 import '../models/canvas_view_info.dart';
-import '../toolbars/widgets/hand_tool_button.dart';
-import '../toolbars/widgets/pen_tool_button.dart';
+import '../preferences/app_preferences.dart' show AppPreferences;
+import '../toolbars/layouts/layouts.dart';
+import '../toolbars/widgets/canvas_toolbar.dart';
+import '../toolbars/widgets/tool_settings_card.dart';
 import 'canvas_board_client.dart';
 
 class GpuPaintingBoard extends StatefulWidget {
@@ -26,12 +30,14 @@ class GpuPaintingBoard extends StatefulWidget {
     required this.onRequestExit,
     this.onDirtyChanged,
     this.onReadyChanged,
+    this.toolbarLayoutStyle = PaintingToolbarLayoutStyle.floating,
   });
 
   final CanvasSettings settings;
   final VoidCallback onRequestExit;
   final ValueChanged<bool>? onDirtyChanged;
   final ValueChanged<bool>? onReadyChanged;
+  final PaintingToolbarLayoutStyle toolbarLayoutStyle;
 
   @override
   State<GpuPaintingBoard> createState() => GpuPaintingBoardState();
@@ -39,8 +45,15 @@ class GpuPaintingBoard extends StatefulWidget {
 
 class GpuPaintingBoardState extends State<GpuPaintingBoard>
     implements CanvasBoardClient {
+  static const double _toolButtonPadding = 16;
+  static const double _toolSettingsSpacing = 12;
+  static const double _sidePanelWidth = 240;
+  static const double _sidePanelSpacing = 12;
+  static const double _colorIndicatorSize = 56;
+  // GPU 画笔的柔化用高斯模糊模拟，低等级过强，因此提供更细的 0-30 档。
+  static const int _maxBrushAntialiasLevel = 30;
+
   static const double _defaultBrushRadius = 8.0;
-  static const double _defaultBrushSoftness = 0.5;
   static const Color _defaultBrushColor = Color(0xFF111111);
 
   ui.Image? _surface;
@@ -50,7 +63,18 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
   Offset? _hoverPosition;
   Color _brushColor = _defaultBrushColor;
   double _brushRadius = _defaultBrushRadius;
-  double _brushSoftness = _defaultBrushSoftness;
+  int _brushAntialiasLevel = AppPreferences.defaultPenAntialiasLevel * 10;
+  BrushShape _brushShape = AppPreferences.defaultBrushShape;
+  double _strokeStabilizerStrength =
+      AppPreferences.defaultStrokeStabilizerStrength;
+  bool _stylusPressureEnabled = AppPreferences.defaultStylusPressureEnabled;
+  bool _simulatePenPressure = false;
+  StrokePressureProfile _penPressureProfile = StrokePressureProfile.auto;
+  bool _autoSharpPeakEnabled = AppPreferences.defaultAutoSharpPeakEnabled;
+  bool _vectorDrawingEnabled = AppPreferences.defaultVectorDrawingEnabled;
+  bool _vectorStrokeSmoothingEnabled =
+      AppPreferences.defaultVectorStrokeSmoothingEnabled;
+  bool _brushToolsEraserMode = AppPreferences.defaultBrushToolsEraserMode;
   CanvasTool _activeTool = CanvasTool.pen;
   final CanvasViewport _viewport = CanvasViewport();
   bool _viewportInitialized = false;
@@ -58,6 +82,7 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
   bool _isDraggingBoard = false;
   double _scaleGestureInitialScale = 1.0;
   bool _isScalingGesture = false;
+  Size _toolSettingsCardSize = Size.zero;
   final List<Offset> _pendingPoints = <Offset>[];
   Future<void>? _renderingTask;
   bool _isRenderingStroke = false;
@@ -341,13 +366,25 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
   }
 
   void _refreshBrushPaint() {
-    final double softness = _brushSoftness.clamp(0.0, 1.0);
+    final int level = _brushAntialiasLevel.clamp(0, _maxBrushAntialiasLevel);
+    _brushPaint.isAntiAlias = level > 0;
+    final double softness = _softnessForAntialiasLevel(level);
     if (softness <= 0.001) {
       _brushPaint.maskFilter = null;
       return;
     }
     final double sigma = (_brushRadius * softness).clamp(0.0, 256.0);
     _brushPaint.maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, sigma);
+  }
+
+  double _softnessForAntialiasLevel(int level) {
+    final int clamped = level.clamp(0, _maxBrushAntialiasLevel);
+    if (clamped <= 0) {
+      return 0.0;
+    }
+    final double t = clamped / _maxBrushAntialiasLevel;
+    // 让前几个等级只产生非常轻微的柔化（更接近 CPU 的 1 级体验）。
+    return math.pow(t, 1.3).toDouble() * 0.9;
   }
 
   Offset _baseOriginForScale(double scale) {
@@ -479,6 +516,142 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
     _endStroke();
   }
 
+  void _setActiveTool(CanvasTool tool) {
+    switch (tool) {
+      case CanvasTool.pen:
+      case CanvasTool.hand:
+        setState(() {
+          _activeTool = tool;
+          if (tool == CanvasTool.hand) {
+            _lastPosition = null;
+          }
+        });
+        return;
+      default:
+        // GPU 画布目前仅支持画笔/抓手，其他工具先回退到画笔。
+        setState(() => _activeTool = CanvasTool.pen);
+        return;
+    }
+  }
+
+  void _handlePenStrokeWidthChanged(double value) {
+    final double radius = (value * 0.5).clamp(0.5, 512.0);
+    setState(() {
+      _brushRadius = radius;
+      _refreshBrushPaint();
+    });
+  }
+
+  void _handleBrushAntialiasChanged(int level) {
+    final int clamped = level.clamp(0, _maxBrushAntialiasLevel);
+    if (clamped == _brushAntialiasLevel) {
+      return;
+    }
+    setState(() {
+      _brushAntialiasLevel = clamped;
+      _refreshBrushPaint();
+    });
+  }
+
+  void _handleBrushShapeChanged(BrushShape shape) {
+    if (shape == _brushShape) {
+      return;
+    }
+    setState(() => _brushShape = shape);
+  }
+
+  void _handleStrokeStabilizerChanged(double value) {
+    final double clamped = value.clamp(0.0, 1.0);
+    if ((clamped - _strokeStabilizerStrength).abs() < 0.0001) {
+      return;
+    }
+    setState(() => _strokeStabilizerStrength = clamped);
+  }
+
+  void _handleStylusPressureEnabledChanged(bool enabled) {
+    if (enabled == _stylusPressureEnabled) {
+      return;
+    }
+    setState(() => _stylusPressureEnabled = enabled);
+  }
+
+  void _handleSimulatePenPressureChanged(bool enabled) {
+    if (enabled == _simulatePenPressure) {
+      return;
+    }
+    setState(() => _simulatePenPressure = enabled);
+  }
+
+  void _handlePenPressureProfileChanged(StrokePressureProfile profile) {
+    if (profile == _penPressureProfile) {
+      return;
+    }
+    setState(() => _penPressureProfile = profile);
+  }
+
+  void _handleAutoSharpPeakChanged(bool enabled) {
+    if (enabled == _autoSharpPeakEnabled) {
+      return;
+    }
+    setState(() => _autoSharpPeakEnabled = enabled);
+  }
+
+  void _handleVectorDrawingEnabledChanged(bool enabled) {
+    if (enabled == _vectorDrawingEnabled) {
+      return;
+    }
+    setState(() => _vectorDrawingEnabled = enabled);
+  }
+
+  void _handleVectorStrokeSmoothingChanged(bool enabled) {
+    if (enabled == _vectorStrokeSmoothingEnabled) {
+      return;
+    }
+    setState(() => _vectorStrokeSmoothingEnabled = enabled);
+  }
+
+  void _handleBrushToolsEraserModeChanged(bool enabled) {
+    if (enabled == _brushToolsEraserMode) {
+      return;
+    }
+    setState(() => _brushToolsEraserMode = enabled);
+  }
+
+  CanvasToolbarLayout _resolveToolbarLayoutForStyle(
+    PaintingToolbarLayoutStyle style,
+    CanvasToolbarLayout base, {
+    required bool includeHistoryButtons,
+  }) {
+    if (style != PaintingToolbarLayoutStyle.sai2) {
+      return base;
+    }
+    const int targetColumns = 4;
+    final double availableWidth = math.max(0, _sidePanelWidth - 32);
+    final double totalSpacing = CanvasToolbar.spacing * (targetColumns - 1);
+    final double maxExtent = targetColumns > 0
+        ? (availableWidth - totalSpacing) / targetColumns
+        : CanvasToolbar.buttonSize;
+    final double buttonExtent = maxExtent.isFinite && maxExtent > 0
+        ? maxExtent.clamp(36.0, CanvasToolbar.buttonSize)
+        : CanvasToolbar.buttonSize;
+    final int toolCount =
+        CanvasToolbar.buttonCount +
+        (includeHistoryButtons ? CanvasToolbar.historyButtonCount : 0);
+    final int rows = math.max(1, (toolCount / targetColumns).ceil());
+    final double width = targetColumns * buttonExtent + totalSpacing;
+    final double height =
+        rows * buttonExtent + (rows - 1) * CanvasToolbar.spacing;
+    return CanvasToolbarLayout(
+      columns: targetColumns,
+      rows: rows,
+      width: width,
+      height: height,
+      buttonExtent: buttonExtent,
+      horizontalFlow: true,
+      flowDirection: Axis.horizontal,
+    );
+  }
+
   KeyEventResult _handleKey(FocusNode _, KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.escape) {
@@ -526,6 +699,197 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
             displayWidth,
             displayHeight,
           );
+
+          final double safeToolbarHeight =
+              (available.height - 2 * _toolButtonPadding)
+                  .clamp(0.0, double.infinity);
+          const bool includeHistoryButtons = true;
+          final int toolCount = CanvasToolbar.buttonCount +
+              (includeHistoryButtons
+                  ? CanvasToolbar.historyButtonCount
+                  : 0);
+          final CanvasToolbarLayout baseToolbarLayout =
+              CanvasToolbar.layoutForAvailableHeight(
+            safeToolbarHeight,
+            toolCount: toolCount,
+          );
+          final CanvasToolbarLayout activeToolbarLayout =
+              _resolveToolbarLayoutForStyle(
+            widget.toolbarLayoutStyle,
+            baseToolbarLayout,
+            includeHistoryButtons: includeHistoryButtons,
+          );
+
+          final double toolSettingsLeft = _toolButtonPadding +
+              activeToolbarLayout.width +
+              _toolSettingsSpacing;
+          final double sidebarLeft =
+              (available.width - _sidePanelWidth - _toolButtonPadding)
+                  .clamp(0.0, double.infinity);
+          final double? toolSettingsMaxWidth = (() {
+            final double computed =
+                sidebarLeft - toolSettingsLeft - _toolSettingsSpacing;
+            return computed.isFinite && computed > 0 ? computed : null;
+          })();
+
+          final Widget toolbarWidget = CanvasToolbar(
+            activeTool: _activeTool,
+            selectionShape: SelectionShape.rectangle,
+            shapeToolVariant: ShapeToolVariant.rectangle,
+            onToolSelected: _setActiveTool,
+            onUndo: () {},
+            onRedo: () {},
+            canUndo: canUndo,
+            canRedo: canRedo,
+            layout: activeToolbarLayout,
+            includeHistoryButtons: includeHistoryButtons,
+          );
+
+          final Widget toolSettingsCard = ToolSettingsCard(
+            activeTool: _activeTool,
+            penStrokeWidth: _brushRadius * 2.0,
+            sprayStrokeWidth: _brushRadius * 2.0,
+            sprayMode: SprayMode.smudge,
+            penStrokeSliderRange:
+                AppPreferences.instance.penStrokeSliderRange,
+            onPenStrokeWidthChanged: _handlePenStrokeWidthChanged,
+            onSprayStrokeWidthChanged: (_) {},
+            onSprayModeChanged: (_) {},
+            brushShape: _brushShape,
+            onBrushShapeChanged: _handleBrushShapeChanged,
+            strokeStabilizerStrength: _strokeStabilizerStrength,
+            onStrokeStabilizerChanged: _handleStrokeStabilizerChanged,
+            stylusPressureEnabled: _stylusPressureEnabled,
+            onStylusPressureEnabledChanged:
+                _handleStylusPressureEnabledChanged,
+            simulatePenPressure: _simulatePenPressure,
+            onSimulatePenPressureChanged:
+                _handleSimulatePenPressureChanged,
+            penPressureProfile: _penPressureProfile,
+            onPenPressureProfileChanged:
+                _handlePenPressureProfileChanged,
+            brushAntialiasLevel: _brushAntialiasLevel,
+            brushAntialiasMaxLevel: _maxBrushAntialiasLevel,
+            onBrushAntialiasChanged: _handleBrushAntialiasChanged,
+            autoSharpPeakEnabled: _autoSharpPeakEnabled,
+            onAutoSharpPeakChanged: _handleAutoSharpPeakChanged,
+            bucketSampleAllLayers: false,
+            bucketContiguous: false,
+            bucketSwallowColorLine: false,
+            bucketAntialiasLevel: 0,
+            bucketAntialiasMaxLevel: 3,
+            onBucketSampleAllLayersChanged: (_) {},
+            onBucketContiguousChanged: (_) {},
+            onBucketSwallowColorLineChanged: (_) {},
+            onBucketAntialiasChanged: (_) {},
+            bucketTolerance: 0,
+            onBucketToleranceChanged: (_) {},
+            layerAdjustCropOutside: false,
+            onLayerAdjustCropOutsideChanged: (_) {},
+            selectionShape: SelectionShape.rectangle,
+            onSelectionShapeChanged: (_) {},
+            shapeToolVariant: ShapeToolVariant.rectangle,
+            onShapeToolVariantChanged: (_) {},
+            shapeFillEnabled: false,
+            onShapeFillChanged: (_) {},
+            onSizeChanged: (size) {
+              if (size != _toolSettingsCardSize) {
+                setState(() => _toolSettingsCardSize = size);
+              }
+            },
+            magicWandTolerance: 0,
+            onMagicWandToleranceChanged: (_) {},
+            brushToolsEraserMode: _brushToolsEraserMode,
+            onBrushToolsEraserModeChanged:
+                _handleBrushToolsEraserModeChanged,
+            vectorDrawingEnabled: _vectorDrawingEnabled,
+            onVectorDrawingEnabledChanged:
+                _handleVectorDrawingEnabledChanged,
+            vectorStrokeSmoothingEnabled: _vectorStrokeSmoothingEnabled,
+            onVectorStrokeSmoothingChanged:
+                _handleVectorStrokeSmoothingChanged,
+            strokeStabilizerMaxLevel: 30,
+            textFontSize: 16,
+            onTextFontSizeChanged: (_) {},
+            textLineHeight: 1.0,
+            onTextLineHeightChanged: (_) {},
+            textLetterSpacing: 0.0,
+            onTextLetterSpacingChanged: (_) {},
+            textFontFamily: '',
+            onTextFontFamilyChanged: (_) {},
+            availableFontFamilies: const <String>[],
+            fontsLoading: false,
+            textAlign: TextAlign.left,
+            onTextAlignChanged: (_) {},
+            textOrientation: CanvasTextOrientation.horizontal,
+            onTextOrientationChanged: (_) {},
+            textAntialias: true,
+            onTextAntialiasChanged: (_) {},
+            textStrokeEnabled: false,
+            onTextStrokeEnabledChanged: (_) {},
+            textStrokeWidth: 1.0,
+            onTextStrokeWidthChanged: (_) {},
+            textStrokeColor: const Color(0xFF000000),
+            onTextStrokeColorPressed: () {},
+          );
+
+          final Widget colorIndicator = SizedBox(
+            width: _colorIndicatorSize,
+            height: _colorIndicatorSize,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: _brushColor,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: FluentTheme.of(context)
+                      .resources
+                      .controlStrokeColorDefault,
+                ),
+              ),
+            ),
+          );
+          final ToolbarPanelData colorPanelData = ToolbarPanelData(
+            title: '颜色',
+            child: const Center(child: Text('GPU 画布暂不支持颜色面板')),
+          );
+          final ToolbarPanelData layerPanelData = ToolbarPanelData(
+            title: '图层',
+            child: const Center(child: Text('GPU 画布暂不支持图层面板')),
+            expand: true,
+          );
+          final PaintingToolbarElements toolbarElements =
+              PaintingToolbarElements(
+            toolbar: toolbarWidget,
+            toolSettings: toolSettingsCard,
+            colorIndicator: colorIndicator,
+            colorPanel: colorPanelData,
+            layerPanel: layerPanelData,
+            exitButton: null,
+          );
+          final PaintingToolbarMetrics toolbarMetrics = PaintingToolbarMetrics(
+            toolbarLayout: activeToolbarLayout,
+            toolSettingsSize: _toolSettingsCardSize,
+            workspaceSize: available,
+            toolButtonPadding: _toolButtonPadding,
+            toolSettingsSpacing: _toolSettingsSpacing,
+            sidePanelWidth: _sidePanelWidth,
+            sidePanelSpacing: _sidePanelSpacing,
+            colorIndicatorSize: _colorIndicatorSize,
+            toolSettingsLeft: toolSettingsLeft,
+            sidebarLeft: sidebarLeft,
+            toolSettingsMaxWidth: toolSettingsMaxWidth,
+            workspaceSplits: null,
+          );
+          final PaintingToolbarLayoutDelegate toolbarLayoutDelegate =
+              widget.toolbarLayoutStyle == PaintingToolbarLayoutStyle.sai2
+                  ? const Sai2ToolbarLayoutDelegate()
+                  : const FloatingToolbarLayoutDelegate();
+          final PaintingToolbarLayoutResult toolbarLayoutResult =
+              toolbarLayoutDelegate.build(
+            context,
+            toolbarElements,
+            toolbarMetrics,
+          );
           return Container(
             color: FluentTheme.of(context).micaBackgroundColor,
             child: Stack(
@@ -537,13 +901,9 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
                   height: displayHeight,
                   child: _buildInputRegion(canvasSurface, scale),
                 ),
+                ...toolbarLayoutResult.widgets,
                 Positioned(
-                  left: 16,
-                  top: 16,
-                  child: _buildToolOverlay(),
-                ),
-                Positioned(
-                  left: 16,
+                  right: 16,
                   bottom: 16,
                   child: InfoBar(
                     title: const Text('GPU 画布（实验性）'),
@@ -605,101 +965,6 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
             child: child,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildToolOverlay() {
-    final FluentThemeData theme = FluentTheme.of(context);
-    final Color panelColor =
-        theme.micaBackgroundColor.withOpacity(0.9);
-    final TextStyle labelStyle =
-        theme.typography.bodyStrong ?? const TextStyle(fontSize: 14);
-    return Container(
-      width: 220,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: panelColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.resources.controlStrokeColorDefault,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              PenToolButton(
-                isSelected: _activeTool == CanvasTool.pen,
-                onPressed: () {
-                  if (_activeTool != CanvasTool.pen) {
-                    setState(() => _activeTool = CanvasTool.pen);
-                  }
-                },
-              ),
-              const SizedBox(width: 8),
-              HandToolButton(
-                isSelected: _activeTool == CanvasTool.hand,
-                onPressed: () {
-                  if (_activeTool != CanvasTool.hand) {
-                    setState(() {
-                      _activeTool = CanvasTool.hand;
-                      _lastPosition = null;
-                    });
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text('粗细', style: labelStyle),
-          Slider(
-            value: _brushRadius,
-            min: 1.0,
-            max: 64.0,
-            onChanged: _activeTool == CanvasTool.pen
-                ? (value) {
-                    setState(() {
-                      _brushRadius = value.clamp(1.0, 64.0);
-                      _refreshBrushPaint();
-                    });
-                  }
-                : null,
-          ),
-          Text(
-            _brushRadius.toStringAsFixed(1),
-            style: theme.typography.caption,
-          ),
-          const SizedBox(height: 8),
-          Text('边缘柔化', style: labelStyle),
-          Slider(
-            value: _brushSoftness,
-            min: 0.0,
-            max: 1.0,
-            onChanged: _activeTool == CanvasTool.pen
-                ? (value) {
-                    setState(() {
-                      _brushSoftness = value.clamp(0.0, 1.0);
-                      _refreshBrushPaint();
-                    });
-                  }
-                : null,
-          ),
-          Text(
-            '${(_brushSoftness * 100).round()}%',
-            style: theme.typography.caption,
-          ),
-        ],
       ),
     );
   }
