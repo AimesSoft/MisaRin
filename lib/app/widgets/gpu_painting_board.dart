@@ -714,6 +714,7 @@ class GpuPaintingBoardState extends State<GpuPaintingBoard>
           : RawImage(
               image: surface,
               fit: BoxFit.fill,
+              filterQuality: FilterQuality.none,
             ),
     );
   }
