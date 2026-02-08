@@ -13,7 +13,17 @@ class CanvasEngineFfi {
     required int pointCount,
   }) {}
 
-  int getInputQueueLen(int handle) => 0;
+  Future<int> getInputQueueLen(int handle) async => 0;
+
+  Future<bool> pollFrameReady({required int handle}) async => false;
+
+  Future<Uint8List?> readPresent({
+    required int handle,
+    required int width,
+    required int height,
+  }) async {
+    return null;
+  }
 
   void setBrush({
     required int handle,
@@ -53,7 +63,7 @@ class CanvasEngineFfi {
 
   void endSpray({required int handle}) {}
 
-  bool applyFilter({
+  Future<bool> applyFilter({
     required int handle,
     required int layerIndex,
     required int filterType,
@@ -61,15 +71,15 @@ class CanvasEngineFfi {
     double param1 = 0.0,
     double param2 = 0.0,
     double param3 = 0.0,
-  }) {
+  }) async {
     return false;
   }
 
-  bool applyAntialias({
+  Future<bool> applyAntialias({
     required int handle,
     required int layerIndex,
     required int level,
-  }) {
+  }) async {
     return false;
   }
 
@@ -119,7 +129,7 @@ class CanvasEngineFfi {
     required int colorArgb,
   }) {}
 
-  bool bucketFill({
+  Future<bool> bucketFill({
     required int handle,
     required int layerIndex,
     required int startX,
@@ -132,11 +142,11 @@ class CanvasEngineFfi {
     int antialiasLevel = 0,
     Uint32List? swallowColors,
     Uint8List? selectionMask,
-  }) {
+  }) async {
     return false;
   }
 
-  Uint8List? magicWandMask({
+  Future<Uint8List?> magicWandMask({
     required int handle,
     required int layerIndex,
     required int startX,
@@ -145,66 +155,69 @@ class CanvasEngineFfi {
     bool sampleAllLayers = true,
     int tolerance = 0,
     Uint8List? selectionMask,
-  }) {
+  }) async {
     return null;
   }
 
-  Uint32List? readLayer({
+  Future<Uint32List?> readLayer({
     required int handle,
     required int layerIndex,
     required int width,
     required int height,
-  }) {
+  }) async {
     return null;
   }
 
-  Uint8List? readLayerPreview({
+  Future<Uint8List?> readLayerPreview({
     required int handle,
     required int layerIndex,
     required int width,
     required int height,
-  }) {
+  }) async {
     return null;
   }
 
-  bool writeLayer({
+  Future<bool> writeLayer({
     required int handle,
     required int layerIndex,
     required Uint32List pixels,
     bool recordUndo = true,
-  }) {
+  }) async {
     return false;
   }
 
-  bool translateLayer({
+  Future<bool> translateLayer({
     required int handle,
     required int layerIndex,
     required int deltaX,
     required int deltaY,
-  }) {
+  }) async {
     return false;
   }
 
-  bool setLayerTransformPreview({
+  Future<bool> setLayerTransformPreview({
     required int handle,
     required int layerIndex,
     required Float32List matrix,
     bool enabled = true,
     bool bilinear = true,
-  }) {
+  }) async {
     return false;
   }
 
-  bool applyLayerTransform({
+  Future<bool> applyLayerTransform({
     required int handle,
     required int layerIndex,
     required Float32List matrix,
     bool bilinear = true,
-  }) {
+  }) async {
     return false;
   }
 
-  Int32List? getLayerBounds({required int handle, required int layerIndex}) {
+  Future<Int32List?> getLayerBounds({
+    required int handle,
+    required int layerIndex,
+  }) async {
     return null;
   }
 

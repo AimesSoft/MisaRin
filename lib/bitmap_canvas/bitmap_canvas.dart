@@ -1,5 +1,4 @@
 import 'dart:collection';
-import 'dart:ffi';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
@@ -41,8 +40,6 @@ class BitmapSurface {
   bool _isClean = true;
 
   int get pointerAddress => _nativeBuffer?.address ?? 0;
-
-  Pointer<Uint32> get pointer => Pointer<Uint32>.fromAddress(pointerAddress);
 
   void dispose() {
     _nativeBuffer?.dispose();

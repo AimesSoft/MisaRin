@@ -157,7 +157,9 @@ void _layerManagerRemoveLayer(BitmapCanvasController controller, String id) {
   unawaited(() async {
     try {
       await ensureRustInitialized();
-      rust_gpu_brush.gpuRemoveLayer(layerId: id);
+      if (!kIsWeb) {
+        rust_gpu_brush.gpuRemoveLayer(layerId: id);
+      }
     } catch (_) {}
   }());
   if (controller._activeIndex >= controller._layers.length) {

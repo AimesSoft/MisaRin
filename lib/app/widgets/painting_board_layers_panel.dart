@@ -504,7 +504,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
     if (targetWidth <= 0 || targetHeight <= 0) {
       return null;
     }
-    final Uint8List? rgba = CanvasEngineFfi.instance.readLayerPreview(
+    final Uint8List? rgba = await CanvasEngineFfi.instance.readLayerPreview(
       handle: handle,
       layerIndex: layerIndex,
       width: targetWidth,

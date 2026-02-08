@@ -148,7 +148,7 @@ extension _PaintingBoardFilterPreviewExtension on _PaintingBoardFilterMixin {
     bool applied = false;
     switch (session.type) {
       case _FilterPanelType.hueSaturation:
-        applied = CanvasEngineFfi.instance.applyFilter(
+        applied = await CanvasEngineFfi.instance.applyFilter(
           handle: handle,
           layerIndex: layerIndex,
           filterType: _kFilterTypeHueSaturation,
@@ -158,7 +158,7 @@ extension _PaintingBoardFilterPreviewExtension on _PaintingBoardFilterMixin {
         );
         break;
       case _FilterPanelType.brightnessContrast:
-        applied = CanvasEngineFfi.instance.applyFilter(
+        applied = await CanvasEngineFfi.instance.applyFilter(
           handle: handle,
           layerIndex: layerIndex,
           filterType: _kFilterTypeBrightnessContrast,
@@ -167,7 +167,7 @@ extension _PaintingBoardFilterPreviewExtension on _PaintingBoardFilterMixin {
         );
         break;
       case _FilterPanelType.blackWhite:
-        applied = CanvasEngineFfi.instance.applyFilter(
+        applied = await CanvasEngineFfi.instance.applyFilter(
           handle: handle,
           layerIndex: layerIndex,
           filterType: _kFilterTypeBlackWhite,
@@ -177,7 +177,7 @@ extension _PaintingBoardFilterPreviewExtension on _PaintingBoardFilterMixin {
         );
         break;
       case _FilterPanelType.binarize:
-        applied = CanvasEngineFfi.instance.applyFilter(
+        applied = await CanvasEngineFfi.instance.applyFilter(
           handle: handle,
           layerIndex: layerIndex,
           filterType: _kFilterTypeBinarize,
@@ -185,7 +185,7 @@ extension _PaintingBoardFilterPreviewExtension on _PaintingBoardFilterMixin {
         );
         break;
       case _FilterPanelType.gaussianBlur:
-        applied = CanvasEngineFfi.instance.applyFilter(
+        applied = await CanvasEngineFfi.instance.applyFilter(
           handle: handle,
           layerIndex: layerIndex,
           filterType: _kFilterTypeGaussianBlur,
@@ -193,7 +193,7 @@ extension _PaintingBoardFilterPreviewExtension on _PaintingBoardFilterMixin {
         );
         break;
       case _FilterPanelType.leakRemoval:
-        applied = CanvasEngineFfi.instance.applyFilter(
+        applied = await CanvasEngineFfi.instance.applyFilter(
           handle: handle,
           layerIndex: layerIndex,
           filterType: _kFilterTypeLeakRemoval,
@@ -201,7 +201,7 @@ extension _PaintingBoardFilterPreviewExtension on _PaintingBoardFilterMixin {
         );
         break;
       case _FilterPanelType.lineNarrow:
-        applied = CanvasEngineFfi.instance.applyFilter(
+        applied = await CanvasEngineFfi.instance.applyFilter(
           handle: handle,
           layerIndex: layerIndex,
           filterType: _kFilterTypeLineNarrow,
@@ -209,7 +209,7 @@ extension _PaintingBoardFilterPreviewExtension on _PaintingBoardFilterMixin {
         );
         break;
       case _FilterPanelType.fillExpand:
-        applied = CanvasEngineFfi.instance.applyFilter(
+        applied = await CanvasEngineFfi.instance.applyFilter(
           handle: handle,
           layerIndex: layerIndex,
           filterType: _kFilterTypeFillExpand,
@@ -217,7 +217,7 @@ extension _PaintingBoardFilterPreviewExtension on _PaintingBoardFilterMixin {
         );
         break;
       case _FilterPanelType.scanPaperDrawing:
-        applied = CanvasEngineFfi.instance.applyFilter(
+        applied = await CanvasEngineFfi.instance.applyFilter(
           handle: handle,
           layerIndex: layerIndex,
           filterType: _kFilterTypeScanPaperDrawing,

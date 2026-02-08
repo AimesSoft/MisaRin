@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `clamp_unit_f64_to_f32`, `compositor_cell`
+// These functions are ignored because they are not marked as `pub`: `clamp_unit_f64_to_f32`, `compositor_cell`, `with_compositor_mut`
 
 void gpuCompositorInit() =>
     RustLib.instance.api.crateApiGpuCompositeGpuCompositorInit();

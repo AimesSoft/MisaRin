@@ -374,7 +374,7 @@ mixin _PaintingBoardFilterMixin
         _showFilterMessage(l10n.cannotLocateLayer);
         return;
       }
-      final bool applied = CanvasEngineFfi.instance.applyFilter(
+      final bool applied = await CanvasEngineFfi.instance.applyFilter(
         handle: handle,
         layerIndex: layerIndex,
         filterType: _kFilterTypeInvert,
@@ -644,7 +644,7 @@ mixin _PaintingBoardFilterMixin
       final int width = engineSize.width.round();
       final int height = engineSize.height.round();
       if (handle != null && rustLayerIndex != null && width > 0 && height > 0) {
-        final Uint32List? sourcePixels = CanvasEngineFfi.instance.readLayer(
+        final Uint32List? sourcePixels = await CanvasEngineFfi.instance.readLayer(
           handle: handle,
           layerIndex: rustLayerIndex,
           width: width,
@@ -878,15 +878,17 @@ mixin _PaintingBoardFilterMixin
         final int? layerIndex = _rustCanvasLayerIndexForId(session.layerId);
         if (reduced != null &&
             handle != null &&
-            layerIndex != null &&
-            CanvasEngineFfi.instance.writeLayer(
-              handle: handle,
-              layerIndex: layerIndex,
-              pixels: this._rgbaToArgbPixels(reduced),
-              recordUndo: false,
-            )) {
-          session.previewLayer ??=
-              session.originalLayers[session.activeLayerIndex];
+            layerIndex != null) {
+          final bool applied = await CanvasEngineFfi.instance.writeLayer(
+            handle: handle,
+            layerIndex: layerIndex,
+            pixels: this._rgbaToArgbPixels(reduced),
+            recordUndo: false,
+          );
+          if (applied) {
+            session.previewLayer ??=
+                session.originalLayers[session.activeLayerIndex];
+          }
         }
       } else {
         final CanvasLayerData adjusted = _buildColorRangeAdjustedLayer(
@@ -961,13 +963,14 @@ mixin _PaintingBoardFilterMixin
         final int? layerIndex = _rustCanvasLayerIndexForId(session.layerId);
         final bool applied = reduced != null &&
             handle != null &&
-            layerIndex != null &&
-            CanvasEngineFfi.instance.writeLayer(
-              handle: handle,
-              layerIndex: layerIndex,
-              pixels: this._rgbaToArgbPixels(reduced),
-              recordUndo: true,
-            );
+            layerIndex != null
+            ? await CanvasEngineFfi.instance.writeLayer(
+                handle: handle,
+                layerIndex: layerIndex,
+                pixels: this._rgbaToArgbPixels(reduced),
+                recordUndo: true,
+              )
+            : false;
         if (!applied) {
           throw StateError('Apply rust color range failed.');
         }
@@ -1053,11 +1056,13 @@ mixin _PaintingBoardFilterMixin
       final int? layerIndex = _rustCanvasLayerIndexForId(session.layerId);
       final Uint32List? pixels = session.rustPixels;
       if (handle != null && layerIndex != null && pixels != null) {
-        CanvasEngineFfi.instance.writeLayer(
-          handle: handle,
-          layerIndex: layerIndex,
-          pixels: pixels,
-          recordUndo: false,
+        unawaited(
+          CanvasEngineFfi.instance.writeLayer(
+            handle: handle,
+            layerIndex: layerIndex,
+            pixels: pixels,
+            recordUndo: false,
+          ),
         );
       }
       session.previewLayer = null;

@@ -245,7 +245,7 @@ extension _PaintingBoardInteractionStrokeExtension on _PaintingBoardInteractionM
     if (!_canUseRustCanvasEngine()) {
       return;
     }
-    if (!_syncActiveLayerPixelsFromRust()) {
+    if (!await _syncActiveLayerPixelsFromRust()) {
       _showRustCanvasMessage('Rust 画布同步图层失败。');
       _clearPerspectivePenPreview();
       return;
@@ -254,7 +254,7 @@ extension _PaintingBoardInteractionStrokeExtension on _PaintingBoardInteractionM
     _appendPoint(snapped, timestamp, rawEvent);
     _finishStroke(timestamp);
     await _controller.waitForPendingWorkerTasks();
-    if (!_commitActiveLayerToRust()) {
+    if (!await _commitActiveLayerToRust()) {
       _showRustCanvasMessage('Rust 画布写入图层失败。');
     }
     _clearPerspectivePenPreview();

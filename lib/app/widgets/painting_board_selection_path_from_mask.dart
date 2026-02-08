@@ -7,6 +7,9 @@ Path? _selectionPathFromMask(Uint8List mask, int width) {
   if (width <= 0) {
     return null;
   }
+  if (kIsWeb) {
+    return null;
+  }
 
   try {
     final Uint32List vertices = rust_selection_path.selectionPathVerticesFromMask(

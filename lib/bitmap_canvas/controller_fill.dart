@@ -148,19 +148,77 @@ void _fillFloodFill(
 
   final BitmapSurface surface = controller._activeSurface;
   final String layerId = controller._activeLayer.id;
-  final int ptrAddress = surface.pointerAddress;
-  final Pointer<Void> ptr = Pointer<Void>.fromAddress(ptrAddress);
-  if (ptr == nullptr) {
-    return;
-  }
   final int generation = controller._paintingWorkerGeneration;
   final int colorValue = BitmapSurface.encodeColor(color);
   final int width = controller._width;
   final int height = controller._height;
+  if (kIsWeb) {
+    controller._enqueueWorkerPatchFuture(
+      rust_bucket_fill
+          .floodFillPatch(
+            width: width,
+            height: height,
+            pixels: surface.pixels,
+            samplePixels: samplePixels,
+            startX: x,
+            startY: y,
+            colorValue: colorValue,
+            targetColorValue: null,
+            contiguous: contiguous,
+            tolerance: clampedTolerance,
+            fillGap: clampedFillGap,
+            selectionMask: selectionMask,
+            swallowColors: swallowColorsU32,
+            antialiasLevel: clampedAntialias,
+          )
+          .then<PaintingWorkerPatch?>((patch) {
+            if (generation != controller._paintingWorkerGeneration) {
+              return null;
+            }
+            if (patch.width <= 0 || patch.height <= 0) {
+              return null;
+            }
+            final int left = patch.left;
+            final int top = patch.top;
+            final int patchWidth = patch.width;
+            final int patchHeight = patch.height;
+            final Uint32List destPixels = surface.pixels;
+            final Uint32List srcPixels = patch.pixels;
+            final int surfaceWidth = width;
+            int srcIndex = 0;
+            for (int dy = 0; dy < patchHeight; dy++) {
+              int destIndex = (top + dy) * surfaceWidth + left;
+              final int rowEnd = destIndex + patchWidth;
+              for (; destIndex < rowEnd; destIndex++) {
+                destPixels[destIndex] = srcPixels[srcIndex++];
+              }
+            }
+            if (surface.isClean && (colorValue & 0xff000000) != 0) {
+              surface.markDirty();
+            }
+            controller._markDirty(
+              region: Rect.fromLTWH(
+                left.toDouble(),
+                top.toDouble(),
+                patchWidth.toDouble(),
+                patchHeight.toDouble(),
+              ),
+              layerId: layerId,
+              pixelsDirty: true,
+            );
+            return null;
+          }),
+    );
+    return;
+  }
+  final int ptrAddress = surface.pointerAddress;
+  if (ptrAddress == 0) {
+    return;
+  }
   controller._enqueueWorkerPatchFuture(
     rust_bucket_fill
         .floodFillInPlace(
-          ptr: BigInt.from(ptr.address),
+          ptr: BigInt.from(ptrAddress),
           width: width,
           height: height,
           samplePixels: samplePixels,

@@ -463,7 +463,9 @@ Uint32List _controllerRgbaToPixels(Uint8List rgba, int width, int height) {
 }
 
 Uint8List _controllerPixelsToRgba(Uint32List pixels) {
-  return rust_image_ops.convertPixelsToRgba(pixels: pixels);
+  return kIsWeb
+      ? argbToPremultipliedRgba(pixels)
+      : rust_image_ops.convertPixelsToRgba(pixels: pixels);
 }
 
 Rect _controllerUnionRects(Rect a, Rect b) {

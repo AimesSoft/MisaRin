@@ -234,7 +234,7 @@ mixin _PaintingBoardSelectionMixin on _PaintingBoardBase {
     final int maskLength = engineWidth * engineHeight;
     final Uint8List? selectionMaskForRust =
         _resolveSelectionMaskForRust(engineWidth, engineHeight);
-    final Uint8List? mask = CanvasEngineFfi.instance.magicWandMask(
+    final Uint8List? mask = await CanvasEngineFfi.instance.magicWandMask(
       handle: handle,
       layerIndex: layerIndex,
       startX: startX,

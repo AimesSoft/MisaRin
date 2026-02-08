@@ -1,16 +1,21 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import 'package:misa_rin/src/rust/canvas_engine_ffi.dart';
+import 'package:misa_rin/src/rust/api/canvas_engine.dart' as rust_canvas_engine;
 
 import '../debug/rust_canvas_timeline.dart';
 import '../../canvas/canvas_tools.dart';
 import '../utils/tablet_input_bridge.dart';
+import '../utils/web_log.dart';
 
 const MethodChannel _rustCanvasChannel = MethodChannel(
   'misarin/rust_canvas_texture',
@@ -31,6 +36,183 @@ const int _kPointStrideBytes = 32;
 const int _kPointFlagDown = 1;
 const int _kPointFlagMove = 2;
 const int _kPointFlagUp = 4;
+
+final Map<String, _WebSurfaceEntry> _webSurfaces =
+    <String, _WebSurfaceEntry>{};
+
+final class _WebSurfaceEntry {
+  _WebSurfaceEntry({
+    required this.surfaceId,
+    required this.width,
+    required this.height,
+    required this.layerCount,
+    required this.backgroundColorArgb,
+    required this.engineHandle,
+  });
+
+  final String surfaceId;
+  int width;
+  int height;
+  int layerCount;
+  int backgroundColorArgb;
+  int engineHandle;
+}
+
+Future<_RustSurfaceInfo> _requestTextureInfoWeb({
+  required String surfaceId,
+  required int width,
+  required int height,
+  required int layerCount,
+  required int backgroundColorArgb,
+  required bool fromWarmup,
+}) async {
+  Future<T> runStep<T>(String label, Future<T> Function() action) async {
+    try {
+      return await action();
+    } catch (error, stackTrace) {
+      final String message =
+          'rustSurface: web step failed [$label] $error';
+      debugPrint('$message\n$stackTrace');
+      reportWebLog('$message\n$stackTrace');
+      throw StateError(message);
+    }
+  }
+
+  final bool initOk = await runStep<bool>(
+    'canvasEngineInit',
+    () => rust_canvas_engine.canvasEngineInit(),
+  );
+  if (!initOk) {
+    throw StateError('engine init failed (WebGPU unavailable?)');
+  }
+  final int resolvedLayerCount = math.max(1, layerCount);
+  final _WebSurfaceEntry entry = _webSurfaces.putIfAbsent(
+    surfaceId,
+    () => _WebSurfaceEntry(
+      surfaceId: surfaceId,
+      width: width,
+      height: height,
+      layerCount: resolvedLayerCount,
+      backgroundColorArgb: backgroundColorArgb,
+      engineHandle: 0,
+    ),
+  );
+
+  final bool needsResize = entry.width != width || entry.height != height;
+  final bool layerCountChanged = entry.layerCount != resolvedLayerCount;
+  entry.layerCount = resolvedLayerCount;
+  entry.backgroundColorArgb = backgroundColorArgb;
+
+  int handle = entry.engineHandle;
+  bool engineCreated = false;
+  bool resizeOk = true;
+
+  if (handle == 0) {
+    final PlatformInt64 created = await runStep<PlatformInt64>(
+      'canvasEngineCreate',
+      () => rust_canvas_engine.canvasEngineCreate(
+        width: width,
+        height: height,
+      ),
+    );
+    handle = created.toInt();
+    engineCreated = handle != 0;
+  } else if (needsResize) {
+    resizeOk = await runStep<bool>(
+      'canvasEngineResizeCanvas',
+      () => rust_canvas_engine.canvasEngineResizeCanvas(
+        handle: PlatformInt64Util.from(handle),
+        width: width,
+        height: height,
+        layerCount: resolvedLayerCount,
+        backgroundColorArgb: backgroundColorArgb,
+      ),
+    );
+    if (!resizeOk) {
+      await runStep<void>(
+        'canvasEngineDispose',
+        () => rust_canvas_engine.canvasEngineDispose(
+          handle: PlatformInt64Util.from(handle),
+        ),
+      );
+      final PlatformInt64 created = await runStep<PlatformInt64>(
+        'canvasEngineCreate(retry)',
+        () => rust_canvas_engine.canvasEngineCreate(
+          width: width,
+          height: height,
+        ),
+      );
+      handle = created.toInt();
+      engineCreated = handle != 0;
+      resizeOk = handle != 0;
+    }
+  }
+
+  if (handle == 0 || !resizeOk) {
+    throw StateError('engine_create failed (handle=$handle resizeOk=$resizeOk)');
+  }
+
+  if (engineCreated || needsResize) {
+    await runStep<void>(
+      'canvasEngineAttachPresent',
+      () => rust_canvas_engine.canvasEngineAttachPresent(
+        handle: PlatformInt64Util.from(handle),
+        width: width,
+        height: height,
+      ),
+    );
+  }
+
+  final bool shouldReset = engineCreated || needsResize || layerCountChanged;
+  if (shouldReset) {
+    await runStep<void>(
+      'canvasEngineResetCanvasWithLayers',
+      () => rust_canvas_engine.canvasEngineResetCanvasWithLayers(
+        handle: PlatformInt64Util.from(handle),
+        layerCount: resolvedLayerCount,
+        backgroundColorArgb: backgroundColorArgb,
+      ),
+    );
+  }
+
+  entry.engineHandle = handle;
+  entry.width = width;
+  entry.height = height;
+
+  return _RustSurfaceInfo(
+    textureId: 0,
+    engineHandle: handle,
+    engineWidth: width,
+    engineHeight: height,
+    backgroundColorArgb: backgroundColorArgb,
+    fromWarmup: fromWarmup,
+    isNewEngine: engineCreated || needsResize,
+  );
+}
+
+Future<void> _disposeSurfaceWeb(String surfaceId) async {
+  final _WebSurfaceEntry? entry = _webSurfaces.remove(surfaceId);
+  if (entry == null) {
+    return;
+  }
+  if (entry.engineHandle != 0) {
+    await rust_canvas_engine.canvasEngineDispose(
+      handle: PlatformInt64Util.from(entry.engineHandle),
+    );
+  }
+}
+
+Future<void> _disposeSurfacePlatform(String surfaceId) async {
+  if (kIsWeb) {
+    await _disposeSurfaceWeb(surfaceId);
+    return;
+  }
+  try {
+    await _rustCanvasChannel.invokeMethod<void>('disposeTexture', <String, Object?>{
+      'surfaceId': surfaceId,
+    });
+  } catch (_) {}
+}
 
 final class _PackedPointBuffer {
   _PackedPointBuffer({int initialCapacityPoints = 256})
@@ -248,10 +430,7 @@ class _RustSurfaceWarmupCache {
       RustCanvasTimeline.mark(
         'rustSurface: warmup canceled surface=$surfaceId',
       );
-      await _rustCanvasChannel.invokeMethod<void>(
-        'disposeTexture',
-        <String, Object?>{'surfaceId': surfaceId},
-      );
+      await _disposeSurfacePlatform(surfaceId);
     } catch (_) {}
   }
 }
@@ -264,6 +443,16 @@ Future<_RustSurfaceInfo> _requestTextureInfo({
   required int backgroundColorArgb,
   required bool fromWarmup,
 }) async {
+  if (kIsWeb) {
+    return _requestTextureInfoWeb(
+      surfaceId: surfaceId,
+      width: width,
+      height: height,
+      layerCount: layerCount,
+      backgroundColorArgb: backgroundColorArgb,
+      fromWarmup: fromWarmup,
+    );
+  }
   final Map<dynamic, dynamic>? info =
       await _rustCanvasChannel.invokeMethod<Map<dynamic, dynamic>>(
     'getTextureInfo',
@@ -398,6 +587,9 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   int? _engineHandle;
   Size? _engineSize;
   Object? _error;
+  ui.Image? _webImage;
+  Timer? _webFrameTimer;
+  bool _webFrameInFlight = false;
   late final String _surfaceId;
 
   final _PackedPointBuffer _points = _PackedPointBuffer();
@@ -474,19 +666,15 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
     try {
       RustCanvasTimeline.mark('rustSurface: prewarm start');
       const String warmSurfaceId = 'rust_canvas_prewarm';
-      await _rustCanvasChannel.invokeMethod<Map<dynamic, dynamic>>(
-        'getTextureInfo',
-        <String, Object?>{
-          'surfaceId': warmSurfaceId,
-          'width': 1,
-          'height': 1,
-          'layerCount': 1,
-          'backgroundColorArgb': 0xFFFFFFFF,
-        },
+      await _requestTextureInfo(
+        surfaceId: warmSurfaceId,
+        width: 1,
+        height: 1,
+        layerCount: 1,
+        backgroundColorArgb: 0xFFFFFFFF,
+        fromWarmup: false,
       );
-      await _rustCanvasChannel.invokeMethod<void>('disposeTexture', <String, Object?>{
-        'surfaceId': warmSurfaceId,
-      });
+      await _disposeSurfacePlatform(warmSurfaceId);
       RustCanvasTimeline.mark('rustSurface: prewarm done');
     } catch (e) {
       RustCanvasTimeline.mark('rustSurface: prewarm failed $e');
@@ -525,7 +713,9 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
         _engineSize = (engineWidth != null && engineHeight != null)
             ? Size(engineWidth.toDouble(), engineHeight.toDouble())
             : null;
-        _error = (textureId == null || engineHandle == null)
+        final bool hasTexture = kIsWeb ? true : textureId != null;
+        final bool hasEngine = engineHandle != null;
+        _error = (!hasTexture || !hasEngine)
             ? StateError('textureId/engineHandle == null: $info')
             : null;
       });
@@ -549,8 +739,12 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
           _applyBackground(handle);
         }
       }
+      if (kIsWeb) {
+        _startWebFramePumpIfNeeded();
+        unawaited(_pumpWebFrame());
+      }
       _notifyEngineInfoChanged(isNewEngine: info.isNewEngine);
-    } catch (error) {
+    } catch (error, stackTrace) {
       if (!mounted) {
         return;
       }
@@ -558,11 +752,17 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
         _textureId = null;
         _engineHandle = null;
         _engineSize = null;
+        if (_webImage != null) {
+          _webImage!.dispose();
+          _webImage = null;
+        }
         _error = error;
       });
-      RustCanvasTimeline.mark(
-        'rustSurface: loadTextureInfo error $error',
-      );
+      _stopWebFramePump();
+      final String message = 'rustSurface: loadTextureInfo error $error';
+      RustCanvasTimeline.mark(message);
+      debugPrint('$message\n$stackTrace');
+      reportWebLog('$message\n$stackTrace');
       _notifyEngineInfoChanged();
     }
   }
@@ -580,9 +780,96 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
     widget.onEngineInfoChanged?.call(handle, size, isNewEngine);
   }
 
+  void _startWebFramePumpIfNeeded() {
+    if (!kIsWeb) {
+      return;
+    }
+    _webFrameTimer ??= Timer.periodic(
+      const Duration(milliseconds: 16),
+      (_) => unawaited(_pumpWebFrame()),
+    );
+  }
+
+  void _stopWebFramePump() {
+    _webFrameTimer?.cancel();
+    _webFrameTimer = null;
+  }
+
+  Future<void> _pumpWebFrame() async {
+    if (!kIsWeb || _webFrameInFlight) {
+      return;
+    }
+    final int? handle = _engineHandle;
+    final Size? size = _engineSize;
+    if (handle == null || size == null) {
+      return;
+    }
+    if (!CanvasEngineFfi.instance.isSupported) {
+      return;
+    }
+    final bool shouldRead = _webImage == null
+        ? true
+        : await CanvasEngineFfi.instance.pollFrameReady(handle: handle);
+    if (!shouldRead) {
+      return;
+    }
+    _webFrameInFlight = true;
+    try {
+      final int width = size.width.round();
+      final int height = size.height.round();
+      final Uint8List? bytes = await CanvasEngineFfi.instance.readPresent(
+        handle: handle,
+        width: width,
+        height: height,
+      );
+      if (!mounted || bytes == null) {
+        return;
+      }
+      final ui.Image image = await _decodeWebImage(bytes, width, height);
+      if (!mounted) {
+        image.dispose();
+        return;
+      }
+      setState(() {
+        _webImage?.dispose();
+        _webImage = image;
+      });
+    } finally {
+      _webFrameInFlight = false;
+    }
+  }
+
+  Future<ui.Image> _decodeWebImage(
+    Uint8List bytes,
+    int width,
+    int height,
+  ) async {
+    final ui.ImmutableBuffer buffer = await ui.ImmutableBuffer.fromUint8List(
+      bytes,
+    );
+    final ui.ImageDescriptor descriptor = ui.ImageDescriptor.raw(
+      buffer,
+      width: width,
+      height: height,
+      rowBytes: width * 4,
+      pixelFormat: ui.PixelFormat.bgra8888,
+    );
+    final ui.Codec codec = await descriptor.instantiateCodec();
+    final ui.FrameInfo frame = await codec.getNextFrame();
+    codec.dispose();
+    descriptor.dispose();
+    buffer.dispose();
+    return frame.image;
+  }
+
   @override
   void dispose() {
     _RustSurfaceWarmupCache.instance.drop(_surfaceId);
+    _stopWebFramePump();
+    if (_webImage != null) {
+      _webImage!.dispose();
+      _webImage = null;
+    }
     unawaited(_disposeSurface());
     if (_lastNotifiedEngineHandle != null || _lastNotifiedEngineSize != null) {
       widget.onEngineInfoChanged?.call(null, null, false);
@@ -591,11 +878,7 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   }
 
   Future<void> _disposeSurface() async {
-    try {
-      await _rustCanvasChannel.invokeMethod<void>('disposeTexture', <String, Object?>{
-        'surfaceId': _surfaceId,
-      });
-    } catch (_) {}
+    await _disposeSurfacePlatform(_surfaceId);
   }
 
   void _applyBackground(int handle) {
@@ -790,8 +1073,11 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
       return;
     }
     if (_kDebugRustCanvasInput) {
-      final int queued = CanvasEngineFfi.instance.getInputQueueLen(handle);
-      debugPrint('[rust_canvas] flush points=$count queued_before=$queued');
+      unawaited(
+        CanvasEngineFfi.instance.getInputQueueLen(handle).then((queued) {
+          debugPrint('[rust_canvas] flush points=$count queued_before=$queued');
+        }),
+      );
     }
     CanvasEngineFfi.instance.pushPointsPacked(
       handle: handle,
@@ -843,6 +1129,28 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
               style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 12),
             ),
           ),
+        ),
+      );
+    }
+
+    if (kIsWeb) {
+      final ui.Image? image = _webImage;
+      final Widget content = image == null
+          ? const ColoredBox(color: Color(0xFFFFFFFF))
+          : RawImage(
+              image: image,
+              filterQuality: FilterQuality.none,
+            );
+      return Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: _handlePointerDown,
+        onPointerMove: _handlePointerMove,
+        onPointerUp: _handlePointerUp,
+        onPointerCancel: _handlePointerCancel,
+        child: SizedBox(
+          width: canvasSize.width,
+          height: canvasSize.height,
+          child: content,
         ),
       );
     }

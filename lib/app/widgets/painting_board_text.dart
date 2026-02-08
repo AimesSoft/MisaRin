@@ -382,7 +382,7 @@ mixin _PaintingBoardTextMixin on _PaintingBoardBase {
       }
       if (_canUseRustCanvasEngine()) {
         await _controller.waitForPendingWorkerTasks();
-        if (!_syncAllLayerPixelsFromRust()) {
+        if (!await _syncAllLayerPixelsFromRust()) {
           _showRustCanvasMessage('Rust 画布同步图层失败。');
           return;
         }
@@ -426,7 +426,7 @@ mixin _PaintingBoardTextMixin on _PaintingBoardBase {
       setState(() {});
       _textEditingFocusNode.requestFocus();
     }
-    bool _commitTextLayerToRust(String layerId) {
+    Future<bool> _commitTextLayerToRust(String layerId) async {
       if (!_canUseRustCanvasEngine()) {
         return false;
       }
@@ -460,7 +460,7 @@ mixin _PaintingBoardTextMixin on _PaintingBoardBase {
       if (layer.surface.pixels.length != width * height) {
         return false;
       }
-      final bool applied = CanvasEngineFfi.instance.writeLayer(
+      final bool applied = await CanvasEngineFfi.instance.writeLayer(
         handle: handle,
         layerIndex: layerIndex,
         pixels: layer.surface.pixels,
@@ -492,7 +492,7 @@ mixin _PaintingBoardTextMixin on _PaintingBoardBase {
       await _waitForPendingTextLayerUpdate();
       if (session.isNewLayer && _canUseRustCanvasEngine()) {
         await _controller.waitForPendingWorkerTasks();
-        if (!_syncAllLayerPixelsFromRust()) {
+        if (!await _syncAllLayerPixelsFromRust()) {
           _showRustCanvasMessage('Rust 画布同步图层失败。');
           return;
         }
@@ -511,7 +511,7 @@ mixin _PaintingBoardTextMixin on _PaintingBoardBase {
           _markDirty();
           if (rustSynced) {
             await _controller.waitForPendingWorkerTasks();
-            if (!_commitTextLayerToRust(layerId)) {
+            if (!await _commitTextLayerToRust(layerId)) {
               _showRustCanvasMessage('Rust 画布写入图层失败。');
             }
           }
@@ -536,7 +536,7 @@ mixin _PaintingBoardTextMixin on _PaintingBoardBase {
         _markDirty();
         if (_canUseRustCanvasEngine()) {
           await _controller.waitForPendingWorkerTasks();
-          if (!_commitTextLayerToRust(session.layerId!)) {
+          if (!await _commitTextLayerToRust(session.layerId!)) {
             _showRustCanvasMessage('Rust 画布写入图层失败。');
           }
         }

@@ -1,17 +1,10 @@
 mod ffi;
-mod types;
+pub(crate) mod types;
 
-#[cfg(target_os = "macos")]
-mod engine;
-#[cfg(target_os = "macos")]
+pub(crate) mod engine;
 mod layers;
-#[cfg(target_os = "macos")]
 mod present;
-#[cfg(target_os = "macos")]
 mod preview;
-#[cfg(target_os = "macos")]
 mod stroke;
-#[cfg(target_os = "macos")]
 mod transform;
-#[cfg(target_os = "macos")]
 mod undo;

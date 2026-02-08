@@ -404,7 +404,7 @@ class PaintingBoardState extends _PaintingBoardBase
       final bool rustSynced = _canUseRustCanvasEngine();
       if (rustSynced) {
         await _controller.waitForPendingWorkerTasks();
-        if (!_syncAllLayerPixelsFromRust()) {
+        if (!await _syncAllLayerPixelsFromRust()) {
           _showRustCanvasMessage('Rust 画布同步图层失败。');
           return false;
         }
@@ -430,7 +430,7 @@ class PaintingBoardState extends _PaintingBoardBase
       _controller.setActiveLayer(layerData.id);
       if (_canUseRustCanvasEngine()) {
         _syncRustCanvasLayersToEngine();
-        if (!_syncAllLayerPixelsToRust()) {
+        if (!await _syncAllLayerPixelsToRust()) {
           _showRustCanvasMessage('Rust 画布写入图层失败。');
         }
       }
@@ -689,7 +689,7 @@ class PaintingBoardState extends _PaintingBoardBase
     _controller.commitActiveLayerTranslation();
     if (_canUseRustCanvasEngine()) {
       await _controller.waitForPendingWorkerTasks();
-      if (!_syncAllLayerPixelsFromRust()) {
+      if (!await _syncAllLayerPixelsFromRust()) {
         debugPrint('resizeImage: rust sync failed');
         _showRustCanvasMessage('Rust 画布同步图层失败。');
         return null;
@@ -737,7 +737,7 @@ class PaintingBoardState extends _PaintingBoardBase
     _controller.commitActiveLayerTranslation();
     if (_canUseRustCanvasEngine()) {
       await _controller.waitForPendingWorkerTasks();
-      if (!_syncAllLayerPixelsFromRust()) {
+      if (!await _syncAllLayerPixelsFromRust()) {
         debugPrint('resizeCanvas: rust sync failed');
         _showRustCanvasMessage('Rust 画布同步图层失败。');
         return null;

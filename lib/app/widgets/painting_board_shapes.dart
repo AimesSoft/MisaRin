@@ -53,7 +53,7 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
     }
     _resetPerspectiveLock();
     final bool useRustCanvas = _canUseRustCanvasEngine();
-    if (useRustCanvas && !_syncActiveLayerPixelsFromRust()) {
+    if (useRustCanvas && !await _syncActiveLayerPixelsFromRust()) {
       _showRustCanvasMessage('Rust 画布同步图层失败。');
       return;
     }
@@ -128,7 +128,7 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
     }
     const double initialTimestamp = 0.0;
     _clearShapePreviewOverlay();
-    if (useRustCanvas && !_syncActiveLayerPixelsFromRust()) {
+    if (useRustCanvas && !await _syncActiveLayerPixelsFromRust()) {
       _showRustCanvasMessage('Rust 画布同步图层失败。');
       _disposeShapeRasterPreview(restoreLayer: true);
       setState(_resetShapeDrawingState);
@@ -143,7 +143,7 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
     );
     if (useRustCanvas) {
       await _controller.waitForPendingWorkerTasks();
-      if (!_commitActiveLayerToRust()) {
+      if (!await _commitActiveLayerToRust()) {
         _showRustCanvasMessage('Rust 画布写入图层失败。');
       }
       _clearShapePreviewRasterImage(notify: false);

@@ -58,11 +58,11 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
     _focusNode.requestFocus();
     _layerAdjustUsingRustPreview = false;
     _layerAdjustRustPreviewLayerIndex = null;
-    _layerAdjustRustSynced =
-        _canUseRustCanvasEngine() && _syncActiveLayerFromRustForAdjust(layer);
+    _layerAdjustRustSynced = _canUseRustCanvasEngine() &&
+        await _syncActiveLayerFromRustForAdjust(layer);
     _controller.translateActiveLayer(0, 0);
     if (_canUseRustCanvasEngine() && _controller.isActiveLayerTransforming) {
-      if (!_startRustLayerAdjustPreview(layer)) {
+      if (!await _startRustLayerAdjustPreview(layer)) {
         _hideRustLayerForAdjust(layer);
       }
     }
@@ -134,7 +134,7 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
     await _pushUndoSnapshot();
     _controller.commitActiveLayerTranslation();
     if (_canUseRustCanvasEngine()) {
-      _applyRustLayerTranslation(dx, dy);
+      await _applyRustLayerTranslation(dx, dy);
       _clearRustLayerAdjustPreview();
       _restoreRustLayerAfterAdjust();
     }
@@ -156,7 +156,7 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
     return matrix;
   }
 
-  bool _startRustLayerAdjustPreview(BitmapLayerState layer) {
+  Future<bool> _startRustLayerAdjustPreview(BitmapLayerState layer) async {
     if (!_canUseRustCanvasEngine()) {
       return false;
     }
@@ -169,7 +169,7 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
       return false;
     }
     final Float32List matrix = _buildLayerAdjustTransformMatrix(0, 0);
-    final bool ok = CanvasEngineFfi.instance.setLayerTransformPreview(
+    final bool ok = await CanvasEngineFfi.instance.setLayerTransformPreview(
       handle: handle,
       layerIndex: layerIndex,
       matrix: matrix,
@@ -193,12 +193,14 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
       return;
     }
     final Float32List matrix = _buildLayerAdjustTransformMatrix(dx, dy);
-    CanvasEngineFfi.instance.setLayerTransformPreview(
-      handle: handle,
-      layerIndex: layerIndex,
-      matrix: matrix,
-      enabled: true,
-      bilinear: false,
+    unawaited(
+      CanvasEngineFfi.instance.setLayerTransformPreview(
+        handle: handle,
+        layerIndex: layerIndex,
+        matrix: matrix,
+        enabled: true,
+        bilinear: false,
+      ),
     );
   }
 
@@ -210,19 +212,21 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
     final int? layerIndex = _layerAdjustRustPreviewLayerIndex;
     if (_canUseRustCanvasEngine() && handle != null && layerIndex != null) {
       final Float32List matrix = _buildLayerAdjustTransformMatrix(0, 0);
-      CanvasEngineFfi.instance.setLayerTransformPreview(
-        handle: handle,
-        layerIndex: layerIndex,
-        matrix: matrix,
-        enabled: false,
-        bilinear: false,
+      unawaited(
+        CanvasEngineFfi.instance.setLayerTransformPreview(
+          handle: handle,
+          layerIndex: layerIndex,
+          matrix: matrix,
+          enabled: false,
+          bilinear: false,
+        ),
       );
     }
     _layerAdjustUsingRustPreview = false;
     _layerAdjustRustPreviewLayerIndex = null;
   }
 
-  void _applyRustLayerTranslation(int dx, int dy) {
+  Future<void> _applyRustLayerTranslation(int dx, int dy) async {
     if (dx == 0 && dy == 0) {
       return;
     }
@@ -250,14 +254,14 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
         layer.surface.width == width &&
         layer.surface.height == height &&
         layer.surface.pixels.length == width * height) {
-      applied = CanvasEngineFfi.instance.writeLayer(
+      applied = await CanvasEngineFfi.instance.writeLayer(
         handle: handle,
         layerIndex: layerIndex,
         pixels: layer.surface.pixels,
         recordUndo: true,
       );
     } else {
-      applied = CanvasEngineFfi.instance.translateLayer(
+      applied = await CanvasEngineFfi.instance.translateLayer(
         handle: handle,
         layerIndex: layerIndex,
         deltaX: dx,
@@ -310,7 +314,7 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
     _layerAdjustRustHiddenVisible = false;
   }
 
-  bool _syncActiveLayerFromRustForAdjust(BitmapLayerState layer) {
+  Future<bool> _syncActiveLayerFromRustForAdjust(BitmapLayerState layer) async {
     return _syncLayerPixelsFromRust(layer);
   }
 
@@ -328,7 +332,7 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
         return;
       }
       if (insideCanvas) {
-        if (useRustCanvas && !_syncActiveLayerPixelsFromRust()) {
+        if (useRustCanvas && !await _syncActiveLayerPixelsFromRust()) {
           _showRustCanvasMessage('Rust 画布同步图层失败。');
           return;
         }
@@ -367,7 +371,7 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
         }
         if (useRustCanvas) {
           await _controller.waitForPendingWorkerTasks();
-          if (!_commitActiveLayerToRust()) {
+          if (!await _commitActiveLayerToRust()) {
             _showRustCanvasMessage('Rust 画布写入图层失败。');
           }
         }
@@ -385,7 +389,7 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
     if (insideCanvas && !isPointInsideSelection(snapped)) {
       return;
     }
-    if (useRustCanvas && !_syncActiveLayerPixelsFromRust()) {
+    if (useRustCanvas && !await _syncActiveLayerPixelsFromRust()) {
       _showRustCanvasMessage('Rust 画布同步图层失败。');
       return;
     }
@@ -435,7 +439,7 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
       end,
       _curveDragDelta,
     );
-    if (useRustCanvas && !_syncActiveLayerPixelsFromRust()) {
+    if (useRustCanvas && !await _syncActiveLayerPixelsFromRust()) {
       _showRustCanvasMessage('Rust 画布同步图层失败。');
       _cancelCurvePenSegment();
       return;
@@ -452,7 +456,7 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
     );
     if (useRustCanvas) {
       await _controller.waitForPendingWorkerTasks();
-      if (!_commitActiveLayerToRust()) {
+      if (!await _commitActiveLayerToRust()) {
         _showRustCanvasMessage('Rust 画布写入图层失败。');
       }
       _clearCurvePreviewRasterImage(notify: false);

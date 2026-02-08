@@ -16,6 +16,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+      - name: 安装 wasm 目标与 wasm-bindgen
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup target add wasm32-unknown-unknown
+          if ! command -v wasm-bindgen >/dev/null 2>&1; then
+            cargo install wasm-bindgen-cli --locked
+          fi
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -24,6 +36,9 @@ jobs:
         run: flutter config --enable-web
       - name: 获取依赖
         run: flutter pub get
+      - name: 构建 Rust wasm
+        shell: bash
+        run: bash tool/build_web_wasm.sh
       - name: 构建 Web
         shell: bash
         run: |

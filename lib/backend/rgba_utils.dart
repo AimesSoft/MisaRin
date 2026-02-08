@@ -56,3 +56,33 @@ void unpremultiplyRgbaInPlace(Uint8List pixels) {
     pixels[i + 2] = ((pixels[i + 2] * 255) + (alpha >> 1)) ~/ alpha;
   }
 }
+
+/// Convert ARGB8888 pixels (straight alpha) into premultiplied RGBA8888 bytes.
+Uint8List argbToPremultipliedRgba(Uint32List pixels) {
+  final Uint8List rgba = Uint8List(pixels.length * 4);
+  int outIndex = 0;
+  for (final int argb in pixels) {
+    final int a = (argb >> 24) & 0xff;
+    if (a == 255) {
+      rgba[outIndex] = (argb >> 16) & 0xff;
+      rgba[outIndex + 1] = (argb >> 8) & 0xff;
+      rgba[outIndex + 2] = argb & 0xff;
+      rgba[outIndex + 3] = 255;
+    } else if (a == 0) {
+      rgba[outIndex] = 0;
+      rgba[outIndex + 1] = 0;
+      rgba[outIndex + 2] = 0;
+      rgba[outIndex + 3] = 0;
+    } else {
+      final int r = (argb >> 16) & 0xff;
+      final int g = (argb >> 8) & 0xff;
+      final int b = argb & 0xff;
+      rgba[outIndex] = ((r * a + 127) ~/ 255);
+      rgba[outIndex + 1] = ((g * a + 127) ~/ 255);
+      rgba[outIndex + 2] = ((b * a + 127) ~/ 255);
+      rgba[outIndex + 3] = a;
+    }
+    outIndex += 4;
+  }
+  return rgba;
+}

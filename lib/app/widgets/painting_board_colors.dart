@@ -184,7 +184,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
             swallowColors.map((color) => color.toARGB32()).toList(growable: false),
           )
         : null;
-    final bool applied = CanvasEngineFfi.instance.bucketFill(
+    final bool applied = await CanvasEngineFfi.instance.bucketFill(
       handle: handle,
       layerIndex: layerIndex,
       startX: startX,

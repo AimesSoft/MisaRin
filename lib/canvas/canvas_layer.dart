@@ -5,6 +5,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 
+import '../backend/rgba_utils.dart';
 import '../src/rust/api/image_ops.dart' as rust_image_ops;
 import 'text_renderer.dart';
 
@@ -94,7 +95,9 @@ class CanvasLayerData {
       return _bitmap;
     }
     if (rawPixels != null) {
-      return rust_image_ops.convertPixelsToRgba(pixels: rawPixels!);
+      return kIsWeb
+          ? argbToPremultipliedRgba(rawPixels!)
+          : rust_image_ops.convertPixelsToRgba(pixels: rawPixels!);
     }
     return null;
   }

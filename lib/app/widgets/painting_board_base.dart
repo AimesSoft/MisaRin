@@ -109,7 +109,7 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
   Future<List<CanvasLayerData>> snapshotLayersForExport() async {
     await _controller.waitForPendingWorkerTasks();
     if (_canUseRustCanvasEngine()) {
-      final bool ok = _syncAllLayerPixelsFromRust();
+      final bool ok = await _syncAllLayerPixelsFromRust();
       if (!ok) {
         debugPrint('Rust 画布同步图层失败，导出将使用当前缓存数据。');
       }
@@ -126,7 +126,7 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
     _controller.commitActiveLayerTranslation();
     if (_canUseRustCanvasEngine()) {
       await _controller.waitForPendingWorkerTasks();
-      if (!_syncAllLayerPixelsFromRust()) {
+      if (!await _syncAllLayerPixelsFromRust()) {
         debugPrint('rotateCanvas: rust sync failed');
         _showRustCanvasMessage('Rust 画布同步图层失败。');
         return null;
@@ -153,7 +153,7 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
       _resetHistory();
       setState(() {});
       _syncRustCanvasLayersToEngine();
-      if (_canUseRustCanvasEngine() && !_syncAllLayerPixelsToRust()) {
+      if (_canUseRustCanvasEngine() && !await _syncAllLayerPixelsToRust()) {
         _showRustCanvasMessage('Rust 画布写入图层失败。');
       }
     }
@@ -173,7 +173,7 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
     _controller.commitActiveLayerTranslation();
     if (_canUseRustCanvasEngine()) {
       await _controller.waitForPendingWorkerTasks();
-      if (!_syncAllLayerPixelsFromRust()) {
+      if (!await _syncAllLayerPixelsFromRust()) {
         debugPrint('flipCanvas: rust sync failed');
         _showRustCanvasMessage('Rust 画布同步图层失败。');
         return null;
@@ -198,7 +198,7 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
     _resetHistory();
     setState(() {});
     _syncRustCanvasLayersToEngine();
-    if (_canUseRustCanvasEngine() && !_syncAllLayerPixelsToRust()) {
+    if (_canUseRustCanvasEngine() && !await _syncAllLayerPixelsToRust()) {
       _showRustCanvasMessage('Rust 画布写入图层失败。');
     }
     return CanvasRotationResult(layers: flipped, width: width, height: height);
@@ -837,9 +837,9 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
     _syncRustCanvasLayersToEngine();
     if (_canUseRustCanvasEngine()) {
       if (entry.rustPixelsSynced) {
-        _syncAllLayerPixelsToRust();
+        unawaited(_syncAllLayerPixelsToRust());
       } else {
-        _syncAllLayerPixelsFromRust();
+        unawaited(_syncAllLayerPixelsFromRust());
       }
     }
   }

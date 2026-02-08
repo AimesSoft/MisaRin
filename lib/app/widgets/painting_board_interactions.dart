@@ -829,10 +829,13 @@ mixin _PaintingBoardInteractionMixin
     );
     if (_kDebugRustCanvasInput &&
         (flags == _kRustPointFlagDown || flags == _kRustPointFlagUp)) {
-      final int queued = CanvasEngineFfi.instance.getInputQueueLen(handle);
-      debugPrint(
-        '[rust_canvas] enqueue flags=$flags points=${_rustPoints.length} '
-        'queued=$queued streamline=${_streamlineStrength.toStringAsFixed(3)}',
+      unawaited(
+        CanvasEngineFfi.instance.getInputQueueLen(handle).then((queued) {
+          debugPrint(
+            '[rust_canvas] enqueue flags=$flags points=${_rustPoints.length} '
+            'queued=$queued streamline=${_streamlineStrength.toStringAsFixed(3)}',
+          );
+        }),
       );
     }
     _scheduleRustFlush();
@@ -873,10 +876,13 @@ mixin _PaintingBoardInteractionMixin
       return;
     }
     if (_kDebugRustCanvasInput) {
-      final int queued = CanvasEngineFfi.instance.getInputQueueLen(handle);
-      debugPrint(
-        '[rust_canvas] flush points=$count queued_before=$queued '
-        'streamline=${_streamlineStrength.toStringAsFixed(3)}',
+      unawaited(
+        CanvasEngineFfi.instance.getInputQueueLen(handle).then((queued) {
+          debugPrint(
+            '[rust_canvas] flush points=$count queued_before=$queued '
+            'streamline=${_streamlineStrength.toStringAsFixed(3)}',
+          );
+        }),
       );
     }
     CanvasEngineFfi.instance.pushPointsPacked(

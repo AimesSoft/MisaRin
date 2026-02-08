@@ -220,7 +220,7 @@ mixin _PaintingBoardLayerMixin
     }
     if (_canUseRustCanvasEngine()) {
       await _controller.waitForPendingWorkerTasks();
-      if (!_syncAllLayerPixelsFromRust()) {
+      if (!await _syncAllLayerPixelsFromRust()) {
         _showRustCanvasMessage('Rust 画布同步图层失败。');
         return;
       }
@@ -231,7 +231,7 @@ mixin _PaintingBoardLayerMixin
     _markDirty();
     _syncRustCanvasLayersToEngine();
     if (_canUseRustCanvasEngine()) {
-      if (!_syncAllLayerPixelsToRust()) {
+      if (!await _syncAllLayerPixelsToRust()) {
         _showRustCanvasMessage('Rust 画布写入图层失败。');
       }
     }
@@ -277,7 +277,7 @@ mixin _PaintingBoardLayerMixin
     }
     if (_canUseRustCanvasEngine()) {
       await _controller.waitForPendingWorkerTasks();
-      if (!_syncAllLayerPixelsFromRust()) {
+      if (!await _syncAllLayerPixelsFromRust()) {
         _showRustCanvasMessage('Rust 画布同步图层失败。');
         return;
       }
@@ -604,7 +604,7 @@ mixin _PaintingBoardLayerMixin
       return;
     }
     await _controller.waitForPendingWorkerTasks();
-    if (!_syncAllLayerPixelsFromRust()) {
+    if (!await _syncAllLayerPixelsFromRust()) {
       _showRustCanvasMessage('Rust 画布同步图层失败。');
       return;
     }
@@ -613,7 +613,7 @@ mixin _PaintingBoardLayerMixin
       return;
     }
     _syncRustCanvasLayersToEngine();
-    if (!_syncAllLayerPixelsToRust()) {
+    if (!await _syncAllLayerPixelsToRust()) {
       _showRustCanvasMessage('Rust 画布写入图层失败。');
     }
     setState(() {});
@@ -791,7 +791,7 @@ mixin _PaintingBoardLayerMixin
       if (index == null) {
         return false;
       }
-      final bool applied = CanvasEngineFfi.instance.applyAntialias(
+      final bool applied = await CanvasEngineFfi.instance.applyAntialias(
         handle: handle,
         layerIndex: index,
         level: clamped,

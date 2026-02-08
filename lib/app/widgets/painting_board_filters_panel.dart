@@ -129,7 +129,7 @@ extension _PaintingBoardFilterPanelExtension on _PaintingBoardFilterMixin {
     if (width <= 0 || height <= 0) {
       return const _LayerPreviewImages();
     }
-    final Uint32List? sourcePixels = CanvasEngineFfi.instance.readLayer(
+    final Uint32List? sourcePixels = await CanvasEngineFfi.instance.readLayer(
       handle: handle,
       layerIndex: layerIndex,
       width: width,

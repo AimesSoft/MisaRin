@@ -44,6 +44,22 @@ typedef _EnginePushPointsDart =
 typedef _EngineGetInputQueueLenNative = ffi.Uint64 Function(ffi.Uint64 handle);
 typedef _EngineGetInputQueueLenDart = int Function(int handle);
 
+typedef _EnginePollFrameReadyNative = ffi.Uint8 Function(ffi.Uint64 handle);
+typedef _EnginePollFrameReadyDart = int Function(int handle);
+
+typedef _EngineReadPresentNative =
+    ffi.Uint8 Function(
+      ffi.Uint64 handle,
+      ffi.Pointer<ffi.Uint8> outPixels,
+      ffi.UintPtr outPixelsLen,
+    );
+typedef _EngineReadPresentDart =
+    int Function(
+      int handle,
+      ffi.Pointer<ffi.Uint8> outPixels,
+      int outPixelsLen,
+    );
+
 typedef _EngineSetActiveLayerNative =
     ffi.Void Function(ffi.Uint64 handle, ffi.Uint32 layerIndex);
 typedef _EngineSetActiveLayerDart = void Function(int handle, int layerIndex);
@@ -85,7 +101,11 @@ typedef _EngineSetLayerBlendModeDart =
     void Function(int handle, int layerIndex, int blendModeIndex);
 
 typedef _EngineReorderLayerNative =
-    ffi.Void Function(ffi.Uint64 handle, ffi.Uint32 fromIndex, ffi.Uint32 toIndex);
+    ffi.Void Function(
+      ffi.Uint64 handle,
+      ffi.Uint32 fromIndex,
+      ffi.Uint32 toIndex,
+    );
 typedef _EngineReorderLayerDart =
     void Function(int handle, int fromIndex, int toIndex);
 
@@ -408,11 +428,7 @@ typedef _EngineApplyAntialiasNative =
       ffi.Uint32 level,
     );
 typedef _EngineApplyAntialiasDart =
-    int Function(
-      int handle,
-      int layerIndex,
-      int level,
-    );
+    int Function(int handle, int layerIndex, int level);
 
 class CanvasEngineFfi {
   CanvasEngineFfi._() {
@@ -427,6 +443,23 @@ class CanvasEngineFfi {
             _EngineGetInputQueueLenNative,
             _EngineGetInputQueueLenDart
           >('engine_get_input_queue_len');
+      try {
+        _pollFrameReady = _lib
+            .lookupFunction<
+              _EnginePollFrameReadyNative,
+              _EnginePollFrameReadyDart
+            >('engine_poll_frame_ready');
+      } catch (_) {
+        _pollFrameReady = null;
+      }
+      try {
+        _readPresent = _lib
+            .lookupFunction<_EngineReadPresentNative, _EngineReadPresentDart>(
+              'engine_read_present',
+            );
+      } catch (_) {
+        _readPresent = null;
+      }
 
       // Optional layer controls (not required for basic drawing).
       try {
@@ -476,10 +509,9 @@ class CanvasEngineFfi {
       }
       try {
         _reorderLayer = _lib
-            .lookupFunction<
-              _EngineReorderLayerNative,
-              _EngineReorderLayerDart
-            >('engine_reorder_layer');
+            .lookupFunction<_EngineReorderLayerNative, _EngineReorderLayerDart>(
+              'engine_reorder_layer',
+            );
       } catch (_) {
         _reorderLayer = null;
       }
@@ -629,24 +661,24 @@ class CanvasEngineFfi {
         _setBrush = null;
       }
       try {
-        _sprayBegin =
-            _lib.lookupFunction<_EngineSprayBeginNative, _EngineSprayBeginDart>(
+        _sprayBegin = _lib
+            .lookupFunction<_EngineSprayBeginNative, _EngineSprayBeginDart>(
               'engine_spray_begin',
             );
       } catch (_) {
         _sprayBegin = null;
       }
       try {
-        _sprayDraw =
-            _lib.lookupFunction<_EngineSprayDrawNative, _EngineSprayDrawDart>(
+        _sprayDraw = _lib
+            .lookupFunction<_EngineSprayDrawNative, _EngineSprayDrawDart>(
               'engine_spray_draw',
             );
       } catch (_) {
         _sprayDraw = null;
       }
       try {
-        _sprayEnd =
-            _lib.lookupFunction<_EngineSprayEndNative, _EngineSprayEndDart>(
+        _sprayEnd = _lib
+            .lookupFunction<_EngineSprayEndNative, _EngineSprayEndDart>(
               'engine_spray_end',
             );
       } catch (_) {
@@ -687,6 +719,8 @@ class CanvasEngineFfi {
   late final ffi.DynamicLibrary _lib;
   late final _EnginePushPointsDart _pushPoints;
   late final _EngineGetInputQueueLenDart _getQueueLen;
+  late final _EnginePollFrameReadyDart? _pollFrameReady;
+  late final _EngineReadPresentDart? _readPresent;
   late final _EngineSetActiveLayerDart? _setActiveLayer;
   late final _EngineSetLayerOpacityDart? _setLayerOpacity;
   late final _EngineSetLayerVisibleDart? _setLayerVisible;
@@ -739,11 +773,48 @@ class CanvasEngineFfi {
     _pushPoints(handle, ptr.cast<_EnginePointNative>(), pointCount);
   }
 
-  int getInputQueueLen(int handle) {
+  Future<int> getInputQueueLen(int handle) async {
     if (!isSupported || handle == 0) {
       return 0;
     }
     return _getQueueLen(handle);
+  }
+
+  Future<bool> pollFrameReady({required int handle}) async {
+    final fn = _pollFrameReady;
+    if (!isSupported || fn == null || handle == 0) {
+      return false;
+    }
+    return fn(handle) != 0;
+  }
+
+  Future<Uint8List?> readPresent({
+    required int handle,
+    required int width,
+    required int height,
+  }) async {
+    final fn = _readPresent;
+    if (!isSupported ||
+        fn == null ||
+        handle == 0 ||
+        width <= 0 ||
+        height <= 0) {
+      return null;
+    }
+    final int length = width * height * 4;
+    if (length <= 0) {
+      return null;
+    }
+    final ffi.Pointer<ffi.Uint8> ptr = malloc.allocate<ffi.Uint8>(length);
+    try {
+      final int result = fn(handle, ptr, length);
+      if (result == 0) {
+        return null;
+      }
+      return Uint8List.fromList(ptr.asTypedList(length));
+    } finally {
+      malloc.free(ptr);
+    }
   }
 
   void setActiveLayer({required int handle, required int layerIndex}) {
@@ -856,7 +927,7 @@ class CanvasEngineFfi {
     fn(handle, layerIndex, colorArgb);
   }
 
-  bool bucketFill({
+  Future<bool> bucketFill({
     required int handle,
     required int layerIndex,
     required int startX,
@@ -869,7 +940,7 @@ class CanvasEngineFfi {
     int antialiasLevel = 0,
     Uint32List? swallowColors,
     Uint8List? selectionMask,
-  }) {
+  }) async {
     final fn = _bucketFill;
     if (!isSupported || fn == null || handle == 0) {
       return false;
@@ -924,7 +995,7 @@ class CanvasEngineFfi {
     }
   }
 
-  Uint8List? magicWandMask({
+  Future<Uint8List?> magicWandMask({
     required int handle,
     required int layerIndex,
     required int startX,
@@ -933,7 +1004,7 @@ class CanvasEngineFfi {
     bool sampleAllLayers = true,
     int tolerance = 0,
     Uint8List? selectionMask,
-  }) {
+  }) async {
     final fn = _magicWandMask;
     if (!isSupported || fn == null || handle == 0) {
       return null;
@@ -984,12 +1055,12 @@ class CanvasEngineFfi {
     }
   }
 
-  Uint32List? readLayer({
+  Future<Uint32List?> readLayer({
     required int handle,
     required int layerIndex,
     required int width,
     required int height,
-  }) {
+  }) async {
     final fn = _readLayer;
     if (!isSupported || fn == null || handle == 0) {
       return null;
@@ -1015,12 +1086,12 @@ class CanvasEngineFfi {
     }
   }
 
-  Uint8List? readLayerPreview({
+  Future<Uint8List?> readLayerPreview({
     required int handle,
     required int layerIndex,
     required int width,
     required int height,
-  }) {
+  }) async {
     final fn = _readLayerPreview;
     if (!isSupported || fn == null || handle == 0) {
       return null;
@@ -1034,7 +1105,14 @@ class CanvasEngineFfi {
     }
     final ffi.Pointer<ffi.Uint8> outPtr = malloc.allocate<ffi.Uint8>(byteCount);
     try {
-      final int result = fn(handle, layerIndex, width, height, outPtr, byteCount);
+      final int result = fn(
+        handle,
+        layerIndex,
+        width,
+        height,
+        outPtr,
+        byteCount,
+      );
       if (result == 0) {
         return null;
       }
@@ -1044,12 +1122,12 @@ class CanvasEngineFfi {
     }
   }
 
-  bool writeLayer({
+  Future<bool> writeLayer({
     required int handle,
     required int layerIndex,
     required Uint32List pixels,
     bool recordUndo = true,
-  }) {
+  }) async {
     final fn = _writeLayer;
     if (!isSupported || fn == null || handle == 0) {
       return false;
@@ -1075,12 +1153,12 @@ class CanvasEngineFfi {
     }
   }
 
-  bool translateLayer({
+  Future<bool> translateLayer({
     required int handle,
     required int layerIndex,
     required int deltaX,
     required int deltaY,
-  }) {
+  }) async {
     final fn = _translateLayer;
     if (!isSupported || fn == null || handle == 0) {
       return false;
@@ -1092,13 +1170,13 @@ class CanvasEngineFfi {
     return result != 0;
   }
 
-  bool setLayerTransformPreview({
+  Future<bool> setLayerTransformPreview({
     required int handle,
     required int layerIndex,
     required Float32List matrix,
     bool enabled = true,
     bool bilinear = true,
-  }) {
+  }) async {
     final fn = _setLayerTransformPreview;
     if (!isSupported || fn == null || handle == 0) {
       return false;
@@ -1125,12 +1203,12 @@ class CanvasEngineFfi {
     }
   }
 
-  bool applyLayerTransform({
+  Future<bool> applyLayerTransform({
     required int handle,
     required int layerIndex,
     required Float32List matrix,
     bool bilinear = true,
-  }) {
+  }) async {
     final fn = _applyLayerTransform;
     if (!isSupported || fn == null || handle == 0) {
       return false;
@@ -1150,7 +1228,10 @@ class CanvasEngineFfi {
     }
   }
 
-  Int32List? getLayerBounds({required int handle, required int layerIndex}) {
+  Future<Int32List?> getLayerBounds({
+    required int handle,
+    required int layerIndex,
+  }) async {
     final fn = _getLayerBounds;
     if (!isSupported || fn == null || handle == 0) {
       return null;
@@ -1364,7 +1445,7 @@ class CanvasEngineFfi {
     fn(handle);
   }
 
-  bool applyFilter({
+  Future<bool> applyFilter({
     required int handle,
     required int layerIndex,
     required int filterType,
@@ -1372,7 +1453,7 @@ class CanvasEngineFfi {
     double param1 = 0.0,
     double param2 = 0.0,
     double param3 = 0.0,
-  }) {
+  }) async {
     final fn = _applyFilter;
     if (!isSupported || fn == null || handle == 0) {
       return false;
@@ -1389,11 +1470,11 @@ class CanvasEngineFfi {
     return result != 0;
   }
 
-  bool applyAntialias({
+  Future<bool> applyAntialias({
     required int handle,
     required int layerIndex,
     required int level,
-  }) {
+  }) async {
     final fn = _applyAntialias;
     if (!isSupported || fn == null || handle == 0) {
       return false;

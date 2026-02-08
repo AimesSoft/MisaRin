@@ -119,7 +119,9 @@ class CanvasRasterBackend {
     }
     final Future<void> future = () async {
       await ensureRustInitialized();
-      rust_gpu.gpuCompositorInit();
+      if (!kIsWeb) {
+        rust_gpu.gpuCompositorInit();
+      }
     }();
     _gpuInitFuture = future;
     return future.catchError((Object error, StackTrace stackTrace) {
@@ -386,7 +388,9 @@ class CanvasRasterBackend {
     await _runGpuCompositeSerialized(() async {
       try {
         await initFuture;
-        rust_gpu.gpuCompositorDispose();
+        if (!kIsWeb) {
+          rust_gpu.gpuCompositorDispose();
+        }
       } catch (_) {}
     });
     _gpuInitFuture = null;
@@ -428,13 +432,17 @@ class CanvasRasterBackend {
     }
     
     // The Rust side now handles both conversion to RGBA and Premultiply in one high-speed pass.
-    return rust_image_ops.convertPixelsToRgba(pixels: tilePixels);
+    return kIsWeb
+        ? argbToPremultipliedRgba(tilePixels)
+        : rust_image_ops.convertPixelsToRgba(pixels: tilePixels);
   }
 
   Uint8List copySurfaceRgba() {
     final Uint32List pixels = ensureCompositePixels();
     // The Rust side now handles both conversion to RGBA and Premultiply in one high-speed pass.
-    return rust_image_ops.convertPixelsToRgba(pixels: pixels);
+    return kIsWeb
+        ? argbToPremultipliedRgba(pixels)
+        : rust_image_ops.convertPixelsToRgba(pixels: pixels);
   }
 
   List<RasterIntRect> fullSurfaceTileRects() {

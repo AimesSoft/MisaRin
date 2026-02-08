@@ -706,7 +706,8 @@ mixin _PaintingBoardReferenceModelMixin on _PaintingBoardBase {
     if (handle != null) {
       bool queueEmpty = false;
       for (int attempt = 0; attempt < 6; attempt++) {
-        final int queued = CanvasEngineFfi.instance.getInputQueueLen(handle);
+        final int queued =
+            await CanvasEngineFfi.instance.getInputQueueLen(handle);
         if (queued == 0) {
           queueEmpty = true;
           break;
@@ -717,7 +718,7 @@ mixin _PaintingBoardReferenceModelMixin on _PaintingBoardBase {
         await Future.delayed(const Duration(milliseconds: 16));
       }
     }
-    final bool ok = _syncAllLayerPixelsFromRust();
+    final bool ok = await _syncAllLayerPixelsFromRust();
     if (!ok) {
       debugPrint('referenceModel: rust sync failed');
       if (showWarning) {

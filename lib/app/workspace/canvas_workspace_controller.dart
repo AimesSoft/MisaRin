@@ -1,5 +1,6 @@
 import 'dart:collection';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../project/project_document.dart';
@@ -51,6 +52,23 @@ class CanvasWorkspaceController extends ChangeNotifier {
   void open(ProjectDocument document, {bool activate = true}) {
     final CanvasWorkspaceEntry? existing = entryById(document.id);
     final bool isDirty = existing?.isDirty ?? false;
+    if (kIsWeb) {
+      final int index = _entries.indexWhere((entry) => entry.id == document.id);
+      final CanvasWorkspaceEntry entry = CanvasWorkspaceEntry(
+        document: document,
+        isDirty: isDirty,
+      );
+      if (index >= 0) {
+        _entries[index] = entry;
+      } else {
+        _entries.add(entry);
+      }
+      if (activate) {
+        _activeId = document.id;
+      }
+      _scheduleNotify();
+      return;
+    }
     final rust.WorkspaceState state = rust.workspaceOpen(
       entry: rust.WorkspaceEntry(
         id: document.id,
@@ -71,6 +89,15 @@ class CanvasWorkspaceController extends ChangeNotifier {
     if (current == null || current.isDirty == isDirty) {
       return;
     }
+    if (kIsWeb) {
+      final int index = _entries.indexWhere((entry) => entry.id == id);
+      if (index < 0) {
+        return;
+      }
+      _entries[index] = current.copyWith(isDirty: isDirty);
+      _scheduleNotify();
+      return;
+    }
     final rust.WorkspaceState state = rust.workspaceMarkDirty(
       id: id,
       isDirty: isDirty,
@@ -85,11 +112,27 @@ class CanvasWorkspaceController extends ChangeNotifier {
     if (entryById(id) == null) {
       return;
     }
+    if (kIsWeb) {
+      _activeId = id;
+      _scheduleNotify();
+      return;
+    }
     final rust.WorkspaceState state = rust.workspaceSetActive(id: id);
     _applyRustState(state);
   }
 
   CanvasWorkspaceEntry? neighborFor(String id) {
+    if (kIsWeb) {
+      final int index = _entries.indexWhere((entry) => entry.id == id);
+      if (index < 0) {
+        return null;
+      }
+      int neighborIndex = index > 0 ? index - 1 : index + 1;
+      if (neighborIndex < 0 || neighborIndex >= _entries.length) {
+        return null;
+      }
+      return _entries[neighborIndex];
+    }
     rust.WorkspaceEntry? neighbor;
     try {
       neighbor = rust.workspaceNeighbor(id: id);
@@ -119,6 +162,27 @@ class CanvasWorkspaceController extends ChangeNotifier {
     if (entryById(id) == null) {
       return;
     }
+    if (kIsWeb) {
+      final int index = _entries.indexWhere((entry) => entry.id == id);
+      if (index < 0) {
+        return;
+      }
+      _entries.removeAt(index);
+      if (_activeId == id) {
+        if (activateAfter != null && entryById(activateAfter) != null) {
+          _activeId = activateAfter;
+        } else if (_entries.isNotEmpty) {
+          final int fallbackIndex = index >= _entries.length
+              ? _entries.length - 1
+              : index;
+          _activeId = _entries[fallbackIndex].id;
+        } else {
+          _activeId = null;
+        }
+      }
+      _scheduleNotify();
+      return;
+    }
     final rust.WorkspaceState state = rust.workspaceRemove(
       id: id,
       activateAfter: activateAfter,
@@ -127,6 +191,12 @@ class CanvasWorkspaceController extends ChangeNotifier {
   }
 
   void reset() {
+    if (kIsWeb) {
+      _entries.clear();
+      _activeId = null;
+      _scheduleNotify();
+      return;
+    }
     final rust.WorkspaceState state = rust.workspaceReset();
     _applyRustState(state);
   }
@@ -138,6 +208,22 @@ class CanvasWorkspaceController extends ChangeNotifier {
     if (oldIndex < 0 || oldIndex >= _entries.length) {
       return;
     }
+    if (kIsWeb) {
+      int targetIndex = newIndex;
+      if (targetIndex < 0) {
+        targetIndex = 0;
+      }
+      if (targetIndex >= _entries.length) {
+        targetIndex = _entries.length - 1;
+      }
+      if (targetIndex == oldIndex) {
+        return;
+      }
+      final CanvasWorkspaceEntry entry = _entries.removeAt(oldIndex);
+      _entries.insert(targetIndex, entry);
+      _scheduleNotify();
+      return;
+    }
     final rust.WorkspaceState state = rust.workspaceReorder(
       oldIndex: oldIndex,
       newIndex: newIndex,
@@ -146,6 +232,11 @@ class CanvasWorkspaceController extends ChangeNotifier {
   }
 
   void _restoreFromRust() {
+    if (kIsWeb) {
+      _entries.clear();
+      _activeId = null;
+      return;
+    }
     try {
       final rust.WorkspaceState state = rust.workspaceState();
       _applyRustState(state);

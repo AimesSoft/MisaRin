@@ -1,4 +1,5 @@
 pub mod bucket_fill;
+pub mod canvas_engine;
 pub mod gpu_brush;
 pub mod gpu_composite;
 pub mod image_ops;

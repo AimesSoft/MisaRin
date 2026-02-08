@@ -328,7 +328,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     return null;
   }
 
-  bool _syncLayerPixelsFromRust(BitmapLayerState layer) {
+  Future<bool> _syncLayerPixelsFromRust(BitmapLayerState layer) async {
     if (!_canUseRustCanvasEngine()) {
       return false;
     }
@@ -349,7 +349,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     if (layer.surface.width != width || layer.surface.height != height) {
       return false;
     }
-    final Uint32List? pixels = CanvasEngineFfi.instance.readLayer(
+    final Uint32List? pixels = await CanvasEngineFfi.instance.readLayer(
       handle: handle,
       layerIndex: layerIndex,
       width: width,
@@ -363,7 +363,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     return true;
   }
 
-  bool _syncActiveLayerPixelsFromRust() {
+  Future<bool> _syncActiveLayerPixelsFromRust() async {
     final BitmapLayerState? layer = _activeLayerStateForRustSync();
     if (layer == null) {
       return false;
@@ -371,7 +371,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     return _syncLayerPixelsFromRust(layer);
   }
 
-  bool _syncAllLayerPixelsFromRust() {
+  Future<bool> _syncAllLayerPixelsFromRust() async {
     if (!_canUseRustCanvasEngine()) {
       return false;
     }
@@ -381,14 +381,14 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     }
     bool allOk = true;
     for (final BitmapLayerState layer in layers) {
-      if (!_syncLayerPixelsFromRust(layer)) {
+      if (!await _syncLayerPixelsFromRust(layer)) {
         allOk = false;
       }
     }
     return allOk;
   }
 
-  bool _commitActiveLayerToRust({bool recordUndo = true}) {
+  Future<bool> _commitActiveLayerToRust({bool recordUndo = true}) async {
     if (!_canUseRustCanvasEngine()) {
       return false;
     }
@@ -416,7 +416,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     if (layer.surface.pixels.length != width * height) {
       return false;
     }
-    final bool applied = CanvasEngineFfi.instance.writeLayer(
+    final bool applied = await CanvasEngineFfi.instance.writeLayer(
       handle: handle,
       layerIndex: layerIndex,
       pixels: layer.surface.pixels,
@@ -432,7 +432,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     return applied;
   }
 
-  bool _syncAllLayerPixelsToRust({bool recordUndo = false}) {
+  Future<bool> _syncAllLayerPixelsToRust({bool recordUndo = false}) async {
     if (!_canUseRustCanvasEngine()) {
       return false;
     }
@@ -458,7 +458,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
         allOk = false;
         continue;
       }
-      final bool applied = CanvasEngineFfi.instance.writeLayer(
+      final bool applied = await CanvasEngineFfi.instance.writeLayer(
         handle: handle,
         layerIndex: i,
         pixels: layer.surface.pixels,
@@ -1153,7 +1153,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
         _rustLayerPreviewPending.clear();
         break;
       }
-      final int queued = CanvasEngineFfi.instance.getInputQueueLen(handle);
+      final int queued = await CanvasEngineFfi.instance.getInputQueueLen(handle);
       if (queued > 0) {
         await Future.delayed(const Duration(milliseconds: 16));
         continue;
@@ -1268,9 +1268,13 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     if (_rustPixelsSyncedHandle == handle) {
       return;
     }
-    if (_syncAllLayerPixelsToRust()) {
-      _rustPixelsSyncedHandle = handle;
-    }
+    unawaited(
+      _syncAllLayerPixelsToRust().then((ok) {
+        if (ok) {
+          _rustPixelsSyncedHandle = handle;
+        }
+      }),
+    );
   }
 
   Future<void> _captureRustLayerSnapshotIfNeeded() async {
@@ -1292,7 +1296,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     final Map<String, Uint32List> next = <String, Uint32List>{};
     final List<BitmapLayerState> layers = _controller.layers;
     for (int i = 0; i < layers.length; i++) {
-      final Uint32List? pixels = CanvasEngineFfi.instance.readLayer(
+      final Uint32List? pixels = await CanvasEngineFfi.instance.readLayer(
         handle: handle,
         layerIndex: i,
         width: width,
@@ -1354,11 +1358,13 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
       if (pixels == null) {
         continue;
       }
-      CanvasEngineFfi.instance.writeLayer(
-        handle: handle,
-        layerIndex: i,
-        pixels: pixels,
-        recordUndo: false,
+      unawaited(
+        CanvasEngineFfi.instance.writeLayer(
+          handle: handle,
+          layerIndex: i,
+          pixels: pixels,
+          recordUndo: false,
+        ),
       );
       _bumpRustLayerPreviewRevision(layers[i].id);
     }

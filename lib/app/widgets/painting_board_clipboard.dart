@@ -41,7 +41,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
         await _pushUndoSnapshot();
         undoCaptured = true;
       }
-      final bool handled = _copyActiveLayerFromRust(
+      final bool handled = await _copyActiveLayerFromRust(
         activeLayerId: activeLayerId,
         clearAfter: clearAfter,
       );
@@ -99,7 +99,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     }
     await _pushUndoSnapshot();
     if (_canUseRustCanvasEngine()) {
-      _deleteSelectionFromRust(activeLayerId: activeLayerId);
+      await _deleteSelectionFromRust(activeLayerId: activeLayerId);
     }
     _controller.clearLayerRegion(activeLayerId, mask: selection);
     setState(() {
@@ -131,7 +131,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     _controller.setActiveLayer(newId);
     if (_canUseRustCanvasEngine()) {
       _syncRustCanvasLayersToEngine();
-      _pasteLayerToRust(layerId: newId, layerData: layerData);
+      await _pasteLayerToRust(layerId: newId, layerData: layerData);
     }
     setState(() {
       setSelectionState(path: null, mask: null);
@@ -238,10 +238,10 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     return dest;
   }
 
-  bool _copyActiveLayerFromRust({
+  Future<bool> _copyActiveLayerFromRust({
     required String activeLayerId,
     required bool clearAfter,
-  }) {
+  }) async {
     final int? handle = _rustCanvasEngineHandle;
     if (!_canUseRustCanvasEngine() || handle == null) {
       return false;
@@ -260,7 +260,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     if (width <= 0 || height <= 0) {
       return false;
     }
-    final Uint32List? sourcePixels = CanvasEngineFfi.instance.readLayer(
+    final Uint32List? sourcePixels = await CanvasEngineFfi.instance.readLayer(
       handle: handle,
       layerIndex: layerIndex,
       width: width,
@@ -297,7 +297,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     }
     final Uint32List clearedPixels =
         _clearSelectionInPixels(sourcePixels, selectionMask);
-    final bool applied = CanvasEngineFfi.instance.writeLayer(
+    final bool applied = await CanvasEngineFfi.instance.writeLayer(
       handle: handle,
       layerIndex: layerIndex,
       pixels: clearedPixels,
@@ -313,7 +313,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     return applied;
   }
 
-  bool _deleteSelectionFromRust({required String activeLayerId}) {
+  Future<bool> _deleteSelectionFromRust({required String activeLayerId}) async {
     final int? handle = _rustCanvasEngineHandle;
     if (!_canUseRustCanvasEngine() || handle == null) {
       return false;
@@ -333,7 +333,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     if (selectionMask == null || !_maskHasCoverage(selectionMask)) {
       return false;
     }
-    final Uint32List? sourcePixels = CanvasEngineFfi.instance.readLayer(
+    final Uint32List? sourcePixels = await CanvasEngineFfi.instance.readLayer(
       handle: handle,
       layerIndex: layerIndex,
       width: width,
@@ -344,7 +344,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     }
     final Uint32List clearedPixels =
         _clearSelectionInPixels(sourcePixels, selectionMask);
-    final bool applied = CanvasEngineFfi.instance.writeLayer(
+    final bool applied = await CanvasEngineFfi.instance.writeLayer(
       handle: handle,
       layerIndex: layerIndex,
       pixels: clearedPixels,
@@ -360,10 +360,10 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     return applied;
   }
 
-  bool _pasteLayerToRust({
+  Future<bool> _pasteLayerToRust({
     required String layerId,
     required CanvasLayerData layerData,
-  }) {
+  }) async {
     final int? handle = _rustCanvasEngineHandle;
     if (!_canUseRustCanvasEngine() || handle == null) {
       return false;
@@ -381,7 +381,7 @@ mixin _PaintingBoardClipboardMixin on _PaintingBoardBase {
     final Uint32List pixels =
         _resolveRustPastePixels(layerData, width, height) ??
         Uint32List(width * height);
-    final bool applied = CanvasEngineFfi.instance.writeLayer(
+    final bool applied = await CanvasEngineFfi.instance.writeLayer(
       handle: handle,
       layerIndex: layerIndex,
       pixels: pixels,

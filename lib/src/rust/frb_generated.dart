@@ -4,6 +4,7 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/bucket_fill.dart';
+import 'api/canvas_engine.dart';
 import 'api/gpu_brush.dart';
 import 'api/gpu_composite.dart';
 import 'api/image_ops.dart';
@@ -74,7 +75,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -787098840;
+  int get rustContentHash => 1820152791;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -86,6 +87,253 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
 abstract class RustLibApi extends BaseApi {
   BigInt crateApiMemoryAllocatePixelBuffer({required int size});
+
+  Future<bool> crateApiCanvasEngineCanvasEngineApplyAntialias({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int level,
+  });
+
+  Future<bool> crateApiCanvasEngineCanvasEngineApplyFilter({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int filterType,
+    required double param0,
+    required double param1,
+    required double param2,
+    required double param3,
+  });
+
+  Future<bool> crateApiCanvasEngineCanvasEngineApplyLayerTransform({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required List<double> matrix,
+    required bool bilinear,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineAttachPresent({
+    required PlatformInt64 handle,
+    required int width,
+    required int height,
+  });
+
+  Future<bool> crateApiCanvasEngineCanvasEngineBucketFill({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int startX,
+    required int startY,
+    required int colorArgb,
+    required bool contiguous,
+    required bool sampleAllLayers,
+    required int tolerance,
+    required int fillGap,
+    required int antialiasLevel,
+    required List<int> swallowColors,
+    Uint8List? selectionMask,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineClearLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+  });
+
+  Future<PlatformInt64> crateApiCanvasEngineCanvasEngineCreate({
+    required int width,
+    required int height,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineDispose({
+    required PlatformInt64 handle,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineFillLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int colorArgb,
+  });
+
+  Future<PlatformInt64> crateApiCanvasEngineCanvasEngineGetInputQueueLen({
+    required PlatformInt64 handle,
+  });
+
+  Future<Int32List?> crateApiCanvasEngineCanvasEngineGetLayerBounds({
+    required PlatformInt64 handle,
+    required int layerIndex,
+  });
+
+  Future<bool> crateApiCanvasEngineCanvasEngineInit();
+
+  Future<Uint8List?> crateApiCanvasEngineCanvasEngineMagicWandMask({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int startX,
+    required int startY,
+    required bool sampleAllLayers,
+    required int tolerance,
+    Uint8List? selectionMask,
+  });
+
+  Future<bool> crateApiCanvasEngineCanvasEnginePollFrameReady({
+    required PlatformInt64 handle,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEnginePushPointsPacked({
+    required PlatformInt64 handle,
+    required List<int> bytes,
+    required BigInt pointCount,
+  });
+
+  Future<Uint32List?> crateApiCanvasEngineCanvasEngineReadLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+  });
+
+  Future<Uint8List?> crateApiCanvasEngineCanvasEngineReadLayerPreview({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int width,
+    required int height,
+  });
+
+  Future<Uint8List?> crateApiCanvasEngineCanvasEngineReadPresent({
+    required PlatformInt64 handle,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineRedo({
+    required PlatformInt64 handle,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineReorderLayer({
+    required PlatformInt64 handle,
+    required int fromIndex,
+    required int toIndex,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineResetCanvas({
+    required PlatformInt64 handle,
+    required int backgroundColorArgb,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineResetCanvasWithLayers({
+    required PlatformInt64 handle,
+    required int layerCount,
+    required int backgroundColorArgb,
+  });
+
+  Future<bool> crateApiCanvasEngineCanvasEngineResizeCanvas({
+    required PlatformInt64 handle,
+    required int width,
+    required int height,
+    required int layerCount,
+    required int backgroundColorArgb,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSetActiveLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSetBrush({
+    required PlatformInt64 handle,
+    required int colorArgb,
+    required double baseRadius,
+    required bool usePressure,
+    required bool erase,
+    required int antialiasLevel,
+    required int brushShape,
+    required bool randomRotation,
+    required int rotationSeed,
+    required double spacing,
+    required double hardness,
+    required double flow,
+    required double scatter,
+    required double rotationJitter,
+    required bool snapToPixel,
+    required bool hollowEnabled,
+    required double hollowRatio,
+    required bool hollowEraseOccluded,
+    required double streamlineStrength,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSetLayerBlendMode({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int blendModeIndex,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSetLayerClippingMask({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required bool clippingMask,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSetLayerOpacity({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required double opacity,
+  });
+
+  Future<bool> crateApiCanvasEngineCanvasEngineSetLayerTransformPreview({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required List<double> matrix,
+    required bool enabled,
+    required bool bilinear,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSetLayerVisible({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required bool visible,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSetSelectionMask({
+    required PlatformInt64 handle,
+    Uint8List? selectionMask,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSetViewFlags({
+    required PlatformInt64 handle,
+    required int viewFlags,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSprayBegin({
+    required PlatformInt64 handle,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSprayDraw({
+    required PlatformInt64 handle,
+    required List<double> points,
+    required BigInt pointCount,
+    required int colorArgb,
+    required int brushShape,
+    required bool erase,
+    required int antialiasLevel,
+    required double softness,
+    required bool accumulate,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineSprayEnd({
+    required PlatformInt64 handle,
+  });
+
+  Future<bool> crateApiCanvasEngineCanvasEngineTranslateLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int deltaX,
+    required int deltaY,
+  });
+
+  Future<void> crateApiCanvasEngineCanvasEngineUndo({
+    required PlatformInt64 handle,
+  });
+
+  Future<bool> crateApiCanvasEngineCanvasEngineWriteLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required List<int> pixels,
+    required bool recordUndo,
+  });
 
   Uint8List crateApiImageOpsConvertPixelsToRgba({required List<int> pixels});
 
@@ -253,13 +501,1592 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<bool> crateApiCanvasEngineCanvasEngineApplyAntialias({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int level,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_u_32(level, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineApplyAntialiasConstMeta,
+        argValues: [handle, layerIndex, level],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineApplyAntialiasConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_apply_antialias",
+        argNames: ["handle", "layerIndex", "level"],
+      );
+
+  @override
+  Future<bool> crateApiCanvasEngineCanvasEngineApplyFilter({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int filterType,
+    required double param0,
+    required double param1,
+    required double param2,
+    required double param3,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_u_32(filterType, serializer);
+          sse_encode_f_32(param0, serializer);
+          sse_encode_f_32(param1, serializer);
+          sse_encode_f_32(param2, serializer);
+          sse_encode_f_32(param3, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineApplyFilterConstMeta,
+        argValues: [
+          handle,
+          layerIndex,
+          filterType,
+          param0,
+          param1,
+          param2,
+          param3,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineApplyFilterConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_apply_filter",
+        argNames: [
+          "handle",
+          "layerIndex",
+          "filterType",
+          "param0",
+          "param1",
+          "param2",
+          "param3",
+        ],
+      );
+
+  @override
+  Future<bool> crateApiCanvasEngineCanvasEngineApplyLayerTransform({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required List<double> matrix,
+    required bool bilinear,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_list_prim_f_32_loose(matrix, serializer);
+          sse_encode_bool(bilinear, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiCanvasEngineCanvasEngineApplyLayerTransformConstMeta,
+        argValues: [handle, layerIndex, matrix, bilinear],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiCanvasEngineCanvasEngineApplyLayerTransformConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_apply_layer_transform",
+        argNames: ["handle", "layerIndex", "matrix", "bilinear"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineAttachPresent({
+    required PlatformInt64 handle,
+    required int width,
+    required int height,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(width, serializer);
+          sse_encode_u_32(height, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineAttachPresentConstMeta,
+        argValues: [handle, width, height],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineAttachPresentConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_attach_present",
+        argNames: ["handle", "width", "height"],
+      );
+
+  @override
+  Future<bool> crateApiCanvasEngineCanvasEngineBucketFill({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int startX,
+    required int startY,
+    required int colorArgb,
+    required bool contiguous,
+    required bool sampleAllLayers,
+    required int tolerance,
+    required int fillGap,
+    required int antialiasLevel,
+    required List<int> swallowColors,
+    Uint8List? selectionMask,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_i_32(startX, serializer);
+          sse_encode_i_32(startY, serializer);
+          sse_encode_u_32(colorArgb, serializer);
+          sse_encode_bool(contiguous, serializer);
+          sse_encode_bool(sampleAllLayers, serializer);
+          sse_encode_u_32(tolerance, serializer);
+          sse_encode_u_32(fillGap, serializer);
+          sse_encode_u_32(antialiasLevel, serializer);
+          sse_encode_list_prim_u_32_loose(swallowColors, serializer);
+          sse_encode_opt_list_prim_u_8_strict(selectionMask, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineBucketFillConstMeta,
+        argValues: [
+          handle,
+          layerIndex,
+          startX,
+          startY,
+          colorArgb,
+          contiguous,
+          sampleAllLayers,
+          tolerance,
+          fillGap,
+          antialiasLevel,
+          swallowColors,
+          selectionMask,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineBucketFillConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_bucket_fill",
+        argNames: [
+          "handle",
+          "layerIndex",
+          "startX",
+          "startY",
+          "colorArgb",
+          "contiguous",
+          "sampleAllLayers",
+          "tolerance",
+          "fillGap",
+          "antialiasLevel",
+          "swallowColors",
+          "selectionMask",
+        ],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineClearLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineClearLayerConstMeta,
+        argValues: [handle, layerIndex],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineClearLayerConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_clear_layer",
+        argNames: ["handle", "layerIndex"],
+      );
+
+  @override
+  Future<PlatformInt64> crateApiCanvasEngineCanvasEngineCreate({
+    required int width,
+    required int height,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_u_32(width, serializer);
+          sse_encode_u_32(height, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_i_64,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineCreateConstMeta,
+        argValues: [width, height],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineCreateConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_create",
+        argNames: ["width", "height"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineDispose({
+    required PlatformInt64 handle,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineDisposeConstMeta,
+        argValues: [handle],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineDisposeConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_dispose",
+        argNames: ["handle"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineFillLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int colorArgb,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_u_32(colorArgb, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineFillLayerConstMeta,
+        argValues: [handle, layerIndex, colorArgb],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineFillLayerConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_fill_layer",
+        argNames: ["handle", "layerIndex", "colorArgb"],
+      );
+
+  @override
+  Future<PlatformInt64> crateApiCanvasEngineCanvasEngineGetInputQueueLen({
+    required PlatformInt64 handle,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 11,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_i_64,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineGetInputQueueLenConstMeta,
+        argValues: [handle],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiCanvasEngineCanvasEngineGetInputQueueLenConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_get_input_queue_len",
+        argNames: ["handle"],
+      );
+
+  @override
+  Future<Int32List?> crateApiCanvasEngineCanvasEngineGetLayerBounds({
+    required PlatformInt64 handle,
+    required int layerIndex,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_list_prim_i_32_strict,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineGetLayerBoundsConstMeta,
+        argValues: [handle, layerIndex],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineGetLayerBoundsConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_get_layer_bounds",
+        argNames: ["handle", "layerIndex"],
+      );
+
+  @override
+  Future<bool> crateApiCanvasEngineCanvasEngineInit() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineInitConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineInitConstMeta =>
+      const TaskConstMeta(debugName: "canvas_engine_init", argNames: []);
+
+  @override
+  Future<Uint8List?> crateApiCanvasEngineCanvasEngineMagicWandMask({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int startX,
+    required int startY,
+    required bool sampleAllLayers,
+    required int tolerance,
+    Uint8List? selectionMask,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_i_32(startX, serializer);
+          sse_encode_i_32(startY, serializer);
+          sse_encode_bool(sampleAllLayers, serializer);
+          sse_encode_u_32(tolerance, serializer);
+          sse_encode_opt_list_prim_u_8_strict(selectionMask, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 14,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_list_prim_u_8_strict,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineMagicWandMaskConstMeta,
+        argValues: [
+          handle,
+          layerIndex,
+          startX,
+          startY,
+          sampleAllLayers,
+          tolerance,
+          selectionMask,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineMagicWandMaskConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_magic_wand_mask",
+        argNames: [
+          "handle",
+          "layerIndex",
+          "startX",
+          "startY",
+          "sampleAllLayers",
+          "tolerance",
+          "selectionMask",
+        ],
+      );
+
+  @override
+  Future<bool> crateApiCanvasEngineCanvasEnginePollFrameReady({
+    required PlatformInt64 handle,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 15,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEnginePollFrameReadyConstMeta,
+        argValues: [handle],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEnginePollFrameReadyConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_poll_frame_ready",
+        argNames: ["handle"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEnginePushPointsPacked({
+    required PlatformInt64 handle,
+    required List<int> bytes,
+    required BigInt pointCount,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_list_prim_u_8_loose(bytes, serializer);
+          sse_encode_usize(pointCount, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 16,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEnginePushPointsPackedConstMeta,
+        argValues: [handle, bytes, pointCount],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiCanvasEngineCanvasEnginePushPointsPackedConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_push_points_packed",
+        argNames: ["handle", "bytes", "pointCount"],
+      );
+
+  @override
+  Future<Uint32List?> crateApiCanvasEngineCanvasEngineReadLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_list_prim_u_32_strict,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineReadLayerConstMeta,
+        argValues: [handle, layerIndex],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineReadLayerConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_read_layer",
+        argNames: ["handle", "layerIndex"],
+      );
+
+  @override
+  Future<Uint8List?> crateApiCanvasEngineCanvasEngineReadLayerPreview({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int width,
+    required int height,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_u_32(width, serializer);
+          sse_encode_u_32(height, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_list_prim_u_8_strict,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineReadLayerPreviewConstMeta,
+        argValues: [handle, layerIndex, width, height],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiCanvasEngineCanvasEngineReadLayerPreviewConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_read_layer_preview",
+        argNames: ["handle", "layerIndex", "width", "height"],
+      );
+
+  @override
+  Future<Uint8List?> crateApiCanvasEngineCanvasEngineReadPresent({
+    required PlatformInt64 handle,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_list_prim_u_8_strict,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineReadPresentConstMeta,
+        argValues: [handle],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineReadPresentConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_read_present",
+        argNames: ["handle"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineRedo({
+    required PlatformInt64 handle,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineRedoConstMeta,
+        argValues: [handle],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineRedoConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_redo",
+        argNames: ["handle"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineReorderLayer({
+    required PlatformInt64 handle,
+    required int fromIndex,
+    required int toIndex,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(fromIndex, serializer);
+          sse_encode_u_32(toIndex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 21,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineReorderLayerConstMeta,
+        argValues: [handle, fromIndex, toIndex],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineReorderLayerConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_reorder_layer",
+        argNames: ["handle", "fromIndex", "toIndex"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineResetCanvas({
+    required PlatformInt64 handle,
+    required int backgroundColorArgb,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(backgroundColorArgb, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 22,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineResetCanvasConstMeta,
+        argValues: [handle, backgroundColorArgb],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineResetCanvasConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_reset_canvas",
+        argNames: ["handle", "backgroundColorArgb"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineResetCanvasWithLayers({
+    required PlatformInt64 handle,
+    required int layerCount,
+    required int backgroundColorArgb,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerCount, serializer);
+          sse_encode_u_32(backgroundColorArgb, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiCanvasEngineCanvasEngineResetCanvasWithLayersConstMeta,
+        argValues: [handle, layerCount, backgroundColorArgb],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiCanvasEngineCanvasEngineResetCanvasWithLayersConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_reset_canvas_with_layers",
+        argNames: ["handle", "layerCount", "backgroundColorArgb"],
+      );
+
+  @override
+  Future<bool> crateApiCanvasEngineCanvasEngineResizeCanvas({
+    required PlatformInt64 handle,
+    required int width,
+    required int height,
+    required int layerCount,
+    required int backgroundColorArgb,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(width, serializer);
+          sse_encode_u_32(height, serializer);
+          sse_encode_u_32(layerCount, serializer);
+          sse_encode_u_32(backgroundColorArgb, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 24,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineResizeCanvasConstMeta,
+        argValues: [handle, width, height, layerCount, backgroundColorArgb],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineResizeCanvasConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_resize_canvas",
+        argNames: [
+          "handle",
+          "width",
+          "height",
+          "layerCount",
+          "backgroundColorArgb",
+        ],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSetActiveLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 25,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineSetActiveLayerConstMeta,
+        argValues: [handle, layerIndex],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineSetActiveLayerConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_set_active_layer",
+        argNames: ["handle", "layerIndex"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSetBrush({
+    required PlatformInt64 handle,
+    required int colorArgb,
+    required double baseRadius,
+    required bool usePressure,
+    required bool erase,
+    required int antialiasLevel,
+    required int brushShape,
+    required bool randomRotation,
+    required int rotationSeed,
+    required double spacing,
+    required double hardness,
+    required double flow,
+    required double scatter,
+    required double rotationJitter,
+    required bool snapToPixel,
+    required bool hollowEnabled,
+    required double hollowRatio,
+    required bool hollowEraseOccluded,
+    required double streamlineStrength,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(colorArgb, serializer);
+          sse_encode_f_32(baseRadius, serializer);
+          sse_encode_bool(usePressure, serializer);
+          sse_encode_bool(erase, serializer);
+          sse_encode_u_32(antialiasLevel, serializer);
+          sse_encode_u_32(brushShape, serializer);
+          sse_encode_bool(randomRotation, serializer);
+          sse_encode_u_32(rotationSeed, serializer);
+          sse_encode_f_32(spacing, serializer);
+          sse_encode_f_32(hardness, serializer);
+          sse_encode_f_32(flow, serializer);
+          sse_encode_f_32(scatter, serializer);
+          sse_encode_f_32(rotationJitter, serializer);
+          sse_encode_bool(snapToPixel, serializer);
+          sse_encode_bool(hollowEnabled, serializer);
+          sse_encode_f_32(hollowRatio, serializer);
+          sse_encode_bool(hollowEraseOccluded, serializer);
+          sse_encode_f_32(streamlineStrength, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 26,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineSetBrushConstMeta,
+        argValues: [
+          handle,
+          colorArgb,
+          baseRadius,
+          usePressure,
+          erase,
+          antialiasLevel,
+          brushShape,
+          randomRotation,
+          rotationSeed,
+          spacing,
+          hardness,
+          flow,
+          scatter,
+          rotationJitter,
+          snapToPixel,
+          hollowEnabled,
+          hollowRatio,
+          hollowEraseOccluded,
+          streamlineStrength,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineSetBrushConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_set_brush",
+        argNames: [
+          "handle",
+          "colorArgb",
+          "baseRadius",
+          "usePressure",
+          "erase",
+          "antialiasLevel",
+          "brushShape",
+          "randomRotation",
+          "rotationSeed",
+          "spacing",
+          "hardness",
+          "flow",
+          "scatter",
+          "rotationJitter",
+          "snapToPixel",
+          "hollowEnabled",
+          "hollowRatio",
+          "hollowEraseOccluded",
+          "streamlineStrength",
+        ],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSetLayerBlendMode({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int blendModeIndex,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_u_32(blendModeIndex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 27,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineSetLayerBlendModeConstMeta,
+        argValues: [handle, layerIndex, blendModeIndex],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiCanvasEngineCanvasEngineSetLayerBlendModeConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_set_layer_blend_mode",
+        argNames: ["handle", "layerIndex", "blendModeIndex"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSetLayerClippingMask({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required bool clippingMask,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_bool(clippingMask, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 28,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiCanvasEngineCanvasEngineSetLayerClippingMaskConstMeta,
+        argValues: [handle, layerIndex, clippingMask],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiCanvasEngineCanvasEngineSetLayerClippingMaskConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_set_layer_clipping_mask",
+        argNames: ["handle", "layerIndex", "clippingMask"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSetLayerOpacity({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required double opacity,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_f_32(opacity, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 29,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineSetLayerOpacityConstMeta,
+        argValues: [handle, layerIndex, opacity],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineSetLayerOpacityConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_set_layer_opacity",
+        argNames: ["handle", "layerIndex", "opacity"],
+      );
+
+  @override
+  Future<bool> crateApiCanvasEngineCanvasEngineSetLayerTransformPreview({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required List<double> matrix,
+    required bool enabled,
+    required bool bilinear,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_list_prim_f_32_loose(matrix, serializer);
+          sse_encode_bool(enabled, serializer);
+          sse_encode_bool(bilinear, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 30,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiCanvasEngineCanvasEngineSetLayerTransformPreviewConstMeta,
+        argValues: [handle, layerIndex, matrix, enabled, bilinear],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiCanvasEngineCanvasEngineSetLayerTransformPreviewConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_set_layer_transform_preview",
+        argNames: ["handle", "layerIndex", "matrix", "enabled", "bilinear"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSetLayerVisible({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required bool visible,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_bool(visible, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 31,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineSetLayerVisibleConstMeta,
+        argValues: [handle, layerIndex, visible],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineSetLayerVisibleConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_set_layer_visible",
+        argNames: ["handle", "layerIndex", "visible"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSetSelectionMask({
+    required PlatformInt64 handle,
+    Uint8List? selectionMask,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_opt_list_prim_u_8_strict(selectionMask, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 32,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineSetSelectionMaskConstMeta,
+        argValues: [handle, selectionMask],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiCanvasEngineCanvasEngineSetSelectionMaskConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_set_selection_mask",
+        argNames: ["handle", "selectionMask"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSetViewFlags({
+    required PlatformInt64 handle,
+    required int viewFlags,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(viewFlags, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 33,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineSetViewFlagsConstMeta,
+        argValues: [handle, viewFlags],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineSetViewFlagsConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_set_view_flags",
+        argNames: ["handle", "viewFlags"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSprayBegin({
+    required PlatformInt64 handle,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 34,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineSprayBeginConstMeta,
+        argValues: [handle],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineSprayBeginConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_spray_begin",
+        argNames: ["handle"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSprayDraw({
+    required PlatformInt64 handle,
+    required List<double> points,
+    required BigInt pointCount,
+    required int colorArgb,
+    required int brushShape,
+    required bool erase,
+    required int antialiasLevel,
+    required double softness,
+    required bool accumulate,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_list_prim_f_32_loose(points, serializer);
+          sse_encode_usize(pointCount, serializer);
+          sse_encode_u_32(colorArgb, serializer);
+          sse_encode_u_32(brushShape, serializer);
+          sse_encode_bool(erase, serializer);
+          sse_encode_u_32(antialiasLevel, serializer);
+          sse_encode_f_32(softness, serializer);
+          sse_encode_bool(accumulate, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 35,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineSprayDrawConstMeta,
+        argValues: [
+          handle,
+          points,
+          pointCount,
+          colorArgb,
+          brushShape,
+          erase,
+          antialiasLevel,
+          softness,
+          accumulate,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineSprayDrawConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_spray_draw",
+        argNames: [
+          "handle",
+          "points",
+          "pointCount",
+          "colorArgb",
+          "brushShape",
+          "erase",
+          "antialiasLevel",
+          "softness",
+          "accumulate",
+        ],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineSprayEnd({
+    required PlatformInt64 handle,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 36,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineSprayEndConstMeta,
+        argValues: [handle],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineSprayEndConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_spray_end",
+        argNames: ["handle"],
+      );
+
+  @override
+  Future<bool> crateApiCanvasEngineCanvasEngineTranslateLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required int deltaX,
+    required int deltaY,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_i_32(deltaX, serializer);
+          sse_encode_i_32(deltaY, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 37,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineTranslateLayerConstMeta,
+        argValues: [handle, layerIndex, deltaX, deltaY],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineTranslateLayerConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_translate_layer",
+        argNames: ["handle", "layerIndex", "deltaX", "deltaY"],
+      );
+
+  @override
+  Future<void> crateApiCanvasEngineCanvasEngineUndo({
+    required PlatformInt64 handle,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 38,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineUndoConstMeta,
+        argValues: [handle],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineUndoConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_undo",
+        argNames: ["handle"],
+      );
+
+  @override
+  Future<bool> crateApiCanvasEngineCanvasEngineWriteLayer({
+    required PlatformInt64 handle,
+    required int layerIndex,
+    required List<int> pixels,
+    required bool recordUndo,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(handle, serializer);
+          sse_encode_u_32(layerIndex, serializer);
+          sse_encode_list_prim_u_32_loose(pixels, serializer);
+          sse_encode_bool(recordUndo, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 39,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvasEngineCanvasEngineWriteLayerConstMeta,
+        argValues: [handle, layerIndex, pixels, recordUndo],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvasEngineCanvasEngineWriteLayerConstMeta =>
+      const TaskConstMeta(
+        debugName: "canvas_engine_write_layer",
+        argNames: ["handle", "layerIndex", "pixels", "recordUndo"],
+      );
+
+  @override
   Uint8List crateApiImageOpsConvertPixelsToRgba({required List<int> pixels}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_32_loose(pixels, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 40)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -316,7 +2143,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 41,
             port: port_,
           );
         },
@@ -405,7 +2232,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 42,
             port: port_,
           );
         },
@@ -464,7 +2291,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_usize(ptr, serializer);
           sse_encode_i_32(size, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 43)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -489,7 +2316,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 44)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -511,7 +2338,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 45)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -543,7 +2370,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 46,
             port: port_,
           );
         },
@@ -570,7 +2397,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 47)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -592,7 +2419,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 48)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -620,7 +2447,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 49,
             port: port_,
           );
         },
@@ -665,7 +2492,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 50,
             port: port_,
           );
         },
@@ -709,7 +2536,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(layerId, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 51)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -743,7 +2570,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 52,
             port: port_,
           );
         },
@@ -771,7 +2598,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 53)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -797,7 +2624,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 54,
             port: port_,
           );
         },
@@ -824,7 +2651,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 55,
             port: port_,
           );
         },
@@ -866,7 +2693,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 56,
             port: port_,
           );
         },
@@ -911,7 +2738,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_usize(ptr, serializer);
           sse_encode_i_32(index, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 57)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_u_32,
@@ -940,7 +2767,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(mask, serializer);
           sse_encode_i_32(width, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 58)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_32_strict,
@@ -969,7 +2796,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 59,
             port: port_,
           );
         },
@@ -998,7 +2825,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_bool(isDirty, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 60)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -1024,7 +2851,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 61)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_box_autoadd_workspace_entry,
@@ -1051,7 +2878,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_box_autoadd_workspace_entry(entry, serializer);
           sse_encode_bool(activate, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 62)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -1081,7 +2908,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_opt_String(activateAfter, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 63)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -1111,7 +2938,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_i_32(oldIndex, serializer);
           sse_encode_i_32(newIndex, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 64)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -1136,7 +2963,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 27)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 65)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -1159,7 +2986,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 66)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -1181,7 +3008,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 67)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -1206,7 +3033,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 68,
             port: port_,
           );
         },
@@ -1335,6 +3162,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64(raw);
+  }
+
+  @protected
   List<GpuLayerData> dco_decode_list_gpu_layer_data(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_gpu_layer_data).toList();
@@ -1356,6 +3189,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Float32List dco_decode_list_prim_f_32_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Float32List;
+  }
+
+  @protected
+  Int32List dco_decode_list_prim_i_32_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as Int32List;
   }
 
   @protected
@@ -1410,6 +3249,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   WorkspaceEntry? dco_decode_opt_box_autoadd_workspace_entry(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_workspace_entry(raw);
+  }
+
+  @protected
+  Int32List? dco_decode_opt_list_prim_i_32_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_list_prim_i_32_strict(raw);
   }
 
   @protected
@@ -1626,6 +3471,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
   List<GpuLayerData> sse_decode_list_gpu_layer_data(
     SseDeserializer deserializer,
   ) {
@@ -1663,6 +3514,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getFloat32List(len_);
+  }
+
+  @protected
+  Int32List sse_decode_list_prim_i_32_strict(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var len_ = sse_decode_i_32(deserializer);
+    return deserializer.buffer.getInt32List(len_);
   }
 
   @protected
@@ -1749,6 +3607,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_box_autoadd_workspace_entry(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  Int32List? sse_decode_opt_list_prim_i_32_strict(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_list_prim_i_32_strict(deserializer));
     } else {
       return null;
     }
@@ -1959,6 +3830,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
   void sse_encode_list_gpu_layer_data(
     List<GpuLayerData> self,
     SseSerializer serializer,
@@ -2002,6 +3879,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putFloat32List(self);
+  }
+
+  @protected
+  void sse_encode_list_prim_i_32_strict(
+    Int32List self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    serializer.buffer.putInt32List(self);
   }
 
   @protected
@@ -2102,6 +3989,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_workspace_entry(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_list_prim_i_32_strict(
+    Int32List? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_list_prim_i_32_strict(self, serializer);
     }
   }
 
