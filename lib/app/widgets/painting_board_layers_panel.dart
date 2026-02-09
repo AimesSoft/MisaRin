@@ -484,6 +484,9 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
   Future<_LayerPreviewPixels?> _buildRustLayerPreviewPixels(
     String layerId,
   ) async {
+    if (kIsWeb) {
+      return null;
+    }
     final int? handle = _rustCanvasEngineHandle;
     if (!_canUseRustCanvasEngine() || handle == null) {
       return null;

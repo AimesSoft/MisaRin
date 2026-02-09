@@ -104,9 +104,19 @@ pub async fn canvas_engine_init() -> bool {
 
 #[flutter_rust_bridge::frb]
 pub fn canvas_engine_create(width: u32, height: u32) -> i64 {
+    #[cfg(target_family = "wasm")]
+    wasm_post_log(&format!(
+        "canvas_engine_create: enter {width}x{height}"
+    ));
     match create_engine(width, height) {
-        Ok(handle) => handle as i64,
+        Ok(handle) => {
+            #[cfg(target_family = "wasm")]
+            wasm_post_log(&format!("canvas_engine_create: ok handle={handle}"));
+            handle as i64
+        }
         Err(err) => {
+            #[cfg(target_family = "wasm")]
+            wasm_post_log(&format!("canvas_engine_create: error {err}"));
             debug::log(LogLevel::Warn, format_args!("engine_create failed: {err}"));
             0
         }
@@ -131,6 +141,10 @@ pub fn canvas_engine_attach_present(handle: i64, width: u32, height: u32) {
     if width == 0 || height == 0 {
         return;
     }
+    #[cfg(target_family = "wasm")]
+    wasm_post_log(&format!(
+        "canvas_engine_attach_present: handle={handle} size={width}x{height}"
+    ));
     let Some(entry) = lookup_engine(handle) else {
         return;
     };
@@ -167,9 +181,21 @@ pub fn canvas_engine_read_present(handle: i64) -> Option<Vec<u8>> {
         return None;
     }
     pump_engine_if_needed(handle);
-    match rx.recv() {
-        Ok(Some(pixels)) => Some(pixels),
-        _ => None,
+    #[cfg(target_family = "wasm")]
+    {
+        match rx.try_recv() {
+            Ok(Some(pixels)) => Some(pixels),
+            Ok(None) => None,
+            Err(mpsc::TryRecvError::Empty) => None,
+            Err(mpsc::TryRecvError::Disconnected) => None,
+        }
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        match rx.recv() {
+            Ok(Some(pixels)) => Some(pixels),
+            _ => None,
+        }
     }
 }
 
@@ -430,6 +456,12 @@ pub fn canvas_engine_magic_wand_mask(
     tolerance: u32,
     selection_mask: Option<Vec<u8>>,
 ) -> Option<Vec<u8>> {
+    #[cfg(target_family = "wasm")]
+    {
+        wasm_post_log("canvas_engine_magic_wand_mask: unsupported on web (readback)");
+        let _ = (handle, layer_index, start_x, start_y, sample_all_layers, tolerance, selection_mask);
+        return None;
+    }
     let Some(handle) = handle_to_u64(handle) else {
         return None;
     };
@@ -462,6 +494,12 @@ pub fn canvas_engine_magic_wand_mask(
 
 #[flutter_rust_bridge::frb]
 pub fn canvas_engine_read_layer(handle: i64, layer_index: u32) -> Option<Vec<u32>> {
+    #[cfg(target_family = "wasm")]
+    {
+        wasm_post_log("canvas_engine_read_layer: unsupported on web (readback)");
+        let _ = (handle, layer_index);
+        return None;
+    }
     let Some(handle) = handle_to_u64(handle) else {
         return None;
     };
@@ -490,6 +528,12 @@ pub fn canvas_engine_read_layer_preview(
     width: u32,
     height: u32,
 ) -> Option<Vec<u8>> {
+    #[cfg(target_family = "wasm")]
+    {
+        wasm_post_log("canvas_engine_read_layer_preview: unsupported on web (readback)");
+        let _ = (handle, layer_index, width, height);
+        return None;
+    }
     let Some(handle) = handle_to_u64(handle) else {
         return None;
     };
@@ -662,6 +706,12 @@ pub fn canvas_engine_apply_layer_transform(
 
 #[flutter_rust_bridge::frb]
 pub fn canvas_engine_get_layer_bounds(handle: i64, layer_index: u32) -> Option<Vec<i32>> {
+    #[cfg(target_family = "wasm")]
+    {
+        wasm_post_log("canvas_engine_get_layer_bounds: unsupported on web (readback)");
+        let _ = (handle, layer_index);
+        return None;
+    }
     let Some(handle) = handle_to_u64(handle) else {
         return None;
     };
@@ -718,6 +768,10 @@ pub fn canvas_engine_reset_canvas_with_layers(
     let Some(handle) = handle_to_u64(handle) else {
         return;
     };
+    #[cfg(target_family = "wasm")]
+    wasm_post_log(&format!(
+        "canvas_engine_reset_canvas_with_layers: handle={handle} layers={layer_count} bg=0x{background_color_argb:08x}"
+    ));
     let Some(entry) = lookup_engine(handle) else {
         return;
     };
@@ -741,6 +795,10 @@ pub fn canvas_engine_resize_canvas(
     if width == 0 || height == 0 {
         return false;
     }
+    #[cfg(target_family = "wasm")]
+    wasm_post_log(&format!(
+        "canvas_engine_resize_canvas: handle={handle} size={width}x{height} layers={layer_count} bg=0x{background_color_argb:08x}"
+    ));
     let Some(entry) = lookup_engine(handle) else {
         return false;
     };

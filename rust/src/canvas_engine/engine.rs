@@ -2454,6 +2454,10 @@ fn handle_engine_command(
             height,
             bytes_per_row,
         } => {
+            #[cfg(target_family = "wasm")]
+            wasm_post_log(&format!(
+                "cmd AttachPresentTexture: ptr=0x{mtl_texture_ptr:x} size={width}x{height} row={bytes_per_row}"
+            ));
             #[cfg(target_os = "macos")]
             let invalid_ptr = mtl_texture_ptr == 0;
             #[cfg(not(target_os = "macos"))]
@@ -2487,6 +2491,11 @@ fn handle_engine_command(
                 );
                 // Initialize layers so the first composite is deterministic.
                 // Layer 0 is the background fill layer (default white), others start transparent.
+                #[cfg(target_family = "wasm")]
+                wasm_post_log(&format!(
+                    "cmd AttachPresentTexture: init layers count={}",
+                    *layer_count
+                ));
                 layer_uniform.resize(*layer_count, None);
                 for idx in 0..*layer_count {
                     let fill = if idx == 0 { 0xFFFFFFFF } else { 0x00000000 };
@@ -2502,6 +2511,8 @@ fn handle_engine_command(
                         *entry = Some(fill);
                     }
                 }
+                #[cfg(target_family = "wasm")]
+                wasm_post_log("cmd AttachPresentTexture: init layers done");
                 // Request one render so Flutter gets an actual composited frame immediately.
                 return EngineCommandOutcome {
                     stop: false,
@@ -2590,6 +2601,11 @@ fn handle_engine_command(
         EngineCommand::ResetCanvas {
             background_color_argb,
         } => {
+            #[cfg(target_family = "wasm")]
+            wasm_post_log(&format!(
+                "cmd ResetCanvas: bg=0x{background_color_argb:08x} layers={}",
+                *layer_count
+            ));
             // Reset undo history so a fresh canvas doesn't "undo" back into the previous one.
             undo.reset();
             // Layer 0 is background fill; everything above starts transparent.
@@ -2612,6 +2628,8 @@ fn handle_engine_command(
                     *entry = Some(fill);
                 }
             }
+            #[cfg(target_family = "wasm")]
+            wasm_post_log("cmd ResetCanvas: fill done");
             return EngineCommandOutcome {
                 stop: false,
                 needs_render: present.is_some(),
@@ -2622,6 +2640,10 @@ fn handle_engine_command(
             layer_count: requested_count,
             background_color_argb,
         } => {
+            #[cfg(target_family = "wasm")]
+            wasm_post_log(&format!(
+                "cmd ResetCanvasWithLayers: requested={requested_count} bg=0x{background_color_argb:08x}"
+            ));
             let target_count: usize = (requested_count.max(1)) as usize;
             if target_count > *layer_count {
                 let idx = target_count - 1;
@@ -2658,6 +2680,8 @@ fn handle_engine_command(
                     *entry = Some(fill);
                 }
             }
+            #[cfg(target_family = "wasm")]
+            wasm_post_log("cmd ResetCanvasWithLayers: fill done");
 
             *active_layer_index = (*active_layer_index).min(target_count.saturating_sub(1));
             *transform_layer_index = 0;
@@ -5876,6 +5900,8 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
     if width == 0 || height == 0 {
         return Err("engine_create: width/height must be > 0".to_string());
     }
+    #[cfg(target_family = "wasm")]
+    wasm_post_log(&format!("create_engine: start {width}x{height}"));
 
     let ctx = device_context()?;
 
@@ -5887,6 +5913,8 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
 
     let layers = LayerTextures::new(ctx.device.as_ref(), width, height, INITIAL_LAYER_CAPACITY)
         .map_err(|err| format!("engine_create: layer init failed: {err}"))?;
+    #[cfg(target_family = "wasm")]
+    wasm_post_log("create_engine: layers ready");
 
     let (cmd_tx, cmd_rx) = mpsc::channel();
     let (input_tx, input_rx) = mpsc::channel();
@@ -5894,6 +5922,7 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
     let frame_ready = Arc::new(AtomicBool::new(false));
     #[cfg(target_family = "wasm")]
     {
+        wasm_post_log("create_engine: runtime new");
         let runtime = EngineRuntime::new(
             Arc::clone(&ctx.device),
             Arc::clone(&ctx.queue),
@@ -5905,6 +5934,7 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
             width,
             height,
         )?;
+        wasm_post_log("create_engine: runtime ready");
         let handle = NEXT_HANDLE.fetch_add(1, Ordering::Relaxed);
         let entry = EngineEntry {
             mtl_device_ptr,
@@ -5922,6 +5952,7 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
                 },
             );
         });
+        wasm_post_log(&format!("create_engine: done handle={handle}"));
         return Ok(handle);
     }
 

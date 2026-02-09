@@ -358,10 +358,17 @@ impl PresentRenderer {
 
 pub(crate) fn signal_frame_ready(queue: &wgpu::Queue, frame_ready: Arc<AtomicBool>) {
     frame_ready.store(true, Ordering::Release);
-    let frame_ready_done = Arc::clone(&frame_ready);
-    queue.on_submitted_work_done(move || {
-        frame_ready_done.store(true, Ordering::Release);
-    });
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let frame_ready_done = Arc::clone(&frame_ready);
+        queue.on_submitted_work_done(move || {
+            frame_ready_done.store(true, Ordering::Release);
+        });
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = queue;
+    }
 }
 
 pub(crate) fn attach_present_texture(

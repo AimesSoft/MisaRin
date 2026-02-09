@@ -834,6 +834,10 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
         _webImage?.dispose();
         _webImage = image;
       });
+    } catch (error, stackTrace) {
+      final String message = 'rustSurface: web frame error $error';
+      debugPrint('$message\n$stackTrace');
+      reportWebLog('$message\n$stackTrace');
     } finally {
       _webFrameInFlight = false;
     }
@@ -1139,6 +1143,9 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
           ? const ColoredBox(color: Color(0xFFFFFFFF))
           : RawImage(
               image: image,
+              width: canvasSize.width,
+              height: canvasSize.height,
+              fit: BoxFit.fill,
               filterQuality: FilterQuality.none,
             );
       return Listener(
