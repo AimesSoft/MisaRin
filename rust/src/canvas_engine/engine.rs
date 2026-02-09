@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{mpsc, Arc, Mutex};
-#[cfg(not(target_family = "wasm"))]
-use std::sync::OnceLock;
+use std::sync::{mpsc, Arc, Mutex, OnceLock};
 #[cfg(not(target_family = "wasm"))]
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -25,6 +23,8 @@ use crate::gpu::filter_renderer::{
     FILTER_FILL_EXPAND, FILTER_GAUSSIAN_BLUR, FILTER_HUE_SATURATION, FILTER_INVERT,
     FILTER_LEAK_REMOVAL, FILTER_LINE_NARROW, FILTER_SCAN_PAPER_DRAWING,
 };
+#[cfg(target_family = "wasm")]
+use crate::wasm_log::wasm_post_log;
 
 use super::layers::LayerTextures;
 use super::present::{
@@ -279,6 +279,9 @@ thread_local! {
     static DEVICE_CONTEXT: RefCell<Option<Result<Arc<EngineDeviceContext>, String>>> = RefCell::new(None);
 }
 
+#[cfg(target_family = "wasm")]
+static DEVICE_INIT_LOCK: OnceLock<futures::lock::Mutex<()>> = OnceLock::new();
+
 #[cfg(not(target_family = "wasm"))]
 fn device_context() -> Result<&'static EngineDeviceContext, String> {
     let init_result = DEVICE_CONTEXT.get_or_init(|| init_device_context());
@@ -347,12 +350,14 @@ fn init_device_context() -> Result<EngineDeviceContext, String> {
 
 #[cfg(target_family = "wasm")]
 async fn init_device_context_async() -> Result<EngineDeviceContext, String> {
+    wasm_post_log("init_device_context_async: start");
     let backends = wgpu::Backends::PRIMARY;
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends,
         ..Default::default()
     });
 
+    wasm_post_log("init_device_context_async: before request_adapter");
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
@@ -361,27 +366,64 @@ async fn init_device_context_async() -> Result<EngineDeviceContext, String> {
         })
         .await
         .ok_or_else(|| "wgpu: no compatible adapter found".to_string())?;
+    wasm_post_log("init_device_context_async: after request_adapter");
 
     let adapter_features = adapter.features();
+    let adapter_info = adapter.get_info();
+    wasm_post_log(&format!(
+        "adapter: name={} backend={:?} device_type={:?}",
+        adapter_info.name, adapter_info.backend, adapter_info.device_type
+    ));
+    #[cfg(target_family = "wasm")]
+    {
+        let r32_features = adapter.get_texture_format_features(wgpu::TextureFormat::R32Uint);
+        let r32_storage_ok = r32_features
+            .allowed_usages
+            .contains(wgpu::TextureUsages::STORAGE_BINDING);
+        wasm_post_log(&format!(
+            "r32uint allowed_usages={:?} storage_ok={}",
+            r32_features.allowed_usages, r32_storage_ok
+        ));
+        if !r32_storage_ok {
+            return Err(
+                "wgpu: adapter missing R32Uint STORAGE_BINDING support (required for storage textures)"
+                    .to_string(),
+            );
+        }
+    }
+    #[cfg(not(target_family = "wasm"))]
     if !adapter_features.contains(wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES) {
         return Err(
             "wgpu: adapter missing TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES (required for R32Uint storage textures)"
                 .to_string(),
         );
     }
+    #[cfg(target_family = "wasm")]
+    let required_features = wgpu::Features::empty();
+    #[cfg(not(target_family = "wasm"))]
     let required_features = wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
+    #[cfg(target_family = "wasm")]
+    let required_limits = adapter.limits();
+    #[cfg(not(target_family = "wasm"))]
+    let required_limits = wgpu::Limits::default();
 
+    wasm_post_log("init_device_context_async: before request_device");
     let (device, queue) = adapter
         .request_device(
             &wgpu::DeviceDescriptor {
                 label: Some("misa-rin CanvasEngine device"),
                 required_features,
-                required_limits: wgpu::Limits::default(),
+                required_limits,
             },
             None,
         )
         .await
-        .map_err(|e| format!("wgpu: request_device failed: {e:?}"))?;
+        .map_err(|e| {
+            wasm_post_log("init_device_context_async: request_device failed");
+            wasm_post_log(&format!("request_device error: {e:?}"));
+            format!("wgpu: request_device failed: {e:?}")
+        })?;
+    wasm_post_log("init_device_context_async: after request_device");
 
     Ok(EngineDeviceContext {
         _instance: instance,
@@ -393,6 +435,14 @@ async fn init_device_context_async() -> Result<EngineDeviceContext, String> {
 
 #[cfg(target_family = "wasm")]
 pub(crate) async fn init_device_context_wasm() -> Result<(), String> {
+    let existing = DEVICE_CONTEXT.with(|cell| cell.borrow().as_ref().cloned());
+    if let Some(result) = existing {
+        return result.map(|_| ());
+    }
+
+    let init_lock = DEVICE_INIT_LOCK.get_or_init(|| futures::lock::Mutex::new(()));
+    let _guard = init_lock.lock().await;
+
     let existing = DEVICE_CONTEXT.with(|cell| cell.borrow().as_ref().cloned());
     if let Some(result) = existing {
         return result.map(|_| ());
@@ -5719,15 +5769,17 @@ pub(crate) fn pump_engine(handle: u64) {
     if handle == 0 {
         return;
     }
-    ENGINES.with(|engines| {
-        let mut guard = engines.borrow_mut();
-        if let Some(state) = guard.get_mut(&handle) {
-            let stop = state.runtime.step(false);
-            if stop {
-                guard.remove(&handle);
-            }
-        }
-    });
+    // Avoid holding a RefCell borrow across runtime.step to prevent re-entrancy panics.
+    let mut state = ENGINES.with(|engines| engines.borrow_mut().remove(&handle));
+    let Some(mut state) = state else {
+        return;
+    };
+    let stop = state.runtime.step(false);
+    if !stop {
+        ENGINES.with(|engines| {
+            engines.borrow_mut().insert(handle, state);
+        });
+    }
 }
 
 #[cfg(not(target_family = "wasm"))]

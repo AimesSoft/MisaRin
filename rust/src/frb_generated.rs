@@ -29,6 +29,59 @@ use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, 
 use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
 
+#[cfg(target_family = "wasm")]
+fn frb_wasm_post_log_js(message: &wasm_bindgen::JsValue) {
+    use wasm_bindgen::JsCast;
+    use wasm_bindgen::JsValue;
+    let global = js_sys::global();
+    let fetch = js_sys::Reflect::get(&global, &JsValue::from_str("fetch"));
+    if let Ok(fetch) = fetch {
+        if let Ok(fetch_fn) = fetch.dyn_into::<js_sys::Function>() {
+            let init = js_sys::Object::new();
+            let _ = js_sys::Reflect::set(
+                &init,
+                &JsValue::from_str("method"),
+                &JsValue::from_str("POST"),
+            );
+            let _ = js_sys::Reflect::set(
+                &init,
+                &JsValue::from_str("body"),
+                message,
+            );
+            let init_val = JsValue::from(init);
+            let _ = fetch_fn.call2(
+                &JsValue::NULL,
+                &JsValue::from_str("/__log"),
+                &init_val,
+            );
+        }
+    }
+}
+
+#[cfg(target_family = "wasm")]
+fn frb_wasm_post_log(message: &str) {
+    let msg = wasm_bindgen::JsValue::from_str(message);
+    frb_wasm_post_log_js(&msg);
+}
+
+#[cfg(target_family = "wasm")]
+fn frb_wasm_log_pde(
+    func_id: i32,
+    rust_vec_len: i32,
+    data_len: i32,
+    ptr: &flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+) {
+    let js_len = js_sys::Uint8Array::new(ptr).length() as i32;
+    let arr = js_sys::Array::new();
+    arr.push(&wasm_bindgen::JsValue::from_f64(func_id as f64));
+    arr.push(&wasm_bindgen::JsValue::from_f64(rust_vec_len as f64));
+    arr.push(&wasm_bindgen::JsValue::from_f64(data_len as f64));
+    arr.push(&wasm_bindgen::JsValue::from_f64(js_len as f64));
+    let msg = js_sys::JSON::stringify(&arr)
+        .unwrap_or_else(|_| js_sys::JsString::from("frb_pde"));
+    frb_wasm_post_log_js(&msg);
+}
+
 // Section: boilerplate
 
 flutter_rust_bridge::frb_generated_boilerplate!(
@@ -544,6 +597,8 @@ fn wire__crate__api__canvas_engine__canvas_engine_init_impl(
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
         move || {
+            #[cfg(target_family = "wasm")]
+            frb_wasm_post_log("frb_init: before from_wire");
             let message = unsafe {
                 flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
                     ptr_,
@@ -551,9 +606,13 @@ fn wire__crate__api__canvas_engine__canvas_engine_init_impl(
                     data_len_,
                 )
             };
+            #[cfg(target_family = "wasm")]
+            frb_wasm_post_log("frb_init: after from_wire");
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             deserializer.end();
+            #[cfg(target_family = "wasm")]
+            frb_wasm_post_log("frb_init: after deserializer.end");
             move |context| async move {
                 transform_result_sse::<_, ()>(
                     (move || async move {
@@ -3081,6 +3140,10 @@ fn pde_ffi_dispatcher_primary_impl(
     data_len: i32,
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
+    #[cfg(target_family = "wasm")]
+    if func_id == 13 {
+        frb_wasm_log_pde(func_id, rust_vec_len, data_len, &ptr);
+    }
     match func_id {
         2 => wire__crate__api__canvas_engine__canvas_engine_apply_antialias_impl(
             port,

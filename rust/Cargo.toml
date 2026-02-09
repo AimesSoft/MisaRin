@@ -16,6 +16,11 @@ bytemuck = { version = "1.14", features = ["derive"] }
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 rayon = "1.10"
 
+[target.'cfg(target_family = "wasm")'.dependencies]
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+futures = "0.3"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 wgpu-hal = { version = "0.19.5", features = ["metal"] }
 metal = "0.27.0"
@@ -27,3 +32,7 @@ winapi = { version = "0.3", features = ["d3d12", "dxgiformat", "dxgitype", "hand
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
+
+[patch.crates-io]
+wasm-bindgen-futures = { path = "third_party/wasm-bindgen-futures" }
+flutter_rust_bridge = { path = "third_party/flutter_rust_bridge" }

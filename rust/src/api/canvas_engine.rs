@@ -7,6 +7,7 @@ use crate::canvas_engine::engine::{
 };
 use crate::canvas_engine::types::{EnginePoint, SprayPoint};
 use crate::gpu::debug::{self, LogLevel};
+use crate::wasm_log::wasm_post_log;
 
 const POINT_STRIDE_BYTES: usize = 32;
 const SPRAY_POINT_STRIDE_FLOATS: usize = 4;
@@ -88,9 +89,13 @@ fn parse_spray_points(points: &[f32], point_count: usize) -> Result<Vec<SprayPoi
 
 #[flutter_rust_bridge::frb]
 pub async fn canvas_engine_init() -> bool {
-    match init_device_context_wasm().await {
+    wasm_post_log("canvas_engine_init: enter");
+    let result = init_device_context_wasm().await;
+    wasm_post_log("canvas_engine_init: after init_device_context_wasm");
+    match result {
         Ok(()) => true,
         Err(err) => {
+            wasm_post_log(&format!("canvas_engine_init: error {err}"));
             debug::log(LogLevel::Warn, format_args!("engine_init failed: {err}"));
             false
         }
