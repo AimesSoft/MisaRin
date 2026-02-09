@@ -1064,6 +1064,8 @@ fn render_streamline_frame(
     let drawn_any = stroke.draw_emitted_points(
         brush_ref,
         &animation.brush_settings,
+        layer_texture,
+        animation.layer_index,
         active_layer_view,
         &animation.scratch,
         canvas_width,
@@ -1173,6 +1175,8 @@ fn commit_preview_stroke(
     let drawn_any = stroke.draw_emitted_points(
         brush_ref,
         brush_settings,
+        layer_texture,
+        layer_index,
         active_layer_view,
         points,
         canvas_width,
@@ -1978,6 +1982,8 @@ impl EngineRuntime {
                             stroke.consume_and_draw(
                                 brush_ref,
                                 brush_settings,
+                                layer_texture,
+                                layer_idx,
                                 active_layer_view,
                                 std::mem::take(&mut segment),
                                 canvas_width,
@@ -2088,6 +2094,8 @@ impl EngineRuntime {
                     let segment_drawn = stroke.consume_and_draw(
                         brush_ref,
                         brush_settings,
+                        layer_texture,
+                        layer_idx,
                         active_layer_view,
                         segment,
                         canvas_width,
@@ -3195,6 +3203,8 @@ fn handle_engine_command(
                 let rs = &radii[start..end];
                 let as_ = &alphas[start..end];
                 if let Err(err) = brush_ref.draw_points(
+                    layers.texture(),
+                    layer_idx,
                     layer_view,
                     pts,
                     rs,

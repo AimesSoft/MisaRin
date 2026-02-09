@@ -117,6 +117,14 @@ pub struct BrushRenderer {
     selection_mask_width: u32,
     selection_mask_height: u32,
     selection_mask_enabled: bool,
+    layer_scratch: Option<wgpu::Texture>,
+    layer_scratch_view: Option<wgpu::TextureView>,
+    layer_scratch_width: u32,
+    layer_scratch_height: u32,
+    stroke_mask_scratch: Option<wgpu::Texture>,
+    stroke_mask_scratch_view: Option<wgpu::TextureView>,
+    stroke_mask_scratch_width: u32,
+    stroke_mask_scratch_height: u32,
 
     canvas_width: u32,
     canvas_height: u32,
@@ -127,14 +135,102 @@ impl BrushRenderer {
     pub fn new(device: Arc<Device>, queue: Arc<Queue>) -> Result<Self, String> {
         device_push_scopes(device.as_ref());
 
+        let is_web = cfg!(target_family = "wasm");
+        let shader_source = if is_web {
+            include_str!("brush_shaders_web.wgsl")
+        } else {
+            include_str!("brush_shaders.wgsl")
+        };
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("BrushRenderer shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("brush_shaders.wgsl"))),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(shader_source)),
         });
 
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("BrushRenderer bind group layout"),
-            entries: &[
+        let bind_group_entries: Vec<wgpu::BindGroupLayoutEntry> = if is_web {
+            vec![
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        format: wgpu::TextureFormat::R32Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        format: wgpu::TextureFormat::R32Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 7,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+            ]
+        } else {
+            vec![
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::COMPUTE,
@@ -195,7 +291,12 @@ impl BrushRenderer {
                     },
                     count: None,
                 },
-            ],
+            ]
+        };
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("BrushRenderer bind group layout"),
+            entries: &bind_group_entries,
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -228,6 +329,24 @@ impl BrushRenderer {
         let (stroke_mask, stroke_mask_view) = create_stroke_mask(device.as_ref(), 1, 1);
         let (stroke_base, stroke_base_view) = create_stroke_base(device.as_ref(), 1, 1);
         let (selection_mask, selection_mask_view) = create_selection_mask(device.as_ref(), 1, 1);
+        let (layer_scratch, layer_scratch_view, layer_scratch_width, layer_scratch_height) =
+            if is_web {
+                let (tex, view) = create_layer_scratch(device.as_ref(), 1, 1);
+                (Some(tex), Some(view), 1, 1)
+            } else {
+                (None, None, 0, 0)
+            };
+        let (
+            stroke_mask_scratch,
+            stroke_mask_scratch_view,
+            stroke_mask_scratch_width,
+            stroke_mask_scratch_height,
+        ) = if is_web {
+            let (tex, view) = create_stroke_mask_scratch(device.as_ref(), 1, 1);
+            (Some(tex), Some(view), 1, 1)
+        } else {
+            (None, None, 0, 0)
+        };
 
         Ok(Self {
             device,
@@ -252,6 +371,14 @@ impl BrushRenderer {
             selection_mask_width: 1,
             selection_mask_height: 1,
             selection_mask_enabled: false,
+            layer_scratch,
+            layer_scratch_view,
+            layer_scratch_width,
+            layer_scratch_height,
+            stroke_mask_scratch,
+            stroke_mask_scratch_view,
+            stroke_mask_scratch_width,
+            stroke_mask_scratch_height,
             canvas_width: 0,
             canvas_height: 0,
             softness: 0.0,
@@ -460,6 +587,8 @@ impl BrushRenderer {
 
     pub fn draw_stroke(
         &mut self,
+        layer_texture: &wgpu::Texture,
+        layer_index: u32,
         layer_view: &wgpu::TextureView,
         points: &[Point2D],
         radii: &[f32],
@@ -475,6 +604,8 @@ impl BrushRenderer {
         accumulate_segments: bool,
     ) -> Result<(), String> {
         self.draw_stroke_internal(
+            layer_texture,
+            layer_index,
             layer_view,
             points,
             radii,
@@ -497,6 +628,8 @@ impl BrushRenderer {
 
     pub fn draw_points(
         &mut self,
+        layer_texture: &wgpu::Texture,
+        layer_index: u32,
         layer_view: &wgpu::TextureView,
         points: &[Point2D],
         radii: &[f32],
@@ -514,6 +647,8 @@ impl BrushRenderer {
         accumulate: bool,
     ) -> Result<(), String> {
         self.draw_stroke_internal(
+            layer_texture,
+            layer_index,
             layer_view,
             points,
             radii,
@@ -536,6 +671,8 @@ impl BrushRenderer {
 
     fn draw_stroke_internal(
         &mut self,
+        layer_texture: &wgpu::Texture,
+        layer_index: u32,
         layer_view: &wgpu::TextureView,
         points: &[Point2D],
         radii: &[f32],
@@ -647,6 +784,12 @@ impl BrushRenderer {
         if dirty.width == 0 || dirty.height == 0 {
             return Ok(());
         }
+        if cfg!(target_family = "wasm") {
+            self.ensure_layer_scratch()?;
+            if stroke_mask_mode != 0 {
+                self.ensure_stroke_mask_scratch()?;
+            }
+        }
 
         debug::log(
             LogLevel::Verbose,
@@ -743,36 +886,85 @@ impl BrushRenderer {
         self.queue
             .write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&config));
 
-        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("BrushRenderer bind group"),
-            layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: points_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(layer_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: self.uniform_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&self.stroke_mask_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::TextureView(&self.stroke_base_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: wgpu::BindingResource::TextureView(&self.selection_mask_view),
-                },
-            ],
-        });
+        let bind_group = if cfg!(target_family = "wasm") {
+            let layer_out_view = self
+                .layer_scratch_view
+                .as_ref()
+                .ok_or_else(|| "layer scratch not initialized".to_string())?;
+            let stroke_mask_out_view = self
+                .stroke_mask_scratch_view
+                .as_ref()
+                .ok_or_else(|| "stroke mask scratch not initialized".to_string())?;
+            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("BrushRenderer bind group"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: points_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(layer_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::TextureView(layer_out_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: self.uniform_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: wgpu::BindingResource::TextureView(&self.stroke_mask_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: wgpu::BindingResource::TextureView(stroke_mask_out_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: wgpu::BindingResource::TextureView(&self.stroke_base_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 7,
+                        resource: wgpu::BindingResource::TextureView(&self.selection_mask_view),
+                    },
+                ],
+            })
+        } else {
+            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("BrushRenderer bind group"),
+                layout: &self.bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: points_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(layer_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: self.uniform_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::TextureView(&self.stroke_mask_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: wgpu::BindingResource::TextureView(&self.stroke_base_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: wgpu::BindingResource::TextureView(&self.selection_mask_view),
+                    },
+                ],
+            })
+        };
 
         device_push_scopes(self.device.as_ref());
 
@@ -791,6 +983,73 @@ impl BrushRenderer {
             let wg_x = (dirty.width + (WORKGROUP_SIZE - 1)) / WORKGROUP_SIZE;
             let wg_y = (dirty.height + (WORKGROUP_SIZE - 1)) / WORKGROUP_SIZE;
             pass.dispatch_workgroups(wg_x, wg_y, 1);
+        }
+
+        if cfg!(target_family = "wasm") {
+            let layer_scratch = self
+                .layer_scratch
+                .as_ref()
+                .ok_or_else(|| "layer scratch not initialized".to_string())?;
+            encoder.copy_texture_to_texture(
+                wgpu::ImageCopyTexture {
+                    texture: layer_scratch,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d {
+                        x: dirty.origin_x,
+                        y: dirty.origin_y,
+                        z: 0,
+                    },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::ImageCopyTexture {
+                    texture: layer_texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d {
+                        x: dirty.origin_x,
+                        y: dirty.origin_y,
+                        z: layer_index,
+                    },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::Extent3d {
+                    width: dirty.width,
+                    height: dirty.height,
+                    depth_or_array_layers: 1,
+                },
+            );
+            if stroke_mask_mode != 0 {
+                let stroke_mask_scratch = self
+                    .stroke_mask_scratch
+                    .as_ref()
+                    .ok_or_else(|| "stroke mask scratch not initialized".to_string())?;
+                encoder.copy_texture_to_texture(
+                    wgpu::ImageCopyTexture {
+                        texture: stroke_mask_scratch,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d {
+                            x: dirty.origin_x,
+                            y: dirty.origin_y,
+                            z: 0,
+                        },
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    wgpu::ImageCopyTexture {
+                        texture: &self.stroke_mask,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d {
+                            x: dirty.origin_x,
+                            y: dirty.origin_y,
+                            z: 0,
+                        },
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    wgpu::Extent3d {
+                        width: dirty.width,
+                        height: dirty.height,
+                        depth_or_array_layers: 1,
+                    },
+                );
+            }
         }
 
         self.queue.submit(Some(encoder.finish()));
@@ -924,6 +1183,48 @@ impl BrushRenderer {
         self.selection_mask_height = self.canvas_height;
         Ok(())
     }
+
+    fn ensure_layer_scratch(&mut self) -> Result<(), String> {
+        if !cfg!(target_family = "wasm") {
+            return Ok(());
+        }
+        if self.canvas_width == 0 || self.canvas_height == 0 {
+            return Ok(());
+        }
+        if self.layer_scratch_width == self.canvas_width
+            && self.layer_scratch_height == self.canvas_height
+        {
+            return Ok(());
+        }
+        let (tex, view) =
+            create_layer_scratch(self.device.as_ref(), self.canvas_width, self.canvas_height);
+        self.layer_scratch = Some(tex);
+        self.layer_scratch_view = Some(view);
+        self.layer_scratch_width = self.canvas_width;
+        self.layer_scratch_height = self.canvas_height;
+        Ok(())
+    }
+
+    fn ensure_stroke_mask_scratch(&mut self) -> Result<(), String> {
+        if !cfg!(target_family = "wasm") {
+            return Ok(());
+        }
+        if self.canvas_width == 0 || self.canvas_height == 0 {
+            return Ok(());
+        }
+        if self.stroke_mask_scratch_width == self.canvas_width
+            && self.stroke_mask_scratch_height == self.canvas_height
+        {
+            return Ok(());
+        }
+        let (tex, view) =
+            create_stroke_mask_scratch(self.device.as_ref(), self.canvas_width, self.canvas_height);
+        self.stroke_mask_scratch = Some(tex);
+        self.stroke_mask_scratch_view = Some(view);
+        self.stroke_mask_scratch_width = self.canvas_width;
+        self.stroke_mask_scratch_height = self.canvas_height;
+        Ok(())
+    }
 }
 
 fn create_stroke_mask(
@@ -942,7 +1243,9 @@ fn create_stroke_mask(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::R32Uint,
-        usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_DST,
+        usage: wgpu::TextureUsages::STORAGE_BINDING
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
     });
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -965,7 +1268,9 @@ fn create_stroke_base(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::R32Uint,
-        usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_DST,
+        usage: wgpu::TextureUsages::STORAGE_BINDING
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
     });
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -988,7 +1293,59 @@ fn create_selection_mask(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::R32Uint,
-        usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_DST,
+        usage: wgpu::TextureUsages::STORAGE_BINDING
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    (texture, view)
+}
+
+fn create_layer_scratch(
+    device: &wgpu::Device,
+    width: u32,
+    height: u32,
+) -> (wgpu::Texture, wgpu::TextureView) {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("BrushRenderer layer scratch"),
+        size: wgpu::Extent3d {
+            width: width.max(1),
+            height: height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::R32Uint,
+        usage: wgpu::TextureUsages::STORAGE_BINDING
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    (texture, view)
+}
+
+fn create_stroke_mask_scratch(
+    device: &wgpu::Device,
+    width: u32,
+    height: u32,
+) -> (wgpu::Texture, wgpu::TextureView) {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("BrushRenderer stroke mask scratch"),
+        size: wgpu::Extent3d {
+            width: width.max(1),
+            height: height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::R32Uint,
+        usage: wgpu::TextureUsages::STORAGE_BINDING
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -1181,12 +1538,28 @@ fn finite_f32(value: f32) -> f32 {
 }
 
 fn device_push_scopes(device: &wgpu::Device) {
-    device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
-    device.push_error_scope(wgpu::ErrorFilter::Validation);
+    #[cfg(target_family = "wasm")]
+    {
+        let _ = device;
+        return;
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
+        device.push_error_scope(wgpu::ErrorFilter::Validation);
+    }
 }
 
 fn device_pop_scope(device: &wgpu::Device) -> Option<wgpu::Error> {
-    pollster::block_on(device.pop_error_scope())
+    #[cfg(target_family = "wasm")]
+    {
+        let _ = device;
+        return None;
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        pollster::block_on(device.pop_error_scope())
+    }
 }
 
 fn align_up_u32(value: u32, alignment: u32) -> u32 {

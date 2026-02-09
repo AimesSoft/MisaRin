@@ -171,11 +171,14 @@ impl GpuCompositor {
             mapped_at_creation: false,
         });
 
-        if let Some(err) = pollster::block_on(device.pop_error_scope()) {
-            return Err(format!("wgpu validation error during init: {err}"));
-        }
-        if let Some(err) = pollster::block_on(device.pop_error_scope()) {
-            return Err(format!("wgpu out-of-memory error during init: {err}"));
+        #[cfg(not(target_family = "wasm"))]
+        {
+            if let Some(err) = pollster::block_on(device.pop_error_scope()) {
+                return Err(format!("wgpu validation error during init: {err}"));
+            }
+            if let Some(err) = pollster::block_on(device.pop_error_scope()) {
+                return Err(format!("wgpu out-of-memory error during init: {err}"));
+            }
         }
 
         debug::log(
@@ -795,10 +798,26 @@ fn clamp_unit_f32(value: f32) -> f32 {
 }
 
 fn device_push_scopes(device: &wgpu::Device) {
-    device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
-    device.push_error_scope(wgpu::ErrorFilter::Validation);
+    #[cfg(target_family = "wasm")]
+    {
+        let _ = device;
+        return;
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
+        device.push_error_scope(wgpu::ErrorFilter::Validation);
+    }
 }
 
 fn device_pop_scope(device: &wgpu::Device) -> Option<wgpu::Error> {
-    pollster::block_on(device.pop_error_scope())
+    #[cfg(target_family = "wasm")]
+    {
+        let _ = device;
+        return None;
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        pollster::block_on(device.pop_error_scope())
+    }
 }

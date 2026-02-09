@@ -335,6 +335,8 @@ pub fn gpu_draw_stroke(
         let p0 = converted_points[0];
         let r0 = radii[0];
         engine.brush.draw_stroke(
+            layer_texture,
+            0,
             &layer_view,
             &[p0],
             &[r0],
@@ -359,6 +361,8 @@ pub fn gpu_draw_stroke(
             let pts = [converted_points[i], converted_points[i + 1]];
             let rs = [radii[i], radii[i + 1]];
             engine.brush.draw_stroke(
+                layer_texture,
+                0,
                 &layer_view,
                 &pts,
                 &rs,

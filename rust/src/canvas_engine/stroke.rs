@@ -372,6 +372,8 @@ impl StrokeResampler {
         &mut self,
         brush: &mut BrushRenderer,
         brush_settings: &EngineBrushSettings,
+        layer_texture: &wgpu::Texture,
+        layer_index: u32,
         layer_view: &wgpu::TextureView,
         points: Vec<EnginePoint>,
         canvas_width: u32,
@@ -391,6 +393,8 @@ impl StrokeResampler {
         let drawn = self.draw_emitted_points(
             brush,
             brush_settings,
+            layer_texture,
+            layer_index,
             layer_view,
             &emitted,
             canvas_width,
@@ -422,6 +426,8 @@ impl StrokeResampler {
         &mut self,
         brush: &mut BrushRenderer,
         brush_settings: &EngineBrushSettings,
+        layer_texture: &wgpu::Texture,
+        layer_index: u32,
         layer_view: &wgpu::TextureView,
         emitted: &[(Point2D, f32)],
         canvas_width: u32,
@@ -432,6 +438,8 @@ impl StrokeResampler {
         let (drew_any, dirty_union) = draw_emitted_points_internal(
             brush,
             brush_settings,
+            layer_texture,
+            layer_index,
             layer_view,
             emitted,
             canvas_width,
@@ -449,6 +457,8 @@ impl StrokeResampler {
 fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32))>(
     brush: &mut BrushRenderer,
     brush_settings: &EngineBrushSettings,
+    layer_texture: &wgpu::Texture,
+    layer_index: u32,
     layer_view: &wgpu::TextureView,
     emitted: &[(Point2D, f32)],
     canvas_width: u32,
@@ -517,6 +527,8 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
             let rs = &radii[start..end];
             let rot_slice = rotations.as_ref().map(|rots| &rots[start..end]);
             match brush.draw_points(
+                layer_texture,
+                layer_index,
                 layer_view,
                 pts,
                 rs,
@@ -568,6 +580,8 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
             0.0
         };
         match brush.draw_stroke(
+            layer_texture,
+            layer_index,
             layer_view,
             &[p0],
             &[r0],
@@ -609,6 +623,8 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
             0.0
         };
         match brush.draw_stroke(
+            layer_texture,
+            layer_index,
             layer_view,
             &points,
             &radii,
@@ -659,6 +675,8 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
                     brush_random_rotation_radians(p0, brush_settings.rotation_seed)
                         * brush_settings.rotation_jitter;
                 match brush.draw_stroke(
+                    layer_texture,
+                    layer_index,
                     layer_view,
                     &pts,
                     &radii,
@@ -711,6 +729,8 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
 
                 if batch_points.len() >= MAX_BATCH_POINTS {
                     match brush.draw_stroke(
+                        layer_texture,
+                        layer_index,
                         layer_view,
                         &batch_points,
                         &batch_radii,
@@ -750,6 +770,8 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
 
             if batch_points.len() > 1 {
                 match brush.draw_stroke(
+                    layer_texture,
+                    layer_index,
                     layer_view,
                     &batch_points,
                     &batch_radii,

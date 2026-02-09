@@ -235,21 +235,37 @@ impl LayerTransformRenderer {
 }
 
 fn device_push_scopes(device: &wgpu::Device) {
-    device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
-    device.push_error_scope(wgpu::ErrorFilter::Validation);
+    #[cfg(target_family = "wasm")]
+    {
+        let _ = device;
+        return;
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
+        device.push_error_scope(wgpu::ErrorFilter::Validation);
+    }
 }
 
 fn device_pop_scope(device: &wgpu::Device) -> Option<wgpu::Error> {
-    let mut out: Option<wgpu::Error> = None;
-    for _ in 0..2 {
-        match pollster::block_on(device.pop_error_scope()) {
-            Some(err) => {
-                if out.is_none() {
-                    out = Some(err);
-                }
-            }
-            None => {}
-        }
+    #[cfg(target_family = "wasm")]
+    {
+        let _ = device;
+        return None;
     }
-    out
+    #[cfg(not(target_family = "wasm"))]
+    {
+        let mut out: Option<wgpu::Error> = None;
+        for _ in 0..2 {
+            match pollster::block_on(device.pop_error_scope()) {
+                Some(err) => {
+                    if out.is_none() {
+                        out = Some(err);
+                    }
+                }
+                None => {}
+            }
+        }
+        out
+    }
 }

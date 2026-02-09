@@ -633,10 +633,26 @@ fn copy_texture(
 }
 
 fn device_push_scopes(device: &wgpu::Device) {
-    device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
-    device.push_error_scope(wgpu::ErrorFilter::Validation);
+    #[cfg(target_family = "wasm")]
+    {
+        let _ = device;
+        return;
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
+        device.push_error_scope(wgpu::ErrorFilter::Validation);
+    }
 }
 
 fn device_pop_scope(device: &wgpu::Device) -> Option<wgpu::Error> {
-    pollster::block_on(device.pop_error_scope())
+    #[cfg(target_family = "wasm")]
+    {
+        let _ = device;
+        return None;
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        pollster::block_on(device.pop_error_scope())
+    }
 }
