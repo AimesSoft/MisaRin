@@ -1241,6 +1241,8 @@ struct EngineRuntime {
     canvas_width: u32,
     canvas_height: u32,
     present: Option<PresentTarget>,
+    #[cfg(target_family = "wasm")]
+    present_readback: PresentReadbackState,
     layers: LayerTextures,
     layer_count: usize,
     active_layer_index: usize,
@@ -1288,6 +1290,8 @@ impl EngineRuntime {
         let mut canvas_width = canvas_width;
         let mut canvas_height = canvas_height;
         let present: Option<PresentTarget> = None;
+        #[cfg(target_family = "wasm")]
+        let present_readback = PresentReadbackState::new();
         let mut layers = layer_textures;
         if layers.capacity() == 0 {
             return Err("engine runtime: layer capacity is zero".to_string());
@@ -1373,6 +1377,8 @@ impl EngineRuntime {
             canvas_width,
             canvas_height,
             present,
+            #[cfg(target_family = "wasm")]
+            present_readback,
             layers,
             layer_count,
             active_layer_index,
@@ -1422,6 +1428,8 @@ impl EngineRuntime {
         let frame_ready = &self.frame_ready;
         let input_queue_len = &self.input_queue_len;
         let present = &mut self.present;
+        #[cfg(target_family = "wasm")]
+        let present_readback = &mut self.present_readback;
         let layers = &mut self.layers;
         let layer_count = &mut self.layer_count;
         let active_layer_index = &mut self.active_layer_index;
@@ -1471,6 +1479,8 @@ impl EngineRuntime {
                     device,
                     queue,
                     present,
+                    #[cfg(target_family = "wasm")]
+                    present_readback,
                     cmd,
                     bucket_fill_renderer,
                     filter_renderer,
@@ -1527,6 +1537,8 @@ impl EngineRuntime {
                         device,
                         queue,
                         present,
+                        #[cfg(target_family = "wasm")]
+                        present_readback,
                         cmd,
                         bucket_fill_renderer,
                         filter_renderer,
@@ -1635,6 +1647,8 @@ impl EngineRuntime {
                 device,
                 queue,
                 present,
+                #[cfg(target_family = "wasm")]
+                present_readback,
                 cmd,
                 bucket_fill_renderer,
                 filter_renderer,
@@ -2305,6 +2319,8 @@ fn handle_engine_command(
     device: &Arc<wgpu::Device>,
     queue: &Arc<wgpu::Queue>,
     present: &mut Option<PresentTarget>,
+    #[cfg(target_family = "wasm")]
+    present_readback: &mut PresentReadbackState,
     cmd: EngineCommand,
     bucket_fill_renderer: &mut Option<BucketFillRenderer>,
     filter_renderer: &mut Option<FilterRenderer>,
@@ -2438,7 +2454,11 @@ fn handle_engine_command(
             height,
             bytes_per_row,
         } => {
-            if mtl_texture_ptr == 0 || width == 0 || height == 0 {
+            #[cfg(target_os = "macos")]
+            let invalid_ptr = mtl_texture_ptr == 0;
+            #[cfg(not(target_os = "macos"))]
+            let invalid_ptr = false;
+            if invalid_ptr || width == 0 || height == 0 {
                 debug::log(
                     LogLevel::Warn,
                     format_args!(
@@ -2446,6 +2466,8 @@ fn handle_engine_command(
                     ),
                 );
                 *present = None;
+                #[cfg(target_family = "wasm")]
+                present_readback.reset();
                 return EngineCommandOutcome {
                     stop: false,
                     needs_render: false,
@@ -2455,6 +2477,8 @@ fn handle_engine_command(
             *present =
                 attach_present_texture(device, mtl_texture_ptr, width, height, bytes_per_row);
             if present.is_some() {
+                #[cfg(target_family = "wasm")]
+                present_readback.reset();
                 debug::log(
                     LogLevel::Info,
                     format_args!(
@@ -4307,19 +4331,37 @@ fn handle_engine_command(
                     new_canvas_size: None,
                 };
             }
-            match read_bgra_texture(
-                device,
-                queue,
-                target.texture(),
-                target.width,
-                target.height,
-            ) {
-                Ok(bytes) => {
-                    let _ = reply.send(Some(bytes));
-                }
-                Err(err) => {
-                    debug::log(LogLevel::Warn, format_args!("present readback failed: {err}"));
-                    let _ = reply.send(None);
+            #[cfg(target_family = "wasm")]
+            {
+                let bytes = read_bgra_texture_wasm_nonblocking(
+                    device.as_ref(),
+                    queue.as_ref(),
+                    target.texture(),
+                    target.width,
+                    target.height,
+                    present_readback,
+                );
+                let _ = reply.send(bytes);
+            }
+            #[cfg(not(target_family = "wasm"))]
+            {
+                match read_bgra_texture(
+                    device,
+                    queue,
+                    target.texture(),
+                    target.width,
+                    target.height,
+                ) {
+                    Ok(bytes) => {
+                        let _ = reply.send(Some(bytes));
+                    }
+                    Err(err) => {
+                        debug::log(
+                            LogLevel::Warn,
+                            format_args!("present readback failed: {err}"),
+                        );
+                        let _ = reply.send(None);
+                    }
                 }
             }
             return EngineCommandOutcome {
@@ -5258,6 +5300,195 @@ fn read_r32uint_layer(
 
     map_status?;
     Ok(result.unwrap_or_default())
+}
+
+#[cfg(target_family = "wasm")]
+struct PresentReadbackState {
+    pending: Option<PendingPresentReadback>,
+    ready: Option<Vec<u8>>,
+    width: u32,
+    height: u32,
+}
+
+#[cfg(target_family = "wasm")]
+impl PresentReadbackState {
+    fn new() -> Self {
+        Self {
+            pending: None,
+            ready: None,
+            width: 0,
+            height: 0,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.pending = None;
+        self.ready = None;
+        self.width = 0;
+        self.height = 0;
+    }
+}
+
+#[cfg(target_family = "wasm")]
+struct PendingPresentReadback {
+    buffer: wgpu::Buffer,
+    size: u64,
+    bytes_per_row_padded: u32,
+    width: u32,
+    height: u32,
+    rx: mpsc::Receiver<Result<(), wgpu::BufferAsyncError>>,
+}
+
+#[cfg(target_family = "wasm")]
+fn try_complete_present_readback(state: &mut PresentReadbackState) -> Option<Vec<u8>> {
+    if let Some(mut pending) = state.pending.take() {
+        match pending.rx.try_recv() {
+            Ok(Ok(())) => {
+                let mapped = pending.buffer.slice(0..pending.size).get_mapped_range();
+                match unpack_u8_rows_without_padding(
+                    &mapped,
+                    pending.width,
+                    pending.height,
+                    pending.bytes_per_row_padded,
+                ) {
+                    Ok(bytes) => {
+                        state.ready = Some(bytes);
+                    }
+                    Err(err) => {
+                        debug::log(
+                            LogLevel::Warn,
+                            format_args!("present readback unpack failed: {err}"),
+                        );
+                    }
+                }
+                drop(mapped);
+                pending.buffer.unmap();
+            }
+            Ok(Err(err)) => {
+                debug::log(
+                    LogLevel::Warn,
+                    format_args!("present readback map_async failed: {err:?}"),
+                );
+            }
+            Err(mpsc::TryRecvError::Empty) => {
+                state.pending = Some(pending);
+            }
+            Err(mpsc::TryRecvError::Disconnected) => {}
+        }
+    }
+
+    state.ready.take()
+}
+
+#[cfg(target_family = "wasm")]
+fn read_bgra_texture_wasm_nonblocking(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+    state: &mut PresentReadbackState,
+) -> Option<Vec<u8>> {
+    if width == 0 || height == 0 {
+        state.reset();
+        return None;
+    }
+
+    if state.width != width || state.height != height {
+        state.reset();
+        state.width = width;
+        state.height = height;
+    }
+
+    if let Some(bytes) = try_complete_present_readback(state) {
+        return Some(bytes);
+    }
+
+    if state.pending.is_none() {
+        const BYTES_PER_PIXEL: u32 = 4;
+        const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
+
+        let bytes_per_row_unpadded = match width.checked_mul(BYTES_PER_PIXEL) {
+            Some(value) => value,
+            None => {
+                debug::log(
+                    LogLevel::Warn,
+                    format_args!("present readback overflow: width={width}"),
+                );
+                return None;
+            }
+        };
+        let bytes_per_row_padded =
+            align_up_u32(bytes_per_row_unpadded, COPY_BYTES_PER_ROW_ALIGNMENT);
+        if bytes_per_row_padded == 0 {
+            debug::log(
+                LogLevel::Warn,
+                format_args!("present readback invalid padded bytes_per_row"),
+            );
+            return None;
+        }
+        let readback_size = match (bytes_per_row_padded as u64).checked_mul(height as u64) {
+            Some(value) => value,
+            None => {
+                debug::log(
+                    LogLevel::Warn,
+                    format_args!("present readback overflow: size {width}x{height}"),
+                );
+                return None;
+            }
+        };
+
+        let readback = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("misa-rin canvas present readback (wasm)"),
+            size: readback_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("misa-rin canvas present readback encoder (wasm)"),
+        });
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &readback,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(bytes_per_row_padded),
+                    rows_per_image: Some(height),
+                },
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = readback.slice(0..readback_size);
+        let (tx, rx) = mpsc::channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |res| {
+            let _ = tx.send(res);
+        });
+
+        state.pending = Some(PendingPresentReadback {
+            buffer: readback,
+            size: readback_size,
+            bytes_per_row_padded,
+            width,
+            height,
+            rx,
+        });
+    }
+
+    device.poll(wgpu::Maintain::Poll);
+    try_complete_present_readback(state)
 }
 
 fn read_bgra_texture(
