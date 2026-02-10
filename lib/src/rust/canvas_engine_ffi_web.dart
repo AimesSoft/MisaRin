@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'api/canvas_engine.dart' as rust_canvas_engine;
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'package:misa_rin/app/utils/web_log.dart';
 
 class CanvasEngineFfi {
   CanvasEngineFfi._();
@@ -9,6 +10,14 @@ class CanvasEngineFfi {
   static final CanvasEngineFfi instance = CanvasEngineFfi._();
 
   final bool isSupported = true;
+  int _readPresentMismatchCount = 0;
+  bool _readPresentLoggedOk = false;
+  int _pushPointsLogCount = 0;
+  int _frameRequestLogCount = 0;
+  final StreamController<int> _frameRequestController =
+      StreamController<int>.broadcast();
+
+  Stream<int> get frameRequests => _frameRequestController.stream;
 
   PlatformInt64 _toPlatformInt64(int value) => PlatformInt64Util.from(value);
 
@@ -22,17 +31,40 @@ class CanvasEngineFfi {
     if (!isSupported || handle == 0 || pointCount <= 0) {
       return;
     }
+    if (_pushPointsLogCount < 5) {
+      _pushPointsLogCount += 1;
+      reportWebLog(
+        'pushPointsPacked call handle=$handle count=$pointCount bytes=${bytes.length}',
+      );
+    }
     final int requiredBytes = pointCount * 32;
     if (bytes.length < requiredBytes) {
       throw RangeError.range(bytes.length, requiredBytes, null, 'bytes.length');
     }
     unawaited(
-      rust_canvas_engine.canvasEnginePushPointsPacked(
-        handle: _toPlatformInt64(handle),
-        bytes: bytes,
-        pointCount: BigInt.from(pointCount),
-      ),
+      rust_canvas_engine
+          .canvasEnginePushPointsPacked(
+            handle: _toPlatformInt64(handle),
+            bytes: bytes,
+            pointCount: BigInt.from(pointCount),
+          )
+          .catchError((Object error, StackTrace stackTrace) {
+            reportWebLog(
+              'canvasEnginePushPointsPacked error $error\n$stackTrace',
+            );
+          }),
     );
+  }
+
+  void requestFrame({required int handle}) {
+    if (!isSupported || handle == 0) {
+      return;
+    }
+    if (_frameRequestLogCount < 5) {
+      _frameRequestLogCount += 1;
+      reportWebLog('webFrameRequest handle=$handle');
+    }
+    _frameRequestController.add(handle);
   }
 
   Future<int> getInputQueueLen(int handle) async {
@@ -65,8 +97,24 @@ class CanvasEngineFfi {
       handle: _toPlatformInt64(handle),
     );
     final int expected = width * height * 4;
-    if (bytes == null || bytes.length != expected) {
+    if (bytes == null) {
       return null;
+    }
+    if (bytes.length != expected) {
+      if (_readPresentMismatchCount < 3) {
+        _readPresentMismatchCount += 1;
+        reportWebLog(
+          'canvasEngineReadPresent size mismatch bytes=${bytes.length} expected=$expected '
+          'size=${width}x$height',
+        );
+      }
+      return null;
+    }
+    if (!_readPresentLoggedOk) {
+      _readPresentLoggedOk = true;
+      reportWebLog(
+        'canvasEngineReadPresent ok bytes=${bytes.length} size=${width}x$height',
+      );
     }
     return bytes;
   }
@@ -526,27 +574,31 @@ class CanvasEngineFfi {
     }
     streamline = streamline.clamp(0.0, 1.0);
     unawaited(
-      rust_canvas_engine.canvasEngineSetBrush(
-        handle: _toPlatformInt64(handle),
-        colorArgb: colorArgb,
-        baseRadius: radius,
-        usePressure: usePressure,
-        erase: erase,
-        antialiasLevel: antialiasLevel.clamp(0, 9),
-        brushShape: shape,
-        randomRotation: randomRotation,
-        rotationSeed: seed,
-        spacing: spacingValue,
-        hardness: hardnessValue,
-        flow: flowValue,
-        scatter: scatterValue,
-        rotationJitter: rotationValue,
-        snapToPixel: snapToPixel,
-        hollowEnabled: hollow,
-        hollowRatio: ratio,
-        hollowEraseOccluded: hollowEraseOccludedParts,
-        streamlineStrength: streamline,
-      ),
+      rust_canvas_engine
+          .canvasEngineSetBrush(
+            handle: _toPlatformInt64(handle),
+            colorArgb: colorArgb,
+            baseRadius: radius,
+            usePressure: usePressure,
+            erase: erase,
+            antialiasLevel: antialiasLevel.clamp(0, 9),
+            brushShape: shape,
+            randomRotation: randomRotation,
+            rotationSeed: seed,
+            spacing: spacingValue,
+            hardness: hardnessValue,
+            flow: flowValue,
+            scatter: scatterValue,
+            rotationJitter: rotationValue,
+            snapToPixel: snapToPixel,
+            hollowEnabled: hollow,
+            hollowRatio: ratio,
+            hollowEraseOccluded: hollowEraseOccludedParts,
+            streamlineStrength: streamline,
+          )
+          .catchError((Object error, StackTrace stackTrace) {
+            reportWebLog('canvasEngineSetBrush error $error\n$stackTrace');
+          }),
     );
   }
 

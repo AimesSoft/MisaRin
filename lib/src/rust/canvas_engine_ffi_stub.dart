@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 class CanvasEngineFfi {
@@ -7,11 +8,15 @@ class CanvasEngineFfi {
 
   bool get isSupported => false;
 
+  Stream<int> get frameRequests => const Stream<int>.empty();
+
   void pushPointsPacked({
     required int handle,
     required Uint8List bytes,
     required int pointCount,
   }) {}
+
+  void requestFrame({required int handle}) {}
 
   Future<int> getInputQueueLen(int handle) async => 0;
 

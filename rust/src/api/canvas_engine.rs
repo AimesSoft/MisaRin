@@ -164,7 +164,16 @@ pub fn canvas_engine_poll_frame_ready(handle: i64) -> bool {
     };
     pump_engine_if_needed(handle);
     lookup_engine(handle)
-        .map(|entry| entry.frame_ready.swap(false, Ordering::AcqRel))
+        .map(|entry| {
+            #[cfg(target_family = "wasm")]
+            {
+                entry.frame_ready.load(Ordering::Acquire)
+            }
+            #[cfg(not(target_family = "wasm"))]
+            {
+                entry.frame_ready.swap(false, Ordering::AcqRel)
+            }
+        })
         .unwrap_or(false)
 }
 
@@ -184,7 +193,10 @@ pub fn canvas_engine_read_present(handle: i64) -> Option<Vec<u8>> {
     #[cfg(target_family = "wasm")]
     {
         match rx.try_recv() {
-            Ok(Some(pixels)) => Some(pixels),
+            Ok(Some(pixels)) => {
+                entry.frame_ready.store(false, Ordering::Release);
+                Some(pixels)
+            }
             Ok(None) => None,
             Err(mpsc::TryRecvError::Empty) => None,
             Err(mpsc::TryRecvError::Disconnected) => None,
@@ -214,9 +226,31 @@ pub fn canvas_engine_push_points_packed(handle: i64, bytes: Vec<u8>, point_count
         Ok(points) => points,
         Err(err) => {
             debug::log(LogLevel::Warn, format_args!("push_points decode failed: {err}"));
+            #[cfg(target_family = "wasm")]
+            wasm_post_log(&format!("canvas_engine_push_points: decode failed: {err}"));
             return;
         }
     };
+    #[cfg(target_family = "wasm")]
+    {
+        const FLAG_DOWN: u32 = 1;
+        const FLAG_UP: u32 = 4;
+        let mut down_count = 0usize;
+        let mut up_count = 0usize;
+        for p in &points {
+            if (p.flags & FLAG_DOWN) != 0 {
+                down_count += 1;
+            }
+            if (p.flags & FLAG_UP) != 0 {
+                up_count += 1;
+            }
+        }
+        if down_count > 0 || up_count > 0 {
+            wasm_post_log(&format!(
+                "canvas_engine_push_points: handle={handle} count={point_count} down={down_count} up={up_count}"
+            ));
+        }
+    }
     let queue_len = entry
         .input_queue_len
         .fetch_add(point_count as u64, Ordering::Relaxed)
@@ -255,6 +289,8 @@ pub fn canvas_engine_push_points_packed(handle: i64, bytes: Vec<u8>, point_count
             LogLevel::Warn,
             format_args!("engine_push_points dropped: input thread disconnected"),
         );
+        #[cfg(target_family = "wasm")]
+        wasm_post_log("canvas_engine_push_points: input thread disconnected");
     }
 }
 

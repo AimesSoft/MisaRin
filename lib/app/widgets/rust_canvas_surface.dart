@@ -26,6 +26,9 @@ const bool _kDebugRustCanvasInput = bool.fromEnvironment(
   defaultValue: false,
 );
 
+const String _kWebBuildTag = 'web-build-2026-02-10a';
+bool _webBuildLogged = false;
+
 String _surfaceIdForKey(String surfaceKey) {
   final String normalized = surfaceKey.trim();
   assert(normalized.isNotEmpty, 'surfaceKey must be non-empty');
@@ -36,9 +39,20 @@ const int _kPointStrideBytes = 32;
 const int _kPointFlagDown = 1;
 const int _kPointFlagMove = 2;
 const int _kPointFlagUp = 4;
+const int _kUint32Mod = 0x100000000;
 
 final Map<String, _WebSurfaceEntry> _webSurfaces =
     <String, _WebSurfaceEntry>{};
+
+void _writeUint64LE(ByteData data, int offset, int value) {
+  if (value < 0) {
+    value = 0;
+  }
+  final int hi = value ~/ _kUint32Mod;
+  final int lo = value - hi * _kUint32Mod;
+  data.setUint32(offset, lo, Endian.little);
+  data.setUint32(offset + 4, hi, Endian.little);
+}
 
 final class _WebSurfaceEntry {
   _WebSurfaceEntry({
@@ -244,7 +258,7 @@ final class _PackedPointBuffer {
     _data.setFloat32(base + 4, y, Endian.little);
     _data.setFloat32(base + 8, pressure, Endian.little);
     _data.setFloat32(base + 12, 0.0, Endian.little); // pad
-    _data.setUint64(base + 16, timestampUs, Endian.little);
+    _writeUint64LE(_data, base + 16, timestampUs);
     _data.setUint32(base + 24, flags, Endian.little);
     _data.setUint32(base + 28, pointerId, Endian.little);
     _len++;
@@ -590,6 +604,8 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   ui.Image? _webImage;
   Timer? _webFrameTimer;
   bool _webFrameInFlight = false;
+  bool _webForceNextRead = false;
+  StreamSubscription<int>? _webFrameRequestSub;
   late final String _surfaceId;
 
   final _PackedPointBuffer _points = _PackedPointBuffer();
@@ -602,6 +618,10 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   void initState() {
     super.initState();
     _surfaceId = _surfaceIdForKey(widget.surfaceKey);
+    if (kIsWeb && !_webBuildLogged) {
+      _webBuildLogged = true;
+      reportWebLog('web-build $_kWebBuildTag');
+    }
     RustCanvasTimeline.mark(
       'rustSurface: initState id=$_surfaceId '
       'size=${widget.canvasSize.width}x${widget.canvasSize.height} '
@@ -609,6 +629,11 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
     );
     unawaited(prewarmIfNeeded());
     unawaited(_loadTextureInfo());
+    if (kIsWeb) {
+      _webFrameRequestSub = CanvasEngineFfi.instance.frameRequests.listen(
+        _handleWebFrameRequest,
+      );
+    }
   }
 
   @override
@@ -790,6 +815,17 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
     );
   }
 
+  void _handleWebFrameRequest(int handle) {
+    if (!mounted) {
+      return;
+    }
+    if (handle != _engineHandle) {
+      return;
+    }
+    _webForceNextRead = true;
+    unawaited(_pumpWebFrame());
+  }
+
   void _stopWebFramePump() {
     _webFrameTimer?.cancel();
     _webFrameTimer = null;
@@ -807,11 +843,15 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
     if (!CanvasEngineFfi.instance.isSupported) {
       return;
     }
-    final bool shouldRead = _webImage == null
+    final bool forceRead = _webForceNextRead;
+    final bool shouldRead = forceRead || _webImage == null
         ? true
         : await CanvasEngineFfi.instance.pollFrameReady(handle: handle);
     if (!shouldRead) {
       return;
+    }
+    if (forceRead) {
+      _webForceNextRead = false;
     }
     _webFrameInFlight = true;
     try {
@@ -823,6 +863,9 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
         height: height,
       );
       if (!mounted || bytes == null) {
+        if (forceRead && mounted) {
+          _webForceNextRead = true;
+        }
         return;
       }
       final ui.Image image = await _decodeWebImage(bytes, width, height);
@@ -870,6 +913,8 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   void dispose() {
     _RustSurfaceWarmupCache.instance.drop(_surfaceId);
     _stopWebFramePump();
+    _webFrameRequestSub?.cancel();
+    _webFrameRequestSub = null;
     if (_webImage != null) {
       _webImage!.dispose();
       _webImage = null;
@@ -1139,6 +1184,17 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
 
     if (kIsWeb) {
       final ui.Image? image = _webImage;
+      double imageScale = 1.0;
+      final Size? engineSize = _engineSize;
+      if (engineSize != null &&
+          canvasSize.width > 0 &&
+          canvasSize.height > 0) {
+        final double sx = engineSize.width / canvasSize.width;
+        final double sy = engineSize.height / canvasSize.height;
+        if (sx.isFinite && sy.isFinite && sx > 0 && sy > 0) {
+          imageScale = (sx + sy) / 2.0;
+        }
+      }
       final Widget content = image == null
           ? const ColoredBox(color: Color(0xFFFFFFFF))
           : RawImage(
@@ -1146,6 +1202,7 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
               width: canvasSize.width,
               height: canvasSize.height,
               fit: BoxFit.fill,
+              scale: imageScale,
               filterQuality: FilterQuality.none,
             );
       return Listener(

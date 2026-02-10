@@ -24,6 +24,17 @@ const int _kPointFlagDown = 1;
 const int _kPointFlagMove = 2;
 const int _kPointFlagUp = 4;
 const int _initialLayerCount = 4;
+const int _kUint32Mod = 0x100000000;
+
+void _writeUint64LE(ByteData data, int offset, int value) {
+  if (value < 0) {
+    value = 0;
+  }
+  final int hi = value ~/ _kUint32Mod;
+  final int lo = value - hi * _kUint32Mod;
+  data.setUint32(offset, lo, Endian.little);
+  data.setUint32(offset + 4, hi, Endian.little);
+}
 
 final class _PackedPointBuffer {
   _PackedPointBuffer({int initialCapacityPoints = 256})
@@ -55,7 +66,7 @@ final class _PackedPointBuffer {
     _data.setFloat32(base + 4, y, Endian.little);
     _data.setFloat32(base + 8, pressure, Endian.little);
     _data.setFloat32(base + 12, 0.0, Endian.little); // pad
-    _data.setUint64(base + 16, timestampUs, Endian.little);
+    _writeUint64LE(_data, base + 16, timestampUs);
     _data.setUint32(base + 24, flags, Endian.little);
     _data.setUint32(base + 28, pointerId, Endian.little);
     _len++;

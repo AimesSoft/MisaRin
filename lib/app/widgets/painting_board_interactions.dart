@@ -5,12 +5,44 @@ const int _kRustPointStrideBytes = 32;
 const int _kRustPointFlagDown = 1;
 const int _kRustPointFlagMove = 2;
 const int _kRustPointFlagUp = 4;
+const int _kWebPointerLogLimit = 120;
+const int _kUint32Mod = 0x100000000;
 const double _kRustPressureMinFactor = 0.09;
 const double _kRustPressureMaxFactor = 1.0;
 const bool _kDebugRustCanvasInput = bool.fromEnvironment(
   'MISA_RIN_DEBUG_RUST_CANVAS_INPUT',
   defaultValue: false,
 );
+
+int _webPointerLogCount = 0;
+bool _webLoggedRustMove = false;
+int _webEnqueueLogCount = 0;
+
+void _webPointerLog(String message) {
+  if (!kIsWeb || _webPointerLogCount >= _kWebPointerLogLimit) {
+    return;
+  }
+  _webPointerLogCount += 1;
+  reportWebLog('[pointer] $message');
+}
+
+void _webEnqueueLog(String message) {
+  if (!kIsWeb || _webEnqueueLogCount >= 10) {
+    return;
+  }
+  _webEnqueueLogCount += 1;
+  reportWebLog('[enqueue] $message');
+}
+
+void _writeUint64LE(ByteData data, int offset, int value) {
+  if (value < 0) {
+    value = 0;
+  }
+  final int hi = value ~/ _kUint32Mod;
+  final int lo = value - hi * _kUint32Mod;
+  data.setUint32(offset, lo, Endian.little);
+  data.setUint32(offset + 4, hi, Endian.little);
+}
 
 final class _RustPointBuffer {
   _RustPointBuffer({int initialCapacityPoints = 256})
@@ -42,7 +74,7 @@ final class _RustPointBuffer {
     _data.setFloat32(base + 4, y, Endian.little);
     _data.setFloat32(base + 8, pressure, Endian.little);
     _data.setFloat32(base + 12, 0.0, Endian.little);
-    _data.setUint64(base + 16, timestampUs, Endian.little);
+    _writeUint64LE(_data, base + 16, timestampUs);
     _data.setUint32(base + 24, flags, Endian.little);
     _data.setUint32(base + 28, pointerId, Endian.little);
     _len++;
@@ -507,6 +539,13 @@ mixin _PaintingBoardInteractionMixin
       return true;
     }
     if (event.kind == PointerDeviceKind.mouse) {
+      if (kIsWeb) {
+        if (event is PointerDownEvent || event is PointerMoveEvent) {
+          if (event.down) {
+            return true;
+          }
+        }
+      }
       return (event.buttons & kPrimaryMouseButton) != 0;
     }
     return false;
@@ -527,17 +566,24 @@ mixin _PaintingBoardInteractionMixin
 
   bool _canStartRustStroke({required bool pointerInsideBoard}) {
     if (!pointerInsideBoard) {
+      _webPointerLog('rust stroke blocked: outside board');
       return false;
     }
     if (!_canUseRustCanvasEngine()) {
+      _webPointerLog(
+        'rust stroke blocked: engine not ready handle=$_rustCanvasEngineHandle '
+        'supported=${CanvasEngineFfi.instance.isSupported}',
+      );
       return false;
     }
     if (_layerTransformModeActive ||
         _isLayerFreeTransformActive ||
         _controller.isActiveLayerTransforming) {
+      _webPointerLog('rust stroke blocked: layer transform active');
       return false;
     }
     if (_isActiveLayerLocked()) {
+      _webPointerLog('rust stroke blocked: active layer locked');
       return false;
     }
     return true;
@@ -791,58 +837,92 @@ mixin _PaintingBoardInteractionMixin
     int flags, {
     bool isInitialSample = false,
   }) {
-    final int? handle = _rustCanvasEngineHandle;
-    if (!_canUseRustCanvasEngine() || handle == null) {
-      return;
-    }
-    final Offset boardLocal = _toBoardLocal(event.localPosition);
-    final Offset sanitized = _sanitizeRustStrokePosition(
-      boardLocal,
-      isInitialSample: isInitialSample,
-    );
-    final Offset enginePos = _rustToEngineSpace(sanitized);
-    final double pressure = _resolveRustPressure(
-      event: event,
-      enginePos: enginePos,
-      isInitialSample: isInitialSample,
-    );
-    final int timestampUs = event.timeStamp.inMicroseconds;
-    if (flags == _kRustPointFlagMove) {
-      _maybeEmitRustSharpStart(
-        currentPos: enginePos,
-        currentPressure: pressure,
+    try {
+      _webEnqueueLog(
+        'enter flags=$flags handle=$_rustCanvasEngineHandle points=${_rustPoints.length}',
+      );
+      final int? handle = _rustCanvasEngineHandle;
+      if (!_canUseRustCanvasEngine() || handle == null) {
+        _webPointerLog(
+          'enqueue rust point skipped: engine not ready handle=$handle '
+          'supported=${CanvasEngineFfi.instance.isSupported}',
+        );
+        return;
+      }
+      final Offset boardLocal = _toBoardLocal(event.localPosition);
+      final Offset sanitized = _sanitizeRustStrokePosition(
+        boardLocal,
+        isInitialSample: isInitialSample,
+      );
+      final Offset enginePos = _rustToEngineSpace(sanitized);
+      final double pressure = _resolveRustPressure(
+        event: event,
+        enginePos: enginePos,
+        isInitialSample: isInitialSample,
+      );
+      final int timestampUs = event.timeStamp.inMicroseconds;
+      if (flags == _kRustPointFlagMove) {
+        _maybeEmitRustSharpStart(
+          currentPos: enginePos,
+          currentPressure: pressure,
+          timestampUs: timestampUs,
+          pointerId: event.pointer,
+        );
+      }
+      if (flags == _kRustPointFlagDown) {
+        _rustStrokeStartPoint = enginePos;
+        _rustStrokeStartPressure = pressure;
+        _rustStrokeStartIndex = _rustPoints.length;
+      }
+      _appendRustPoint(
+        enginePos: enginePos,
+        pressure: pressure,
         timestampUs: timestampUs,
+        flags: flags,
         pointerId: event.pointer,
       );
+      if (flags == _kRustPointFlagDown || flags == _kRustPointFlagUp) {
+        _webPointerLog(
+          'enqueue rust point flags=$flags len=${_rustPoints.length}',
+        );
+      }
+      if (_kDebugRustCanvasInput &&
+          (flags == _kRustPointFlagDown || flags == _kRustPointFlagUp)) {
+        unawaited(
+          CanvasEngineFfi.instance.getInputQueueLen(handle).then((queued) {
+            debugPrint(
+              '[rust_canvas] enqueue flags=$flags points=${_rustPoints.length} '
+              'queued=$queued streamline=${_streamlineStrength.toStringAsFixed(3)}',
+            );
+          }),
+        );
+      }
+      _scheduleRustFlush();
+    } catch (error, stackTrace) {
+      _webPointerLog('enqueue rust point error $error');
+      reportWebLog('enqueue rust point error $error\n$stackTrace');
     }
-    if (flags == _kRustPointFlagDown) {
-      _rustStrokeStartPoint = enginePos;
-      _rustStrokeStartPressure = pressure;
-      _rustStrokeStartIndex = _rustPoints.length;
-    }
-    _appendRustPoint(
-      enginePos: enginePos,
-      pressure: pressure,
-      timestampUs: timestampUs,
-      flags: flags,
-      pointerId: event.pointer,
-    );
-    if (_kDebugRustCanvasInput &&
-        (flags == _kRustPointFlagDown || flags == _kRustPointFlagUp)) {
-      unawaited(
-        CanvasEngineFfi.instance.getInputQueueLen(handle).then((queued) {
-          debugPrint(
-            '[rust_canvas] enqueue flags=$flags points=${_rustPoints.length} '
-            'queued=$queued streamline=${_streamlineStrength.toStringAsFixed(3)}',
-          );
-        }),
-      );
-    }
-    _scheduleRustFlush();
   }
 
   void _scheduleRustFlush() {
+    if (kIsWeb) {
+      final int? handle = _rustCanvasEngineHandle;
+      if (!_canUseRustCanvasEngine() || handle == null) {
+        _webPointerLog(
+          'rust flush aborted: engine not ready handle=$handle '
+          'supported=${CanvasEngineFfi.instance.isSupported}',
+        );
+        _rustPoints.clear();
+        return;
+      }
+      _webPointerLog('rust flush immediate(web) handle=$handle points=${_rustPoints.length}');
+      _flushRustPoints(handle);
+      return;
+    }
     if (_rustWaitingForFirstMove && _rustPoints.length <= 1) {
+      if (_rustPoints.length == 1) {
+        _webPointerLog('rust flush skipped: waiting first move');
+      }
       if (_kDebugRustCanvasInput && _rustPoints.length == 1) {
         debugPrint(
           '[rust_canvas] flush skipped: waiting first move '
@@ -852,20 +932,27 @@ mixin _PaintingBoardInteractionMixin
       return;
     }
     if (_rustFlushScheduled) {
+      _webPointerLog('rust flush skipped: already scheduled');
       return;
     }
     _rustFlushScheduled = true;
     SchedulerBinding.instance.scheduleFrameCallback((_) {
       _rustFlushScheduled = false;
       if (!mounted) {
+        _webPointerLog('rust flush aborted: not mounted');
         _rustPoints.clear();
         return;
       }
       final int? handle = _rustCanvasEngineHandle;
       if (!_canUseRustCanvasEngine() || handle == null) {
+        _webPointerLog(
+          'rust flush aborted: engine not ready handle=$handle '
+          'supported=${CanvasEngineFfi.instance.isSupported}',
+        );
         _rustPoints.clear();
         return;
       }
+      _webPointerLog('rust flush run handle=$handle points=${_rustPoints.length}');
       _flushRustPoints(handle);
     });
   }
@@ -873,8 +960,10 @@ mixin _PaintingBoardInteractionMixin
   void _flushRustPoints(int handle) {
     final int count = _rustPoints.length;
     if (count == 0) {
+      _webPointerLog('rust flush noop: empty');
       return;
     }
+    _webPointerLog('rust flush send count=$count handle=$handle');
     if (_kDebugRustCanvasInput) {
       unawaited(
         CanvasEngineFfi.instance.getInputQueueLen(handle).then((queued) {
@@ -890,11 +979,17 @@ mixin _PaintingBoardInteractionMixin
       bytes: _rustPoints.bytes,
       pointCount: count,
     );
+    CanvasEngineFfi.instance.requestFrame(handle: handle);
     _rustPoints.clear();
   }
 
   void _beginRustStroke(PointerDownEvent event) {
+    _webPointerLog(
+      'begin rust stroke pointer=${event.pointer} kind=${event.kind} '
+      'pressure=${event.pressure}',
+    );
     if (!_isRustDrawingPointer(event)) {
+      _webPointerLog('begin rust stroke ignored: not drawing pointer');
       return;
     }
     _resetPerspectiveLock();
@@ -916,11 +1011,22 @@ mixin _PaintingBoardInteractionMixin
         _rustUseStylusPressure || _rustSimulatePressure || _autoSharpPeakEnabled;
     _rustPressureSimulator.setSharpTipsEnabled(_autoSharpPeakEnabled);
     _rustActivePointer = event.pointer;
-    _enqueueRustPoint(event, _kRustPointFlagDown, isInitialSample: true);
+    _webLoggedRustMove = false;
+    try {
+      _enqueueRustPoint(event, _kRustPointFlagDown, isInitialSample: true);
+      _webPointerLog('begin rust stroke enqueued down');
+    } catch (error, stackTrace) {
+      _webPointerLog('begin rust stroke enqueue error $error');
+      reportWebLog('begin rust stroke enqueue error $error\n$stackTrace');
+    }
     _markDirty();
   }
 
   void _endRustStroke(PointerEvent event) {
+    _webPointerLog(
+      'end rust stroke pointer=${event.pointer} kind=${event.kind} '
+      'pos=${event.localPosition}',
+    );
     final bool hadActiveStroke = _rustActivePointer != null;
     final int? handle = _rustCanvasEngineHandle;
     final bool canRecordHistory = hadActiveStroke && _canUseRustCanvasEngine();
@@ -1113,19 +1219,29 @@ mixin _PaintingBoardInteractionMixin
   }
 
   void _handlePointerDown(PointerDownEvent event) async {
+    _webPointerLog(
+      'down enter kind=${event.kind} buttons=${event.buttons} down=${event.down} '
+      'pos=${event.localPosition}',
+    );
     if (!_isPrimaryPointer(event)) {
+      _webPointerLog(
+        'down ignore: not primary kind=${event.kind} buttons=${event.buttons} down=${event.down}',
+      );
       return;
     }
     if (_isScalingGesture) {
+      _webPointerLog('down ignore: scaling gesture');
       return;
     }
     if (_layerTransformApplying) {
+      _webPointerLog('down ignore: layer transform applying');
       return;
     }
     _recordWorkspacePointer(event.localPosition);
     _updateToolCursorOverlay(event.localPosition);
     final Offset pointer = event.localPosition;
     if (_isInsideToolArea(pointer) || _isInsideWorkspacePanelArea(pointer)) {
+      _webPointerLog('down ignore: inside tool/workspace area');
       return;
     }
     final CanvasTool tool = _effectiveActiveTool;
@@ -1158,16 +1274,20 @@ mixin _PaintingBoardInteractionMixin
         tool == CanvasTool.eraser ||
         tool == CanvasTool.perspectivePen;
     if (!pointerInsideBoard && !toolCanStartOutsideCanvas) {
+      _webPointerLog('down ignore: outside board tool=$tool');
       return;
     }
     if (_shouldBlockToolOnTextLayer(tool)) {
+      _webPointerLog('down ignore: text layer conflict');
       _showTextToolConflictWarning();
       return;
     }
     if (_isTextEditingActive) {
+      _webPointerLog('down ignore: text editing active');
       return;
     }
     if (_layerTransformModeActive) {
+      _webPointerLog('down ignore: layer transform mode active');
       if (pointerInsideBoard) {
         _handleLayerTransformPointerDown(boardLocal);
       }
@@ -1184,6 +1304,7 @@ mixin _PaintingBoardInteractionMixin
           return;
         }
         if (!isPointInsideSelection(boardLocal)) {
+          _webPointerLog('down ignore: outside selection');
           return;
         }
         if (shiftPressed) {
@@ -1302,6 +1423,12 @@ mixin _PaintingBoardInteractionMixin
     if (!_isPrimaryPointer(event) && !rustStrokeActive) {
       return;
     }
+    if (rustStrokeActive && !_webLoggedRustMove) {
+      _webLoggedRustMove = true;
+      _webPointerLog(
+        'move rust active pointer=${event.pointer} pos=${event.localPosition}',
+      );
+    }
     if (_isScalingGesture) {
       return;
     }
@@ -1402,6 +1529,10 @@ mixin _PaintingBoardInteractionMixin
   }
 
   void _handlePointerUp(PointerUpEvent event) async {
+    _webPointerLog(
+      'up enter kind=${event.kind} buttons=${event.buttons} down=${event.down} '
+      'pos=${event.localPosition}',
+    );
     if (_layerTransformModeActive) {
       _handleLayerTransformPointerUp();
       return;

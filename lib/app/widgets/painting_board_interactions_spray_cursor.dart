@@ -3,6 +3,13 @@ part of 'painting_board.dart';
 extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInteractionMixin {
   bool _isPrimaryPointer(PointerEvent event) {
     if (event.kind == PointerDeviceKind.mouse) {
+      if (kIsWeb) {
+        if (event is PointerDownEvent || event is PointerMoveEvent) {
+          if (event.down) {
+            return true;
+          }
+        }
+      }
       if (event is PointerUpEvent || event is PointerCancelEvent) {
         return true;
       }

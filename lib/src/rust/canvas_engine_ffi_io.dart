@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ffi' as ffi;
 import 'dart:io' show Platform;
 import 'dart:typed_data';
@@ -709,6 +710,8 @@ class CanvasEngineFfi {
 
   static final CanvasEngineFfi instance = CanvasEngineFfi._();
 
+  Stream<int> get frameRequests => const Stream<int>.empty();
+
   static ffi.DynamicLibrary _openLibrary() {
     if (Platform.isWindows) {
       return ffi.DynamicLibrary.open('rust_lib_misa_rin.dll');
@@ -771,6 +774,11 @@ class CanvasEngineFfi {
     final ffi.Pointer<ffi.Uint8> ptr = _ensureStaging(requiredBytes);
     ptr.asTypedList(requiredBytes).setRange(0, requiredBytes, bytes, 0);
     _pushPoints(handle, ptr.cast<_EnginePointNative>(), pointCount);
+  }
+
+  void requestFrame({required int handle}) {
+    // No-op on native platforms.
+    final _ = handle;
   }
 
   Future<int> getInputQueueLen(int handle) async {

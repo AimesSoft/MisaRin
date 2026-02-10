@@ -29,8 +29,8 @@ fi
 echo "==> Build Rust wasm"
 "$ROOT_DIR/tool/build_web_wasm.sh"
 
-echo "==> flutter build web"
-flutter build web
+echo "==> flutter build web (pwa-strategy=none)"
+flutter build web --pwa-strategy=none
 
 if [[ "$SERVE" != "1" ]]; then
   echo "==> Build complete. Skipping server (SERVE=$SERVE)."

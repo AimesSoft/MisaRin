@@ -1919,6 +1919,10 @@ impl EngineRuntime {
                             LogLevel::Warn,
                             format_args!("BrushRenderer init failed: {err}"),
                         );
+                        #[cfg(target_family = "wasm")]
+                        wasm_post_log(&format!(
+                            "BrushRenderer init failed: {err}"
+                        ));
                         *stroke = StrokeResampler::new();
                         self.canvas_width = canvas_width;
                         self.canvas_height = canvas_height;
