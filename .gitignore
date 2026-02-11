@@ -55,3 +55,4 @@ app.*.map.json
 .misa_rin_web_download.zip
 /.sandbox_home
 /rust/target
+/linux/flutter/ephemeral/.plugin_symlinks
