@@ -11,6 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
   plugin_platform_interface: ^2.0.2
+  flutter_web_plugins:
+    sdk: flutter
 
 dev_dependencies:
   ffi: ^2.0.2
@@ -33,3 +35,6 @@ flutter:
       windows:
         pluginClass: RustLibMisaRinPlugin
         fileName: rust_lib_misa_rin_plugin.cpp
+      web:
+        pluginClass: RustLibMisaRinWeb
+        fileName: rust_lib_misa_rin_web.dart

@@ -47,6 +47,7 @@ app.*.map.json
 /.dart-tool
 /.dartServer
 /windows/flutter/ephemeral
+/.web_server.pid
 
 # Web release updater (update_web_release.py)
 .misa_rin_web_state.json

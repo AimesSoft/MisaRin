@@ -131,6 +131,17 @@ class _RustCanvasTextureWidgetState extends State<RustCanvasTextureWidget> {
   }
 
   Future<void> _loadTextureInfo() async {
+    if (!CanvasEngineFfi.instance.isSupported) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _textureId = null;
+        _engineHandle = null;
+        _error = null;
+      });
+      return;
+    }
     try {
       final int width = widget.canvasSize.width.round().clamp(1, 16384);
       final int height = widget.canvasSize.height.round().clamp(1, 16384);

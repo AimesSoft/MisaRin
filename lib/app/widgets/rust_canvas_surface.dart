@@ -264,6 +264,17 @@ Future<_RustSurfaceInfo> _requestTextureInfo({
   required int backgroundColorArgb,
   required bool fromWarmup,
 }) async {
+  if (!CanvasEngineFfi.instance.isSupported) {
+    return _RustSurfaceInfo(
+      textureId: null,
+      engineHandle: null,
+      engineWidth: width,
+      engineHeight: height,
+      backgroundColorArgb: backgroundColorArgb,
+      fromWarmup: fromWarmup,
+      isNewEngine: false,
+    );
+  }
   final Map<dynamic, dynamic>? info =
       await _rustCanvasChannel.invokeMethod<Map<dynamic, dynamic>>(
     'getTextureInfo',
@@ -471,6 +482,9 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   }
 
   static Future<void> _doPrewarm() async {
+    if (!CanvasEngineFfi.instance.isSupported) {
+      return;
+    }
     try {
       RustCanvasTimeline.mark('rustSurface: prewarm start');
       const String warmSurfaceId = 'rust_canvas_prewarm';
@@ -495,6 +509,18 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   }
 
   Future<void> _loadTextureInfo() async {
+    if (!CanvasEngineFfi.instance.isSupported) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _textureId = null;
+        _engineHandle = null;
+        _engineSize = null;
+        _error = null;
+      });
+      return;
+    }
     try {
       final int width = widget.canvasSize.width.round().clamp(1, 16384);
       final int height = widget.canvasSize.height.round().clamp(1, 16384);
