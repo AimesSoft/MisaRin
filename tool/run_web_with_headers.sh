@@ -60,6 +60,7 @@ if command -v rustup >/dev/null 2>&1; then
 fi
 
 echo "Building Rust (wasm)..."
+export RUSTFLAGS="${RUSTFLAGS:-} -C target-feature=+atomics,+bulk-memory,+mutable-globals"
 cargo build --manifest-path "${ROOT_DIR}/rust/Cargo.toml" --target "${WASM_TARGET}" --release
 
 WASM_PATH="${ROOT_DIR}/rust/target/${WASM_TARGET}/release/rust_lib_misa_rin.wasm"

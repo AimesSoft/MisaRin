@@ -215,4 +215,14 @@ class CanvasEngineFfi {
   void undo({required int handle}) {}
 
   void redo({required int handle}) {}
+
+  bool pollFrameReady(int handle) => false;
+
+  Uint8List? readPresent({
+    required int handle,
+    required int width,
+    required int height,
+  }) {
+    return null;
+  }
 }

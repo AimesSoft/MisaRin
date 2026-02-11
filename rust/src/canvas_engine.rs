@@ -1,17 +1,20 @@
 mod ffi;
 mod types;
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows", target_family = "wasm"))]
 mod engine;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows", target_family = "wasm"))]
 mod layers;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows", target_family = "wasm"))]
 mod present;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows", target_family = "wasm"))]
 mod preview;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows", target_family = "wasm"))]
 mod stroke;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows", target_family = "wasm"))]
 mod transform;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows", target_family = "wasm"))]
 mod undo;
+
+#[cfg(target_family = "wasm")]
+mod web;

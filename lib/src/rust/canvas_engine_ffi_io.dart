@@ -414,6 +414,22 @@ typedef _EngineApplyAntialiasDart =
       int level,
     );
 
+typedef _EnginePollFrameReadyNative = ffi.Uint8 Function(ffi.Uint64 handle);
+typedef _EnginePollFrameReadyDart = int Function(int handle);
+
+typedef _EngineReadPresentNative =
+    ffi.Uint8 Function(
+      ffi.Uint64 handle,
+      ffi.Pointer<ffi.Uint8> outPixels,
+      ffi.UintPtr outPixelsLen,
+    );
+typedef _EngineReadPresentDart =
+    int Function(
+      int handle,
+      ffi.Pointer<ffi.Uint8> outPixels,
+      int outPixelsLen,
+    );
+
 class CanvasEngineFfi {
   CanvasEngineFfi._() {
     try {
@@ -669,6 +685,22 @@ class CanvasEngineFfi {
       } catch (_) {
         _applyAntialias = null;
       }
+      try {
+        _pollFrameReady = _lib.lookupFunction<
+          _EnginePollFrameReadyNative,
+          _EnginePollFrameReadyDart
+        >('engine_poll_frame_ready');
+      } catch (_) {
+        _pollFrameReady = null;
+      }
+      try {
+        _readPresent = _lib.lookupFunction<
+          _EngineReadPresentNative,
+          _EngineReadPresentDart
+        >('engine_read_present');
+      } catch (_) {
+        _readPresent = null;
+      }
       isSupported = true;
     } catch (_) {
       isSupported = false;
@@ -715,6 +747,8 @@ class CanvasEngineFfi {
   late final _EngineSprayEndDart? _sprayEnd;
   late final _EngineApplyFilterDart? _applyFilter;
   late final _EngineApplyAntialiasDart? _applyAntialias;
+  late final _EnginePollFrameReadyDart? _pollFrameReady;
+  late final _EngineReadPresentDart? _readPresent;
 
   ffi.Pointer<ffi.Uint8>? _staging;
   int _stagingCapacityBytes = 0;
@@ -1214,6 +1248,41 @@ class CanvasEngineFfi {
       return;
     }
     fn(handle);
+  }
+
+  bool pollFrameReady(int handle) {
+    final fn = _pollFrameReady;
+    if (!isSupported || fn == null || handle == 0) {
+      return false;
+    }
+    return fn(handle) != 0;
+  }
+
+  Uint8List? readPresent({
+    required int handle,
+    required int width,
+    required int height,
+  }) {
+    final fn = _readPresent;
+    if (!isSupported || fn == null || handle == 0) {
+      return null;
+    }
+    if (width <= 0 || height <= 0) {
+      return null;
+    }
+    final int byteCount = width * height * 4;
+    final ffi.Pointer<ffi.Uint8> outPtr = malloc.call<ffi.Uint8>(byteCount);
+    try {
+      final int ok = fn(handle, outPtr, byteCount);
+      if (ok == 0) {
+        return null;
+      }
+      final Uint8List bytes = Uint8List(byteCount);
+      bytes.setAll(0, outPtr.asTypedList(byteCount));
+      return bytes;
+    } finally {
+      malloc.free(outPtr);
+    }
   }
 
   void setBrush({

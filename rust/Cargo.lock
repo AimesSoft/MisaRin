@@ -1148,6 +1148,8 @@ dependencies = [
  "pollster",
  "psd",
  "rayon",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
  "wgpu",
  "wgpu-hal",
  "winapi",

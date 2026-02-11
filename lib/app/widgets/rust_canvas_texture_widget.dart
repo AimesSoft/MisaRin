@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -92,7 +94,8 @@ class RustCanvasTextureWidget extends StatefulWidget {
       _RustCanvasTextureWidgetState();
 }
 
-class _RustCanvasTextureWidgetState extends State<RustCanvasTextureWidget> {
+class _RustCanvasTextureWidgetState extends State<RustCanvasTextureWidget>
+    with TickerProviderStateMixin {
   static const MethodChannel _channel = MethodChannel(
     'misarin/rust_canvas_texture',
   );
@@ -102,6 +105,9 @@ class _RustCanvasTextureWidgetState extends State<RustCanvasTextureWidget> {
   int? _engineHandle;
   Object? _error;
   late final String _surfaceId;
+  ui.Image? _webImage;
+  Ticker? _webTicker;
+  bool _webFrameInFlight = false;
 
   final _PackedPointBuffer _points = _PackedPointBuffer();
   bool _flushScheduled = false;
@@ -140,9 +146,14 @@ class _RustCanvasTextureWidgetState extends State<RustCanvasTextureWidget> {
         _engineHandle = null;
         _error = null;
       });
+      if (kIsWeb) {
+        _stopWebPresenter();
+        _resetWebImage();
+      }
       return;
     }
     try {
+      final int? previousHandle = _engineHandle;
       final int width = widget.canvasSize.width.round().clamp(1, 16384);
       final int height = widget.canvasSize.height.round().clamp(1, 16384);
       final Map<dynamic, dynamic>? info = await _channel
@@ -158,16 +169,29 @@ class _RustCanvasTextureWidgetState extends State<RustCanvasTextureWidget> {
           );
       final int? textureId = (info?['textureId'] as num?)?.toInt();
       final int? engineHandle = (info?['engineHandle'] as num?)?.toInt();
+      final bool isWeb = kIsWeb;
+      final bool missingTexture = textureId == null;
+      final bool missingEngine = engineHandle == null;
       if (!mounted) {
         return;
       }
       setState(() {
         _textureId = textureId;
         _engineHandle = engineHandle;
-        _error = (textureId == null || engineHandle == null)
+        _error = (missingEngine || (!isWeb && missingTexture))
             ? StateError('textureId/engineHandle == null: $info')
             : null;
       });
+      if (isWeb) {
+        if (engineHandle != null) {
+          if (previousHandle != engineHandle) {
+            _resetWebImage();
+          }
+          _startWebPresenter();
+        } else {
+          _stopWebPresenter();
+        }
+      }
       final int? handle = _engineHandle;
       if (handle != null) {
         _applyLayerDefaults(handle);
@@ -181,12 +205,18 @@ class _RustCanvasTextureWidgetState extends State<RustCanvasTextureWidget> {
         _engineHandle = null;
         _error = error;
       });
+      if (kIsWeb) {
+        _stopWebPresenter();
+        _resetWebImage();
+      }
     }
   }
 
   @override
   void dispose() {
     unawaited(_disposeSurface());
+    _stopWebPresenter();
+    _resetWebImage();
     super.dispose();
   }
 
@@ -196,6 +226,98 @@ class _RustCanvasTextureWidgetState extends State<RustCanvasTextureWidget> {
         'surfaceId': _surfaceId,
       });
     } catch (_) {}
+  }
+
+  void _resetWebImage() {
+    final ui.Image? image = _webImage;
+    if (image != null) {
+      image.dispose();
+    }
+    _webImage = null;
+  }
+
+  void _startWebPresenter() {
+    if (!kIsWeb) {
+      return;
+    }
+    if (_webTicker != null) {
+      return;
+    }
+    _webTicker = createTicker(_onWebTick)..start();
+  }
+
+  void _stopWebPresenter() {
+    final Ticker? ticker = _webTicker;
+    if (ticker != null) {
+      ticker.stop();
+      ticker.dispose();
+    }
+    _webTicker = null;
+    _webFrameInFlight = false;
+  }
+
+  void _onWebTick(Duration elapsed) {
+    if (_webFrameInFlight) {
+      return;
+    }
+    final int? handle = _engineHandle;
+    if (handle == null) {
+      return;
+    }
+    if (!CanvasEngineFfi.instance.pollFrameReady(handle)) {
+      return;
+    }
+    final int width = widget.canvasSize.width.round().clamp(1, 16384);
+    final int height = widget.canvasSize.height.round().clamp(1, 16384);
+    final Uint8List? pixels = CanvasEngineFfi.instance.readPresent(
+      handle: handle,
+      width: width,
+      height: height,
+    );
+    if (pixels == null) {
+      return;
+    }
+    _webFrameInFlight = true;
+    unawaited(_decodeWebFrame(handle, width, height, pixels));
+  }
+
+  Future<void> _decodeWebFrame(
+    int handle,
+    int width,
+    int height,
+    Uint8List pixels,
+  ) async {
+    try {
+      if (pixels.lengthInBytes < width * height * 4) {
+        return;
+      }
+      final ui.ImmutableBuffer buffer = await ui.ImmutableBuffer.fromUint8List(
+        pixels,
+      );
+      final ui.ImageDescriptor descriptor = ui.ImageDescriptor.raw(
+        buffer,
+        width: width,
+        height: height,
+        rowBytes: width * 4,
+        pixelFormat: ui.PixelFormat.bgra8888,
+      );
+      final ui.Codec codec = await descriptor.instantiateCodec();
+      final ui.FrameInfo frame = await codec.getNextFrame();
+      codec.dispose();
+      descriptor.dispose();
+      buffer.dispose();
+
+      if (!mounted || _engineHandle != handle) {
+        frame.image.dispose();
+        return;
+      }
+      setState(() {
+        _webImage?.dispose();
+        _webImage = frame.image;
+      });
+    } finally {
+      _webFrameInFlight = false;
+    }
   }
 
   void _handleScaleStart(ScaleStartDetails details) {
@@ -550,7 +672,19 @@ class _RustCanvasTextureWidgetState extends State<RustCanvasTextureWidget> {
       );
     }
 
-    if (textureId == null) {
+    if (kIsWeb) {
+      if (_engineHandle == null) {
+        return const ColoredBox(
+          color: Color(0xFF000000),
+          child: Center(
+            child: Text(
+              'Initializing Rust texture…',
+              style: TextStyle(color: Color(0xFFFFFFFF)),
+            ),
+          ),
+        );
+      }
+    } else if (textureId == null) {
       return const ColoredBox(
         color: Color(0xFF000000),
         child: Center(
@@ -614,10 +748,21 @@ class _RustCanvasTextureWidgetState extends State<RustCanvasTextureWidget> {
                               height: widget.canvasSize.height,
                               child: ColoredBox(
                                 color: const Color(0xFFFFFFFF),
-                                child: Texture(
-                                  textureId: textureId,
-                                  filterQuality: FilterQuality.none,
-                                ),
+                                child: kIsWeb
+                                    ? (_webImage == null
+                                        ? const ColoredBox(
+                                            color: Color(0xFFFFFFFF),
+                                          )
+                                        : RawImage(
+                                            image: _webImage,
+                                            width: widget.canvasSize.width,
+                                            height: widget.canvasSize.height,
+                                            filterQuality: FilterQuality.none,
+                                          ))
+                                    : Texture(
+                                        textureId: textureId,
+                                        filterQuality: FilterQuality.none,
+                                      ),
                               ),
                             ),
                           ),

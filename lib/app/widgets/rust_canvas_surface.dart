@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -402,7 +405,8 @@ class RustCanvasSurface extends StatefulWidget {
   State<RustCanvasSurface> createState() => _RustCanvasSurfaceState();
 }
 
-class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
+class _RustCanvasSurfaceState extends State<RustCanvasSurface>
+    with TickerProviderStateMixin {
   static Future<void>? _prewarmFuture;
 
   int? _textureId;
@@ -416,6 +420,9 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   bool _activeStrokeUsesPressure = true;
   int? _lastNotifiedEngineHandle;
   Size? _lastNotifiedEngineSize;
+  ui.Image? _webImage;
+  Ticker? _webTicker;
+  bool _webFrameInFlight = false;
 
   @override
   void initState() {
@@ -482,7 +489,7 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   }
 
   static Future<void> _doPrewarm() async {
-    if (!CanvasEngineFfi.instance.isSupported) {
+    if (kIsWeb || !CanvasEngineFfi.instance.isSupported) {
       return;
     }
     try {
@@ -519,9 +526,14 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
         _engineSize = null;
         _error = null;
       });
+      if (kIsWeb) {
+        _stopWebPresenter();
+        _resetWebImage();
+      }
       return;
     }
     try {
+      final int? previousHandle = _engineHandle;
       final int width = widget.canvasSize.width.round().clamp(1, 16384);
       final int height = widget.canvasSize.height.round().clamp(1, 16384);
       debugPrint(
@@ -542,6 +554,9 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
       final int? engineHeight = info.engineHeight;
       final bool backgroundNeedsUpdate =
           info.backgroundColorArgb != widget.backgroundColorArgb;
+      final bool isWeb = kIsWeb;
+      final bool missingTexture = textureId == null;
+      final bool missingEngine = engineHandle == null;
       if (!mounted) {
         return;
       }
@@ -551,10 +566,20 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
         _engineSize = (engineWidth != null && engineHeight != null)
             ? Size(engineWidth.toDouble(), engineHeight.toDouble())
             : null;
-        _error = (textureId == null || engineHandle == null)
+        _error = (missingEngine || (!isWeb && missingTexture))
             ? StateError('textureId/engineHandle == null: $info')
             : null;
       });
+      if (isWeb) {
+        if (engineHandle != null) {
+          if (previousHandle != engineHandle) {
+            _resetWebImage();
+          }
+          _startWebPresenter();
+        } else {
+          _stopWebPresenter();
+        }
+      }
       debugPrint(
         'rustSurface: ready textureId=$textureId handle=$engineHandle '
         'engine=${engineWidth}x${engineHeight} '
@@ -586,6 +611,10 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
         _engineSize = null;
         _error = error;
       });
+      if (kIsWeb) {
+        _stopWebPresenter();
+        _resetWebImage();
+      }
       RustCanvasTimeline.mark(
         'rustSurface: loadTextureInfo error $error',
       );
@@ -606,10 +635,106 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
     widget.onEngineInfoChanged?.call(handle, size, isNewEngine);
   }
 
+  void _resetWebImage() {
+    final ui.Image? image = _webImage;
+    if (image != null) {
+      image.dispose();
+    }
+    _webImage = null;
+  }
+
+  void _startWebPresenter() {
+    if (!kIsWeb) {
+      return;
+    }
+    if (_webTicker != null) {
+      return;
+    }
+    _webTicker = createTicker(_onWebTick)..start();
+  }
+
+  void _stopWebPresenter() {
+    final Ticker? ticker = _webTicker;
+    if (ticker != null) {
+      ticker.stop();
+      ticker.dispose();
+    }
+    _webTicker = null;
+    _webFrameInFlight = false;
+  }
+
+  void _onWebTick(Duration elapsed) {
+    if (_webFrameInFlight) {
+      return;
+    }
+    final int? handle = _engineHandle;
+    final Size? size = _engineSize;
+    if (handle == null || size == null) {
+      return;
+    }
+    if (!CanvasEngineFfi.instance.pollFrameReady(handle)) {
+      return;
+    }
+    final int width = size.width.round();
+    final int height = size.height.round();
+    final Uint8List? pixels = CanvasEngineFfi.instance.readPresent(
+      handle: handle,
+      width: width,
+      height: height,
+    );
+    if (pixels == null) {
+      return;
+    }
+    _webFrameInFlight = true;
+    unawaited(_decodeWebFrame(handle, width, height, pixels));
+  }
+
+  Future<void> _decodeWebFrame(
+    int handle,
+    int width,
+    int height,
+    Uint8List pixels,
+  ) async {
+    try {
+      if (pixels.lengthInBytes < width * height * 4) {
+        return;
+      }
+      final ui.ImmutableBuffer buffer = await ui.ImmutableBuffer.fromUint8List(
+        pixels,
+      );
+      final ui.ImageDescriptor descriptor = ui.ImageDescriptor.raw(
+        buffer,
+        width: width,
+        height: height,
+        rowBytes: width * 4,
+        pixelFormat: ui.PixelFormat.bgra8888,
+      );
+      final ui.Codec codec = await descriptor.instantiateCodec();
+      final ui.FrameInfo frame = await codec.getNextFrame();
+      codec.dispose();
+      descriptor.dispose();
+      buffer.dispose();
+
+      if (!mounted || _engineHandle != handle) {
+        frame.image.dispose();
+        return;
+      }
+
+      setState(() {
+        _webImage?.dispose();
+        _webImage = frame.image;
+      });
+    } finally {
+      _webFrameInFlight = false;
+    }
+  }
+
   @override
   void dispose() {
     _RustSurfaceWarmupCache.instance.drop(_surfaceId);
     unawaited(_disposeSurface());
+    _stopWebPresenter();
+    _resetWebImage();
     if (_lastNotifiedEngineHandle != null || _lastNotifiedEngineSize != null) {
       widget.onEngineInfoChanged?.call(null, null, false);
     }
@@ -869,6 +994,38 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
               style: const TextStyle(color: Color(0xFFFFFFFF), fontSize: 12),
             ),
           ),
+        ),
+      );
+    }
+
+    if (kIsWeb) {
+      final int? handle = _engineHandle;
+      if (handle == null) {
+        return SizedBox(
+          width: canvasSize.width,
+          height: canvasSize.height,
+          child: const ColoredBox(color: Color(0xFFFFFFFF)),
+        );
+      }
+      final ui.Image? image = _webImage;
+      final Widget content = image == null
+          ? const ColoredBox(color: Color(0xFFFFFFFF))
+          : RawImage(
+              image: image,
+              width: canvasSize.width,
+              height: canvasSize.height,
+              filterQuality: FilterQuality.none,
+            );
+      return Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: _handlePointerDown,
+        onPointerMove: _handlePointerMove,
+        onPointerUp: _handlePointerUp,
+        onPointerCancel: _handlePointerCancel,
+        child: SizedBox(
+          width: canvasSize.width,
+          height: canvasSize.height,
+          child: content,
         ),
       );
     }
