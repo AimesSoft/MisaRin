@@ -4,6 +4,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex, OnceLock};
 #[cfg(not(target_family = "wasm"))]
 use std::thread;
+#[cfg(target_family = "wasm")]
+use std::cell::OnceCell;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[cfg(target_os = "macos")]
@@ -257,59 +259,90 @@ struct EngineDeviceContext {
     queue: Arc<wgpu::Queue>,
 }
 
+struct EngineDeviceContextRef {
+    device: Arc<wgpu::Device>,
+    queue: Arc<wgpu::Queue>,
+}
+
+#[cfg(not(target_family = "wasm"))]
 static DEVICE_CONTEXT: OnceLock<Result<EngineDeviceContext, String>> = OnceLock::new();
 
-fn device_context() -> Result<&'static EngineDeviceContext, String> {
-    let init_result = DEVICE_CONTEXT.get_or_init(|| {
-        let backends = if cfg!(target_os = "macos") {
-            wgpu::Backends::METAL
-        } else if cfg!(target_os = "windows") {
-            wgpu::Backends::DX12
-        } else {
-            wgpu::Backends::PRIMARY
-        };
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends,
-            ..Default::default()
-        });
+#[cfg(target_family = "wasm")]
+thread_local! {
+    static DEVICE_CONTEXT: OnceCell<Result<EngineDeviceContext, String>> = OnceCell::new();
+}
 
-        let adapter =
-            pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: None,
-                force_fallback_adapter: false,
-            }))
-            .ok_or_else(|| "wgpu: no compatible adapter found".to_string())?;
-
-        let required_features = wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
-        if !adapter.features().contains(required_features) {
-            return Err(
-                "wgpu: adapter does not support TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES (required for read-write storage textures)"
-                    .to_string(),
-            );
-        }
-
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("misa-rin CanvasEngine device"),
-                required_features,
-                required_limits: wgpu::Limits::default(),
-            },
-            None,
-        ))
-        .map_err(|e| format!("wgpu: request_device failed: {e:?}"))?;
-
-        Ok(EngineDeviceContext {
-            _instance: instance,
-            _adapter: adapter,
-            device: Arc::new(device),
-            queue: Arc::new(queue),
-        })
+fn init_device_context() -> Result<EngineDeviceContext, String> {
+    let backends = if cfg!(target_os = "macos") {
+        wgpu::Backends::METAL
+    } else if cfg!(target_os = "windows") {
+        wgpu::Backends::DX12
+    } else {
+        wgpu::Backends::PRIMARY
+    };
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends,
+        ..Default::default()
     });
 
-    match init_result {
-        Ok(ctx) => Ok(ctx),
-        Err(err) => Err(err.clone()),
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::HighPerformance,
+        compatible_surface: None,
+        force_fallback_adapter: false,
+    }))
+    .ok_or_else(|| "wgpu: no compatible adapter found".to_string())?;
+
+    let required_features = wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
+    if !adapter.features().contains(required_features) {
+        return Err(
+            "wgpu: adapter does not support TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES (required for read-write storage textures)"
+                .to_string(),
+        );
+    }
+
+    let (device, queue) = pollster::block_on(adapter.request_device(
+        &wgpu::DeviceDescriptor {
+            label: Some("misa-rin CanvasEngine device"),
+            required_features,
+            required_limits: wgpu::Limits::default(),
+        },
+        None,
+    ))
+    .map_err(|e| format!("wgpu: request_device failed: {e:?}"))?;
+
+    Ok(EngineDeviceContext {
+        _instance: instance,
+        _adapter: adapter,
+        device: Arc::new(device),
+        queue: Arc::new(queue),
+    })
+}
+
+fn device_context() -> Result<EngineDeviceContextRef, String> {
+    #[cfg(not(target_family = "wasm"))]
+    {
+        let init_result = DEVICE_CONTEXT.get_or_init(init_device_context);
+        match init_result {
+            Ok(ctx) => Ok(EngineDeviceContextRef {
+                device: Arc::clone(&ctx.device),
+                queue: Arc::clone(&ctx.queue),
+            }),
+            Err(err) => Err(err.clone()),
+        }
+    }
+
+    #[cfg(target_family = "wasm")]
+    {
+        DEVICE_CONTEXT.with(|cell| {
+            let init_result = cell.get_or_init(init_device_context);
+            match init_result {
+                Ok(ctx) => Ok(EngineDeviceContextRef {
+                    device: Arc::clone(&ctx.device),
+                    queue: Arc::clone(&ctx.queue),
+                }),
+                Err(err) => Err(err.clone()),
+            }
+        })
     }
 }
 
@@ -2002,7 +2035,7 @@ fn render_thread_main(
                     }
                 }
             }
-        }
+            }
 
         device.poll(wgpu::Maintain::Poll);
     }
@@ -2900,7 +2933,6 @@ async fn render_task_main(
                     }
                 }
             }
-        }
 
         device.poll(wgpu::Maintain::Poll);
     }

@@ -3,7 +3,7 @@ use std::ptr;
 use wasm_bindgen::prelude::*;
 
 use super::ffi;
-use super::types::{EnginePoint, SprayPoint};
+use super::types::EnginePoint;
 
 fn handle_from_js(handle: f64) -> u64 {
     if handle <= 0.0 {
@@ -445,20 +445,10 @@ pub fn canvas_engine_spray_draw(
     if points.len() < required {
         return;
     }
-    let mut decoded: Vec<SprayPoint> = Vec::with_capacity(point_count);
-    for i in 0..point_count {
-        let base = i.saturating_mul(4);
-        decoded.push(SprayPoint {
-            x: points[base],
-            y: points[base + 1],
-            radius: points[base + 2],
-            alpha: points[base + 3],
-        });
-    }
     ffi::engine_spray_draw(
         handle,
-        decoded.as_ptr(),
-        decoded.len(),
+        points.as_ptr(),
+        point_count,
         color_argb,
         brush_shape,
         erase,
