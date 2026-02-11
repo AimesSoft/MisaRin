@@ -146,21 +146,55 @@ void _fillFloodFill(
     }
   }
 
-  final BitmapSurface surface = controller._activeSurface;
-  final String layerId = controller._activeLayer.id;
-  final int ptrAddress = surface.pointerAddress;
-  final Pointer<Void> ptr = Pointer<Void>.fromAddress(ptrAddress);
-  if (ptr == nullptr) {
-    return;
-  }
-  final int generation = controller._paintingWorkerGeneration;
   final int colorValue = BitmapSurface.encodeColor(color);
   final int width = controller._width;
   final int height = controller._height;
+  final BitmapSurface surface = controller._activeSurface;
+  final String layerId = controller._activeLayer.id;
+
+  final bool useNativeFill = !kIsWeb && surface.pointerAddress != 0;
+  if (!useNativeFill) {
+    final Uint8List? regionMask = sampleAllLayers
+        ? _fillFloodFillAcrossLayers(
+            controller,
+            x,
+            y,
+            color,
+            contiguous,
+            collectMask: true,
+            tolerance: clampedTolerance,
+            fillGap: clampedFillGap,
+          )
+        : _fillFloodFillSingleLayerWithMask(
+            controller,
+            x,
+            y,
+            color,
+            BitmapSurface.decodeColor(surface.pixels[y * width + x]),
+            contiguous,
+            tolerance: clampedTolerance,
+            fillGap: clampedFillGap,
+          );
+    if (regionMask == null) {
+      return;
+    }
+    if (surface.isClean && (colorValue & 0xff000000) != 0) {
+      surface.markDirty();
+    }
+    if (swallowColorsU32 != null) {
+      _fillSwallowColorLines(controller, regionMask, swallowColorsU32, color);
+    }
+    if (clampedAntialias > 0) {
+      _fillApplyAntialiasToMask(controller, regionMask, clampedAntialias);
+    }
+    return;
+  }
+
+  final int generation = controller._paintingWorkerGeneration;
   controller._enqueueWorkerPatchFuture(
     rust_bucket_fill
         .floodFillInPlace(
-          ptr: BigInt.from(ptr.address),
+          ptr: BigInt.from(surface.pointerAddress),
           width: width,
           height: height,
           samplePixels: samplePixels,

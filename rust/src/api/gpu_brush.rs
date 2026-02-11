@@ -1,5 +1,8 @@
 use std::collections::HashMap;
+#[cfg(target_family = "wasm")]
+use std::cell::RefCell;
 use std::sync::Arc;
+#[cfg(not(target_family = "wasm"))]
 use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
 
@@ -21,10 +24,51 @@ struct GpuBrushEngine {
     last_endpoints: HashMap<String, StrokeEndpoint>,
 }
 
+#[cfg(not(target_family = "wasm"))]
 static GPU_BRUSH: OnceLock<Mutex<Option<GpuBrushEngine>>> = OnceLock::new();
 
+#[cfg(not(target_family = "wasm"))]
 fn brush_cell() -> &'static Mutex<Option<GpuBrushEngine>> {
     GPU_BRUSH.get_or_init(|| Mutex::new(None))
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn with_brush_mut<R>(
+    f: impl FnOnce(&mut Option<GpuBrushEngine>) -> Result<R, String>,
+) -> Result<R, String> {
+    let mut guard = brush_cell()
+        .lock()
+        .map_err(|_| "gpu brush lock poisoned".to_string())?;
+    f(&mut *guard)
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn with_brush<R>(
+    f: impl FnOnce(&Option<GpuBrushEngine>) -> Result<R, String>,
+) -> Result<R, String> {
+    let guard = brush_cell()
+        .lock()
+        .map_err(|_| "gpu brush lock poisoned".to_string())?;
+    f(&*guard)
+}
+
+#[cfg(target_family = "wasm")]
+thread_local! {
+    static GPU_BRUSH: RefCell<Option<GpuBrushEngine>> = RefCell::new(None);
+}
+
+#[cfg(target_family = "wasm")]
+fn with_brush_mut<R>(
+    f: impl FnOnce(&mut Option<GpuBrushEngine>) -> Result<R, String>,
+) -> Result<R, String> {
+    GPU_BRUSH.with(|cell| f(&mut *cell.borrow_mut()))
+}
+
+#[cfg(target_family = "wasm")]
+fn with_brush<R>(
+    f: impl FnOnce(&Option<GpuBrushEngine>) -> Result<R, String>,
+) -> Result<R, String> {
+    GPU_BRUSH.with(|cell| f(&*cell.borrow()))
 }
 
 #[flutter_rust_bridge::frb]
@@ -44,32 +88,31 @@ pub struct GpuStrokeResult {
 
 #[flutter_rust_bridge::frb(sync)]
 pub fn gpu_brush_init() -> Result<(), String> {
-    let mut guard = brush_cell()
-        .lock()
-        .map_err(|_| "gpu brush lock poisoned".to_string())?;
-    if guard.is_some() {
-        return Ok(());
-    }
+    with_brush_mut(|guard| {
+        if guard.is_some() {
+            return Ok(());
+        }
 
-    let t0 = Instant::now();
-    let (device, queue) = create_wgpu_device()?;
-    let device = Arc::new(device);
-    let queue = Arc::new(queue);
-    let mut brush = BrushRenderer::new(device.clone(), queue.clone())?;
-    brush.set_softness(0.0);
+        let t0 = Instant::now();
+        let (device, queue) = create_wgpu_device()?;
+        let device = Arc::new(device);
+        let queue = Arc::new(queue);
+        let mut brush = BrushRenderer::new(device.clone(), queue.clone())?;
+        brush.set_softness(0.0);
 
-    let textures = LayerTextureManager::new(device.clone(), queue.clone());
+        let textures = LayerTextureManager::new(device.clone(), queue.clone());
 
-    *guard = Some(GpuBrushEngine {
-        textures,
-        brush,
-        last_endpoints: HashMap::new(),
-    });
-    debug::log(
-        LogLevel::Info,
-        format_args!("gpu_brush_init ok in {:?}.", t0.elapsed()),
-    );
-    Ok(())
+        *guard = Some(GpuBrushEngine {
+            textures,
+            brush,
+            last_endpoints: HashMap::new(),
+        });
+        debug::log(
+            LogLevel::Info,
+            format_args!("gpu_brush_init ok in {:?}.", t0.elapsed()),
+        );
+        Ok(())
+    })
 }
 
 pub fn gpu_upload_layer(
@@ -78,59 +121,55 @@ pub fn gpu_upload_layer(
     width: u32,
     height: u32,
 ) -> Result<(), String> {
-    let mut guard = brush_cell()
-        .lock()
-        .map_err(|_| "gpu brush lock poisoned".to_string())?;
-    let engine = guard
-        .as_mut()
-        .ok_or_else(|| "gpu brush not initialized (call gpu_brush_init first)".to_string())?;
+    with_brush_mut(|guard| {
+        let engine = guard
+            .as_mut()
+            .ok_or_else(|| "gpu brush not initialized (call gpu_brush_init first)".to_string())?;
 
-    let t0 = Instant::now();
-    engine
-        .textures
-        .upload_layer(&layer_id, &pixels, width, height)?;
-    engine.brush.set_canvas_size(width, height);
-    debug::log(
-        LogLevel::Info,
-        format_args!(
-            "gpu_upload_layer ok layer='{layer_id}' size={width}x{height} pixels={} in {:?}.",
-            pixels.len(),
-            t0.elapsed()
-        ),
-    );
-    Ok(())
+        let t0 = Instant::now();
+        engine
+            .textures
+            .upload_layer(&layer_id, &pixels, width, height)?;
+        engine.brush.set_canvas_size(width, height);
+        debug::log(
+            LogLevel::Info,
+            format_args!(
+                "gpu_upload_layer ok layer='{layer_id}' size={width}x{height} pixels={} in {:?}.",
+                pixels.len(),
+                t0.elapsed()
+            ),
+        );
+        Ok(())
+    })
 }
 
 pub fn gpu_download_layer(layer_id: String) -> Result<Vec<u32>, String> {
-    let guard = brush_cell()
-        .lock()
-        .map_err(|_| "gpu brush lock poisoned".to_string())?;
-    let engine = guard
-        .as_ref()
-        .ok_or_else(|| "gpu brush not initialized (call gpu_brush_init first)".to_string())?;
-    engine.textures.download_layer(&layer_id)
+    with_brush(|guard| {
+        let engine = guard
+            .as_ref()
+            .ok_or_else(|| "gpu brush not initialized (call gpu_brush_init first)".to_string())?;
+        engine.textures.download_layer(&layer_id)
+    })
 }
 
 #[flutter_rust_bridge::frb(sync)]
 pub fn gpu_remove_layer(layer_id: String) -> Result<(), String> {
-    let mut guard = brush_cell()
-        .lock()
-        .map_err(|_| "gpu brush lock poisoned".to_string())?;
-    let Some(engine) = guard.as_mut() else {
-        return Ok(());
-    };
-    engine.textures.remove_layer(&layer_id);
-    engine.last_endpoints.remove(&layer_id);
-    Ok(())
+    with_brush_mut(|guard| {
+        let Some(engine) = guard.as_mut() else {
+            return Ok(());
+        };
+        engine.textures.remove_layer(&layer_id);
+        engine.last_endpoints.remove(&layer_id);
+        Ok(())
+    })
 }
 
 #[flutter_rust_bridge::frb(sync)]
 pub fn gpu_brush_dispose() {
-    if let Some(cell) = GPU_BRUSH.get() {
-        if let Ok(mut guard) = cell.lock() {
-            *guard = None;
-        }
-    }
+    let _ = with_brush_mut(|guard| {
+        *guard = None;
+        Ok(())
+    });
 }
 
 pub fn gpu_draw_stroke(
@@ -145,12 +184,10 @@ pub fn gpu_draw_stroke(
     let seq = debug::next_seq();
     let total_t0 = Instant::now();
 
-    let mut guard = brush_cell()
-        .lock()
-        .map_err(|_| "gpu brush lock poisoned".to_string())?;
-    let engine = guard
-        .as_mut()
-        .ok_or_else(|| "gpu brush not initialized (call gpu_brush_init first)".to_string())?;
+    return with_brush_mut(|guard| {
+        let engine = guard
+            .as_mut()
+            .ok_or_else(|| "gpu brush not initialized (call gpu_brush_init first)".to_string())?;
 
     let width = engine.textures.width();
     let height = engine.textures.height();
@@ -382,12 +419,13 @@ pub fn gpu_draw_stroke(
         LogLevel::Verbose,
         format_args!("#{seq} gpu_draw_stroke total {:?}.", total_t0.elapsed()),
     );
-    Ok(GpuStrokeResult {
-        dirty_left,
-        dirty_top,
-        dirty_width,
-        dirty_height,
-        draw_calls,
+        Ok(GpuStrokeResult {
+            dirty_left,
+            dirty_top,
+            dirty_width,
+            dirty_height,
+            draw_calls,
+        })
     })
 }
 

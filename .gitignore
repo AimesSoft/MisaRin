@@ -53,3 +53,4 @@ app.*.map.json
 .misa_rin_web_staging/
 .misa_rin_web_download.zip
 /.sandbox_home
+/rust/target

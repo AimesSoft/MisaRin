@@ -1,13 +1,40 @@
+#[cfg(target_family = "wasm")]
+use std::cell::RefCell;
+#[cfg(not(target_family = "wasm"))]
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use crate::gpu::compositor::{GpuCompositor, LayerData};
 use crate::gpu::debug::{self, LogLevel};
 
+#[cfg(not(target_family = "wasm"))]
 static GPU_COMPOSITOR: OnceLock<Mutex<Option<GpuCompositor>>> = OnceLock::new();
 
+#[cfg(not(target_family = "wasm"))]
 fn compositor_cell() -> &'static Mutex<Option<GpuCompositor>> {
     GPU_COMPOSITOR.get_or_init(|| Mutex::new(None))
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn with_compositor_mut<R>(
+    f: impl FnOnce(&mut Option<GpuCompositor>) -> Result<R, String>,
+) -> Result<R, String> {
+    let mut guard = compositor_cell()
+        .lock()
+        .map_err(|_| "gpu compositor lock poisoned".to_string())?;
+    f(&mut *guard)
+}
+
+#[cfg(target_family = "wasm")]
+thread_local! {
+    static GPU_COMPOSITOR: RefCell<Option<GpuCompositor>> = RefCell::new(None);
+}
+
+#[cfg(target_family = "wasm")]
+fn with_compositor_mut<R>(
+    f: impl FnOnce(&mut Option<GpuCompositor>) -> Result<R, String>,
+) -> Result<R, String> {
+    GPU_COMPOSITOR.with(|cell| f(&mut *cell.borrow_mut()))
 }
 
 #[flutter_rust_bridge::frb]
@@ -21,20 +48,19 @@ pub struct GpuLayerData {
 
 #[flutter_rust_bridge::frb(sync)]
 pub fn gpu_compositor_init() -> Result<(), String> {
-    let mut guard = compositor_cell()
-        .lock()
-        .map_err(|_| "gpu compositor lock poisoned".to_string())?;
-    if guard.is_some() {
-        return Ok(());
-    }
-    let t0 = Instant::now();
-    let compositor = GpuCompositor::new()?;
-    *guard = Some(compositor);
-    debug::log(
-        LogLevel::Info,
-        format_args!("gpu_compositor_init ok in {:?}.", t0.elapsed()),
-    );
-    Ok(())
+    with_compositor_mut(|guard| {
+        if guard.is_some() {
+            return Ok(());
+        }
+        let t0 = Instant::now();
+        let compositor = GpuCompositor::new()?;
+        *guard = Some(compositor);
+        debug::log(
+            LogLevel::Info,
+            format_args!("gpu_compositor_init ok in {:?}.", t0.elapsed()),
+        );
+        Ok(())
+    })
 }
 
 pub fn gpu_composite_layers(
@@ -45,12 +71,10 @@ pub fn gpu_composite_layers(
     let seq = debug::next_seq();
     let t0 = Instant::now();
 
-    let mut guard = compositor_cell()
-        .lock()
-        .map_err(|_| "gpu compositor lock poisoned".to_string())?;
-    let compositor = guard.as_mut().ok_or_else(|| {
-        "gpu compositor not initialized (call gpu_compositor_init first)".to_string()
-    })?;
+    return with_compositor_mut(|guard| {
+        let compositor = guard.as_mut().ok_or_else(|| {
+            "gpu compositor not initialized (call gpu_compositor_init first)".to_string()
+        })?;
 
     let pixel_count_u64 = (width as u64).saturating_mul(height as u64);
     let expected_len_u64 = pixel_count_u64;
@@ -154,16 +178,16 @@ pub fn gpu_composite_layers(
         }
     }
 
-    result
+        result
+    })
 }
 
 #[flutter_rust_bridge::frb(sync)]
 pub fn gpu_compositor_dispose() {
-    if let Some(cell) = GPU_COMPOSITOR.get() {
-        if let Ok(mut guard) = cell.lock() {
-            *guard = None;
-        }
-    }
+    let _ = with_compositor_mut(|guard| {
+        *guard = None;
+        Ok(())
+    });
 }
 
 fn clamp_unit_f64_to_f32(value: f64) -> f32 {
