@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:misa_rin/src/rust/canvas_engine_ffi.dart';
 
+import '../../bitmap_canvas/raster_frame.dart';
 import '../debug/rust_canvas_timeline.dart';
 import '../../canvas/canvas_tools.dart';
 import '../utils/tablet_input_bridge.dart';
@@ -311,6 +313,7 @@ class RustCanvasSurface extends StatefulWidget {
     required this.surfaceKey,
     required this.canvasSize,
     required this.enableDrawing,
+    this.frame,
     this.layerCount = 1,
     required this.brushColorArgb,
     required this.brushRadius,
@@ -370,6 +373,7 @@ class RustCanvasSurface extends StatefulWidget {
   final String surfaceKey;
   final Size canvasSize;
   final bool enableDrawing;
+  final BitmapCanvasFrame? frame;
   final int layerCount;
   final int brushColorArgb;
   final double brushRadius;
@@ -852,6 +856,25 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      final Size canvasSize = widget.canvasSize;
+      final BitmapCanvasFrame? frame = widget.frame;
+      if (frame == null) {
+        return SizedBox(
+          width: canvasSize.width,
+          height: canvasSize.height,
+          child: const ColoredBox(color: Color(0xFFFFFFFF)),
+        );
+      }
+      return SizedBox(
+        width: canvasSize.width,
+        height: canvasSize.height,
+        child: CustomPaint(
+          painter: _RasterFramePainter(frame),
+        ),
+      );
+    }
+
     final Size canvasSize = widget.canvasSize;
     final Object? error = _error;
     final int? textureId = _textureId;
@@ -893,5 +916,32 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
         child: Texture(textureId: textureId, filterQuality: FilterQuality.none),
       ),
     );
+  }
+}
+
+class _RasterFramePainter extends CustomPainter {
+  _RasterFramePainter(this.frame);
+
+  final BitmapCanvasFrame frame;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (frame.tiles.isEmpty) {
+      return;
+    }
+    final Paint paint = Paint()..filterQuality = FilterQuality.none;
+    for (final BitmapCanvasTile tile in frame.tiles) {
+      canvas.drawImageRect(
+        tile.image,
+        tile.sourceRect,
+        tile.destinationRect,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RasterFramePainter oldDelegate) {
+    return oldDelegate.frame.generation != frame.generation;
   }
 }
