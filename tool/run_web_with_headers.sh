@@ -67,7 +67,7 @@ WASM_PATH="${ROOT_DIR}/rust/target/${WASM_TARGET}/release/rust_lib_misa_rin.wasm
 OUT_DIR="${ROOT_DIR}/web/pkg"
 mkdir -p "${OUT_DIR}"
 echo "Running wasm-bindgen..."
-wasm-bindgen --target web --no-typescript --out-dir "${OUT_DIR}" "${WASM_PATH}"
+wasm-bindgen --target no-modules --no-typescript --out-dir "${OUT_DIR}" "${WASM_PATH}"
 
 FLUTTER_WEB_MODE="${FLUTTER_WEB_MODE:-release}"
 echo "Building Flutter web (${FLUTTER_WEB_MODE})..."
