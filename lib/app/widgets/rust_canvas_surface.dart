@@ -597,7 +597,6 @@ class RustCanvasSurface extends StatefulWidget {
 class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   static Future<void>? _prewarmFuture;
 
-  int? _textureId;
   int? _engineHandle;
   Size? _engineSize;
   Object? _error;
@@ -629,11 +628,9 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
     );
     unawaited(prewarmIfNeeded());
     unawaited(_loadTextureInfo());
-    if (kIsWeb) {
-      _webFrameRequestSub = CanvasEngineFfi.instance.frameRequests.listen(
-        _handleWebFrameRequest,
-      );
-    }
+    _webFrameRequestSub = CanvasEngineFfi.instance.frameRequests.listen(
+      _handleWebFrameRequest,
+    );
   }
 
   @override
@@ -733,7 +730,6 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
         return;
       }
       setState(() {
-        _textureId = textureId;
         _engineHandle = engineHandle;
         _engineSize = (engineWidth != null && engineHeight != null)
             ? Size(engineWidth.toDouble(), engineHeight.toDouble())
@@ -764,17 +760,14 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
           _applyBackground(handle);
         }
       }
-      if (kIsWeb) {
-        _startWebFramePumpIfNeeded();
-        unawaited(_pumpWebFrame());
-      }
+      _startWebFramePumpIfNeeded();
+      unawaited(_pumpWebFrame());
       _notifyEngineInfoChanged(isNewEngine: info.isNewEngine);
     } catch (error, stackTrace) {
       if (!mounted) {
         return;
       }
       setState(() {
-        _textureId = null;
         _engineHandle = null;
         _engineSize = null;
         if (_webImage != null) {
@@ -806,9 +799,6 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   }
 
   void _startWebFramePumpIfNeeded() {
-    if (!kIsWeb) {
-      return;
-    }
     _webFrameTimer ??= Timer.periodic(
       const Duration(milliseconds: 16),
       (_) => unawaited(_pumpWebFrame()),
@@ -832,7 +822,7 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   }
 
   Future<void> _pumpWebFrame() async {
-    if (!kIsWeb || _webFrameInFlight) {
+    if (_webFrameInFlight) {
       return;
     }
     final int? handle = _engineHandle;
@@ -1163,8 +1153,6 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
   Widget build(BuildContext context) {
     final Size canvasSize = widget.canvasSize;
     final Object? error = _error;
-    final int? textureId = _textureId;
-
     if (error != null) {
       return SizedBox(
         width: canvasSize.width,
@@ -1182,51 +1170,28 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
       );
     }
 
-    if (kIsWeb) {
-      final ui.Image? image = _webImage;
-      double imageScale = 1.0;
-      final Size? engineSize = _engineSize;
-      if (engineSize != null &&
-          canvasSize.width > 0 &&
-          canvasSize.height > 0) {
-        final double sx = engineSize.width / canvasSize.width;
-        final double sy = engineSize.height / canvasSize.height;
-        if (sx.isFinite && sy.isFinite && sx > 0 && sy > 0) {
-          imageScale = (sx + sy) / 2.0;
-        }
+    final ui.Image? image = _webImage;
+    double imageScale = 1.0;
+    final Size? engineSize = _engineSize;
+    if (engineSize != null &&
+        canvasSize.width > 0 &&
+        canvasSize.height > 0) {
+      final double sx = engineSize.width / canvasSize.width;
+      final double sy = engineSize.height / canvasSize.height;
+      if (sx.isFinite && sy.isFinite && sx > 0 && sy > 0) {
+        imageScale = (sx + sy) / 2.0;
       }
-      final Widget content = image == null
-          ? const ColoredBox(color: Color(0xFFFFFFFF))
-          : RawImage(
-              image: image,
-              width: canvasSize.width,
-              height: canvasSize.height,
-              fit: BoxFit.fill,
-              scale: imageScale,
-              filterQuality: FilterQuality.none,
-            );
-      return Listener(
-        behavior: HitTestBehavior.opaque,
-        onPointerDown: _handlePointerDown,
-        onPointerMove: _handlePointerMove,
-        onPointerUp: _handlePointerUp,
-        onPointerCancel: _handlePointerCancel,
-        child: SizedBox(
-          width: canvasSize.width,
-          height: canvasSize.height,
-          child: content,
-        ),
-      );
     }
-
-    if (textureId == null) {
-      return SizedBox(
-        width: canvasSize.width,
-        height: canvasSize.height,
-        child: const ColoredBox(color: Color(0xFFFFFFFF)),
-      );
-    }
-
+    final Widget content = image == null
+        ? const ColoredBox(color: Color(0xFFFFFFFF))
+        : RawImage(
+            image: image,
+            width: canvasSize.width,
+            height: canvasSize.height,
+            fit: BoxFit.fill,
+            scale: imageScale,
+            filterQuality: FilterQuality.none,
+          );
     return Listener(
       behavior: HitTestBehavior.opaque,
       onPointerDown: _handlePointerDown,
@@ -1236,7 +1201,7 @@ class _RustCanvasSurfaceState extends State<RustCanvasSurface> {
       child: SizedBox(
         width: canvasSize.width,
         height: canvasSize.height,
-        child: Texture(textureId: textureId, filterQuality: FilterQuality.none),
+        child: content,
       ),
     );
   }
