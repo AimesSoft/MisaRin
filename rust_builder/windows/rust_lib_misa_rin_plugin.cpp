@@ -27,7 +27,10 @@
 
 // Direct logging to stderr to ensure visibility in terminal
 void SysLog(const std::string& msg) {
-  std::string full_msg = "[MisaRin-Sys] " + msg + "\n";
+  auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                 std::chrono::steady_clock::now().time_since_epoch())
+                 .count();
+  std::string full_msg = "[MisaRin-Sys][" + std::to_string(now) + "] " + msg + "\n";
   OutputDebugStringA(full_msg.c_str());
   std::cerr << full_msg << std::flush;
 }
@@ -64,173 +67,83 @@ constexpr int64_t kMinIntervalUs = 4000;
 constexpr int64_t kMaxIntervalUs = 33333;
 
 std::optional<int64_t> GetIntValue(const flutter::EncodableValue& value) {
-  if (const auto* int32_value = std::get_if<int32_t>(&value)) {
-    return *int32_value;
-  }
-  if (const auto* int64_value = std::get_if<int64_t>(&value)) {
-    return *int64_value;
-  }
-  if (const auto* double_value = std::get_if<double>(&value)) {
-    return static_cast<int64_t>(*double_value);
-  }
+  if (const auto* int32_value = std::get_if<int32_t>(&value)) return *int32_value;
+  if (const auto* int64_value = std::get_if<int64_t>(&value)) return *int64_value;
+  if (const auto* double_value = std::get_if<double>(&value)) return static_cast<int64_t>(*double_value);
   return std::nullopt;
 }
 
-int GetClampedInt(const flutter::EncodableMap& args,
-                  const char* key,
-                  int fallback,
-                  int min_value,
-                  int max_value) {
+int GetClampedInt(const flutter::EncodableMap& args, const char* key, int fallback, int min_v, int max_v) {
   const auto it = args.find(flutter::EncodableValue(key));
-  if (it == args.end()) {
-    return std::clamp(fallback, min_value, max_value);
-  }
-  const auto value = GetIntValue(it->second);
-  if (!value.has_value()) {
-    return std::clamp(fallback, min_value, max_value);
-  }
-  return std::clamp(static_cast<int>(*value), min_value, max_value);
+  if (it == args.end()) return std::clamp(fallback, min_v, max_v);
+  const auto val = GetIntValue(it->second);
+  if (!val.has_value()) return std::clamp(fallback, min_v, max_v);
+  return std::clamp(static_cast<int>(*val), min_v, max_v);
 }
 
 uint32_t GetBackgroundColor(const flutter::EncodableMap& args) {
   const auto it = args.find(flutter::EncodableValue("backgroundColorArgb"));
-  if (it == args.end()) {
-    return kFallbackBackground;
-  }
-  const auto value = GetIntValue(it->second);
-  if (!value.has_value()) {
-    return kFallbackBackground;
-  }
-  return static_cast<uint32_t>(*value);
+  if (it == args.end()) return kFallbackBackground;
+  const auto val = GetIntValue(it->second);
+  return val.has_value() ? static_cast<uint32_t>(*val) : kFallbackBackground;
 }
 
 std::string GetSurfaceId(const flutter::EncodableMap& args) {
   const auto it = args.find(flutter::EncodableValue("surfaceId"));
-  if (it == args.end()) {
-    return "default";
-  }
-  if (const auto* str = std::get_if<std::string>(&it->second)) {
-    if (!str->empty()) {
-      return *str;
-    }
-  }
-  if (const auto value = GetIntValue(it->second); value.has_value()) {
-    return std::to_string(*value);
-  }
+  if (it == args.end()) return "default";
+  if (const auto* str = std::get_if<std::string>(&it->second)) return str->empty() ? "default" : *str;
+  if (const auto val = GetIntValue(it->second); val.has_value()) return std::to_string(*val);
   return "default";
 }
 
 struct GpuSurfaceBinding {
-  explicit GpuSurfaceBinding(void* handle, size_t width, size_t height)
-      : shared_handle(handle) {
-    Update(handle, width, height);
-  }
-
-  void Update(void* handle, size_t width, size_t height) {
-    shared_handle = handle;
+  explicit GpuSurfaceBinding(void* handle, size_t w, size_t h) : shared_handle(handle) { Update(handle, w, h); }
+  void Update(void* h, size_t w, size_t height) {
+    shared_handle = h;
     descriptor.struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);
-    descriptor.handle = handle;
-    descriptor.width = width;
+    descriptor.handle = h;
+    descriptor.width = w;
     descriptor.height = height;
-    descriptor.visible_width = width;
+    descriptor.visible_width = w;
     descriptor.visible_height = height;
     descriptor.format = kFlutterDesktopPixelFormatBGRA8888;
     descriptor.release_callback = nullptr;
     descriptor.release_context = nullptr;
   }
-
-  const FlutterDesktopGpuSurfaceDescriptor* GetDescriptor() const {
-    return &descriptor;
+  const FlutterDesktopGpuSurfaceDescriptor* GetDescriptor() const { return &descriptor; }
+  static const FlutterDesktopGpuSurfaceDescriptor* Callback(size_t, size_t, void* data) {
+    const auto* b = static_cast<GpuSurfaceBinding*>(data);
+    return b ? b->GetDescriptor() : nullptr;
   }
-
-  static const FlutterDesktopGpuSurfaceDescriptor* Callback(size_t,
-                                                            size_t,
-                                                            void* user_data) {
-    const auto* binding = static_cast<GpuSurfaceBinding*>(user_data);
-    if (!binding) return nullptr;
-    return binding->GetDescriptor();
-  }
-
   void* shared_handle;
   FlutterDesktopGpuSurfaceDescriptor descriptor{};
 };
 
-void ReleaseBinding(void* user_data) {
-  auto* keepalive = static_cast<std::shared_ptr<GpuSurfaceBinding>*>(user_data);
-  delete keepalive;
-}
-
-int64_t ClampIntervalUs(int64_t value) {
-  return std::clamp(value, kMinIntervalUs, kMaxIntervalUs);
-}
+void ReleaseBinding(void* data) { delete static_cast<std::shared_ptr<GpuSurfaceBinding>*>(data); }
 
 int64_t QueryRefreshIntervalUs() {
-  DWM_TIMING_INFO timing_info{};
-  timing_info.cbSize = sizeof(timing_info);
-  if (SUCCEEDED(DwmGetCompositionTimingInfo(nullptr, &timing_info))) {
-    const uint32_t num = timing_info.rateRefresh.uiNumerator;
-    const uint32_t den = timing_info.rateRefresh.uiDenominator;
-    if (num > 0 && den > 0) {
-      const double hz = static_cast<double>(num) / static_cast<double>(den);
-      if (hz > 1.0) {
-        return ClampIntervalUs(static_cast<int64_t>(1'000'000.0 / hz));
-      }
-    }
-  }
-  DEVMODE dev_mode{};
-  dev_mode.dmSize = sizeof(dev_mode);
-  if (EnumDisplaySettings(nullptr, ENUM_CURRENT_SETTINGS, &dev_mode)) {
-    if (dev_mode.dmDisplayFrequency > 1) {
-      return ClampIntervalUs(static_cast<int64_t>(1'000'000 / dev_mode.dmDisplayFrequency));
+  DWM_TIMING_INFO info{};
+  info.cbSize = sizeof(info);
+  if (SUCCEEDED(DwmGetCompositionTimingInfo(nullptr, &info))) {
+    if (info.rateRefresh.uiNumerator > 0 && info.rateRefresh.uiDenominator > 0) {
+      double hz = static_cast<double>(info.rateRefresh.uiNumerator) / info.rateRefresh.uiDenominator;
+      if (hz > 1.0) return std::clamp(static_cast<int64_t>(1'000'000.0 / hz), kMinIntervalUs, kMaxIntervalUs);
     }
   }
   return kFallbackIntervalUs;
 }
 
-int64_t NowMs() {
-  return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::steady_clock::now().time_since_epoch())
-      .count();
-}
-
-bool IsPresentLogEnabled() {
-  static const bool enabled = []() {
-    char* raw = nullptr;
-    size_t len = 0;
-    if (_dupenv_s(&raw, &len, "MISA_RIN_WIN_PRESENT_LOG") != 0 || !raw) return false;
-    const bool is_enabled = raw[0] != '\0' && raw[0] != '0';
-    std::free(raw);
-    return is_enabled;
-  }();
-  return enabled;
-}
-
-void PresentLog(const std::string& message) {
-  if (!IsPresentLogEnabled()) return;
-  SysLog("[present] " + message);
-}
+int64_t NowMs() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
 
 } // namespace
 
 class RustLibMisaRinPlugin : public flutter::Plugin {
  public:
-  static void RegisterWithRegistrar(
-      flutter::PluginRegistrarWindows* registrar,
-      FlutterDesktopPluginRegistrarRef raw_registrar);
-
-  explicit RustLibMisaRinPlugin(
-      FlutterDesktopTextureRegistrarRef texture_registrar);
-
+  static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar, FlutterDesktopPluginRegistrarRef raw_registrar);
+  explicit RustLibMisaRinPlugin(FlutterDesktopTextureRegistrarRef texture_registrar);
   ~RustLibMisaRinPlugin() override;
-
-  RustLibMisaRinPlugin(const RustLibMisaRinPlugin&) = delete;
-  RustLibMisaRinPlugin& operator=(const RustLibMisaRinPlugin&) = delete;
-
+  void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) override;
  private:
-  void HandleMethodCall(
-      const flutter::MethodCall<flutter::EncodableValue>& method_call,
-      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
-
   struct Impl;
   std::unique_ptr<Impl> impl_;
 };
@@ -243,9 +156,7 @@ struct RustLibMisaRinPlugin::Impl {
 
   struct SurfaceState {
     std::string surface_id;
-    int width = 0;
-    int height = 0;
-    int layer_count = kFallbackLayerCount;
+    int width = 0, height = 0, layer_count = kFallbackLayerCount;
     uint32_t background_color_argb = kFallbackBackground;
     uint64_t engine_handle = 0;
     int64_t texture_id = -1;
@@ -253,32 +164,24 @@ struct RustLibMisaRinPlugin::Impl {
     std::mutex mutex;
     bool waiting_first_frame = false;
     int64_t first_frame_start_ms = 0;
-    int64_t last_first_frame_log_ms = 0;
-    uint32_t first_frame_poll_count = 0;
 
     int64_t RefreshFrame() {
       std::lock_guard<std::mutex> lock(mutex);
       if (engine_handle == 0 || texture_id < 0) return -1;
-      const bool ready = engine_poll_frame_ready(engine_handle);
-      if (waiting_first_frame) {
-        first_frame_poll_count += 1;
-        const int64_t now_ms = NowMs();
-        if (ready) {
-          SysLog("first frame ready surface=" + surface_id + " texture=" + std::to_string(texture_id) + " ms=" + std::to_string(now_ms - first_frame_start_ms));
+      if (engine_poll_frame_ready(engine_handle)) {
+        if (waiting_first_frame) {
+          SysLog("First frame ready for " + surface_id + " texture=" + std::to_string(texture_id) + " ms=" + std::to_string(NowMs() - first_frame_start_ms));
           waiting_first_frame = false;
-        } else if (now_ms - last_first_frame_log_ms >= 500) {
-          last_first_frame_log_ms = now_ms;
-          SysLog("waiting first frame surface=" + surface_id + " texture=" + std::to_string(texture_id) + " ms=" + std::to_string(now_ms - first_frame_start_ms));
         }
+        return texture_id;
       }
-      return ready ? texture_id : -1;
+      return -1;
     }
   };
 
   explicit Impl(FlutterDesktopTextureRegistrarRef texture_registrar)
       : texture_registrar_(texture_registrar), running_(true) {
-    // Warmup: register 2 textures immediately to avoid registration lag later
-    SysLog("Initializing plugin, starting warmup...");
+    SysLog("Plugin Impl starting...");
     PreRegisterTexture();
     PreRegisterTexture();
     frame_thread_ = std::thread([this]() { FrameLoop(); });
@@ -293,103 +196,101 @@ struct RustLibMisaRinPlugin::Impl {
       auto* keepalive = new std::shared_ptr<GpuSurfaceBinding>(slot.binding);
       FlutterDesktopTextureRegistrarUnregisterExternalTexture(texture_registrar_, slot.texture_id, ReleaseBinding, keepalive);
     }
-    texture_pool_.clear();
   }
 
   void PreRegisterTexture() {
     auto binding = std::make_shared<GpuSurfaceBinding>(nullptr, 1, 1);
-    FlutterDesktopTextureInfo texture_info{};
-    texture_info.type = kFlutterDesktopGpuSurfaceTexture;
-    texture_info.gpu_surface_config.struct_size = sizeof(FlutterDesktopGpuSurfaceTextureConfig);
-    texture_info.gpu_surface_config.type = kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
-    texture_info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
-    texture_info.gpu_surface_config.user_data = binding.get();
+    FlutterDesktopTextureInfo info{};
+    info.type = kFlutterDesktopGpuSurfaceTexture;
+    info.gpu_surface_config.struct_size = sizeof(FlutterDesktopGpuSurfaceTextureConfig);
+    info.gpu_surface_config.type = kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
+    info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
+    info.gpu_surface_config.user_data = binding.get();
 
     auto start = std::chrono::high_resolution_clock::now();
-    const int64_t texture_id = FlutterDesktopTextureRegistrarRegisterExternalTexture(texture_registrar_, &texture_info);
+    int64_t tid = FlutterDesktopTextureRegistrarRegisterExternalTexture(texture_registrar_, &info);
     auto end = std::chrono::high_resolution_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    if (texture_id >= 0) {
+    if (tid >= 0) {
       std::lock_guard<std::mutex> lock(pool_mutex_);
-      texture_pool_.push_back({texture_id, std::move(binding)});
-      SysLog("Warmup registration OK: id=" + std::to_string(texture_id) + " took " + std::to_string(ms) + "ms");
-    } else {
-      SysLog("Warmup registration FAILED");
+      texture_pool_.push_back({tid, std::move(binding)});
+      SysLog("Warmup OK: id=" + std::to_string(tid) + " took " + std::to_string(ms) + "ms");
     }
   }
 
   void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& method_call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+    auto start_time = NowMs();
+    const std::string& name = method_call.method_name();
+    SysLog("Method call received: " + name);
+
     const auto* args = std::get_if<flutter::EncodableMap>(method_call.arguments());
     flutter::EncodableMap empty_args;
-    if (method_call.method_name() == "getTextureInfo") {
-      HandleGetTextureInfo(args ? *args : empty_args, std::move(result));
-    } else if (method_call.method_name() == "disposeTexture") {
-      HandleDisposeTexture(args ? *args : empty_args, std::move(result));
+    const auto& actual_args = args ? *args : empty_args;
+
+    if (name == "getTextureInfo") {
+      HandleGetTextureInfo(actual_args, std::move(result));
+    } else if (name == "disposeTexture") {
+      HandleDisposeTexture(actual_args, std::move(result));
     } else {
       result->NotImplemented();
     }
+    SysLog("Method call handled: " + name + " total internal ms=" + std::to_string(NowMs() - start_time));
   }
 
   void HandleGetTextureInfo(const flutter::EncodableMap& args, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-    const std::string surface_id = GetSurfaceId(args);
-    const int width = GetClampedInt(args, "width", kFallbackSize, 1, kMaxDimension);
-    const int height = GetClampedInt(args, "height", kFallbackSize, 1, kMaxDimension);
-    const int layer_count = GetClampedInt(args, "layerCount", kFallbackLayerCount, 1, kMaxLayerCount);
-    const uint32_t background_color = GetBackgroundColor(args);
+    const std::string sid = GetSurfaceId(args);
+    const int w = GetClampedInt(args, "width", kFallbackSize, 1, kMaxDimension);
+    const int h = GetClampedInt(args, "height", kFallbackSize, 1, kMaxDimension);
+    const int layers = GetClampedInt(args, "layerCount", kFallbackLayerCount, 1, kMaxLayerCount);
+    const uint32_t bg = GetBackgroundColor(args);
 
     std::shared_ptr<SurfaceState> surface;
     {
       std::lock_guard<std::mutex> lock(surfaces_mutex_);
-      auto it = surfaces_.find(surface_id);
+      auto it = surfaces_.find(sid);
       if (it != surfaces_.end()) {
         surface = it->second;
       } else {
         surface = std::make_shared<SurfaceState>();
-        surface->surface_id = surface_id;
-        surfaces_.emplace(surface_id, surface);
+        surface->surface_id = sid;
+        surfaces_.emplace(sid, surface);
       }
     }
 
     std::lock_guard<std::mutex> lock(surface->mutex);
-    bool needs_recreate = (surface->texture_id < 0) || (surface->width != width || surface->height != height);
-    bool layer_count_changed = surface->engine_handle != 0 && surface->layer_count != layer_count;
+    bool needs_tex = (surface->texture_id < 0) || (surface->width != w || surface->height != h);
+    bool layer_changed = surface->engine_handle != 0 && surface->layer_count != layers;
 
-    if (surface->engine_handle != 0 && !needs_recreate && !layer_count_changed) {
+    if (surface->engine_handle != 0 && !needs_tex && !layer_changed) {
       result->Success(MakeResponse(surface, false));
       return;
     }
 
     bool engine_created = false;
     if (surface->engine_handle == 0) {
-      surface->engine_handle = engine_create(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+      auto e_start = NowMs();
+      surface->engine_handle = engine_create(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
+      SysLog("engine_create took " + std::to_string(NowMs() - e_start) + "ms");
       engine_created = true;
-    } else if (surface->width != width || surface->height != height) {
-      if (engine_resize_canvas(surface->engine_handle, width, height, layer_count, background_color) == 0) {
+    } else if (surface->width != w || surface->height != h) {
+      if (engine_resize_canvas(surface->engine_handle, w, h, layers, bg) == 0) {
         engine_dispose(surface->engine_handle);
-        surface->engine_handle = engine_create(width, height);
+        surface->engine_handle = engine_create(w, h);
         engine_created = true;
       }
     }
 
-    if (surface->engine_handle == 0) {
-      result->Error("engine_create_failed", "Engine creation returned 0");
-      return;
-    }
+    surface->width = w; surface->height = h; surface->layer_count = layers; surface->background_color_argb = bg;
 
-    surface->width = width;
-    surface->height = height;
-    surface->layer_count = layer_count;
-    surface->background_color_argb = background_color;
-
-    if (needs_recreate) {
+    if (needs_tex) {
       if (surface->texture_id >= 0) RecycleTextureLocked(surface);
 
-      void* shared_handle = engine_create_present_dxgi_surface(surface->engine_handle, width, height);
-      if (!shared_handle) {
-        result->Error("dxgi_failed", "engine_create_present_dxgi_surface returned null");
-        return;
-      }
+      auto d_start = NowMs();
+      void* sh = engine_create_present_dxgi_surface(surface->engine_handle, w, h);
+      SysLog("dxgi_surface creation took " + std::to_string(NowMs() - d_start) + "ms");
+
+      if (!sh) { result->Error("dxgi_failed", "sh is null"); return; }
 
       int64_t pooled_id = -1;
       std::shared_ptr<GpuSurfaceBinding> binding;
@@ -400,31 +301,31 @@ struct RustLibMisaRinPlugin::Impl {
           texture_pool_.pop_back();
           pooled_id = slot.texture_id;
           binding = slot.binding;
-          SysLog("Pool reuse: id=" + std::to_string(pooled_id) + " for " + surface_id);
+          SysLog("Pool reuse: " + std::to_string(pooled_id));
         }
       }
 
       if (pooled_id >= 0) {
-        binding->Update(shared_handle, width, height);
+        binding->Update(sh, w, h);
         surface->texture_id = pooled_id;
         surface->binding = std::move(binding);
       } else {
-        SysLog("Pool empty, registering new texture for " + surface_id);
-        surface->binding = std::make_shared<GpuSurfaceBinding>(shared_handle, width, height);
-        FlutterDesktopTextureInfo texture_info{};
-        texture_info.type = kFlutterDesktopGpuSurfaceTexture;
-        texture_info.gpu_surface_config.struct_size = sizeof(FlutterDesktopGpuSurfaceTextureConfig);
-        texture_info.gpu_surface_config.type = kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
-        texture_info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
-        texture_info.gpu_surface_config.user_data = surface->binding.get();
-        surface->texture_id = FlutterDesktopTextureRegistrarRegisterExternalTexture(texture_registrar_, &texture_info);
+        SysLog("Pool empty, registering new texture");
+        surface->binding = std::make_shared<GpuSurfaceBinding>(sh, w, h);
+        FlutterDesktopTextureInfo info{};
+        info.type = kFlutterDesktopGpuSurfaceTexture;
+        info.gpu_surface_config.struct_size = sizeof(FlutterDesktopGpuSurfaceTextureConfig);
+        info.gpu_surface_config.type = kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
+        info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
+        info.gpu_surface_config.user_data = surface->binding.get();
+        surface->texture_id = FlutterDesktopTextureRegistrarRegisterExternalTexture(texture_registrar_, &info);
       }
       surface->waiting_first_frame = true;
       surface->first_frame_start_ms = NowMs();
     }
 
-    if (engine_created || needs_recreate || layer_count_changed) {
-      engine_reset_canvas_with_layers(surface->engine_handle, layer_count, background_color);
+    if (engine_created || needs_tex || layer_changed) {
+      engine_reset_canvas_with_layers(surface->engine_handle, layers, bg);
     }
 
     result->Success(MakeResponse(surface, engine_created));
@@ -475,8 +376,7 @@ struct RustLibMisaRinPlugin::Impl {
 
   void FrameLoop() {
     int64_t interval = QueryRefreshIntervalUs();
-    auto next_check = std::chrono::steady_clock::now();
-    auto next_tick = std::chrono::steady_clock::now() + std::chrono::microseconds(interval);
+    auto next_tick = std::chrono::steady_clock::now();
     while (running_.load()) {
       std::vector<std::shared_ptr<SurfaceState>> entries;
       {
@@ -487,14 +387,8 @@ struct RustLibMisaRinPlugin::Impl {
         const int64_t tid = s->RefreshFrame();
         if (tid >= 0) FlutterDesktopTextureRegistrarMarkExternalTextureFrameAvailable(texture_registrar_, tid);
       }
-      auto now = std::chrono::steady_clock::now();
-      if (now >= next_check) {
-        interval = QueryRefreshIntervalUs();
-        next_check = now + std::chrono::seconds(1);
-      }
-      if (next_tick <= now) next_tick = now + std::chrono::microseconds(interval);
-      std::this_thread::sleep_until(next_tick);
       next_tick += std::chrono::microseconds(interval);
+      std::this_thread::sleep_until(next_tick);
     }
   }
 
@@ -502,7 +396,7 @@ struct RustLibMisaRinPlugin::Impl {
     if (s->texture_id >= 0 && s->binding) {
       std::lock_guard<std::mutex> lock(pool_mutex_);
       texture_pool_.push_back({s->texture_id, s->binding});
-      SysLog("Recycled texture: id=" + std::to_string(s->texture_id));
+      SysLog("Recycled texture: " + std::to_string(s->texture_id));
     }
     s->texture_id = -1;
     s->binding = nullptr;
