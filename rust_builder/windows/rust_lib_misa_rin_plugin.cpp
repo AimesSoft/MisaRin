@@ -392,11 +392,14 @@ struct RustLibMisaRinPlugin::Impl {
     uint64_t handle = surface->engine_handle;
     bool engine_created = false;
     if (handle == 0) {
+      auto start = std::chrono::high_resolution_clock::now();
       handle = engine_create(static_cast<uint32_t>(width),
                              static_cast<uint32_t>(height));
-      engine_created = true;
+      auto end = std::chrono::high_resolution_clock::now();
+      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       PresentLog("engine_create handle=" + std::to_string(handle) +
-                 " surface=" + surface_id);
+                 " took " + std::to_string(ms) + "ms");
+      engine_created = true;
     } else if (needs_resize) {
       if (engine_resize_canvas(handle, static_cast<uint32_t>(width),
                                static_cast<uint32_t>(height),
