@@ -48,6 +48,13 @@ class CanvasEngineFfi {
     return _rustWgpu.isHandleValid(handle);
   }
 
+  void setLogLevel(int level) {
+    if (!isSupported) {
+      return;
+    }
+    _rustWgpu.setLogLevel(level: level);
+  }
+
   List<String> drainLogs({int maxLines = 200}) {
     if (!isSupported) {
       return const <String>[];
@@ -545,6 +552,7 @@ class CanvasEngineFfi {
 
 class CanvasBackendFacade {
   CanvasBackendFacade._() {
+    _ffi.setLogLevel(2); // Set to Info level
     _ensureLogPump();
   }
 
