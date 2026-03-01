@@ -432,16 +432,20 @@ struct RustLibMisaRinPlugin::Impl {
       PresentLog("create_present_dxgi_surface surface=" + surface_id +
                  " handle=" + std::to_string(handle) + " size=" +
                  std::to_string(width) + "x" + std::to_string(height));
+      
+      auto dxgi_start = std::chrono::high_resolution_clock::now();
       void* shared_handle = engine_create_present_dxgi_surface(
           handle, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+      auto dxgi_end = std::chrono::high_resolution_clock::now();
+      auto dxgi_ms = std::chrono::duration_cast<std::chrono::milliseconds>(dxgi_end - dxgi_start).count();
+      PresentLog("engine_create_present_dxgi_surface took " + std::to_string(dxgi_ms) + "ms");
+
       if (!shared_handle) {
         result->Error("engine_create_present_failed",
                       "engine_create_present_dxgi_surface returned null",
                       flutter::EncodableValue());
         return;
       }
-      PresentLog("create_present_dxgi_surface ok surface=" + surface_id +
-                 " handle=" + std::to_string(handle));
 
       auto binding =
           std::make_shared<GpuSurfaceBinding>(shared_handle,
@@ -457,9 +461,14 @@ struct RustLibMisaRinPlugin::Impl {
       texture_info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
       texture_info.gpu_surface_config.user_data = binding.get();
 
+      auto reg_start = std::chrono::high_resolution_clock::now();
       const int64_t texture_id =
           FlutterDesktopTextureRegistrarRegisterExternalTexture(
               texture_registrar_, &texture_info);
+      auto reg_end = std::chrono::high_resolution_clock::now();
+      auto reg_ms = std::chrono::duration_cast<std::chrono::milliseconds>(reg_end - reg_start).count();
+      PresentLog("FlutterDesktopTextureRegistrarRegisterExternalTexture took " + std::to_string(reg_ms) + "ms");
+
       if (texture_id < 0) {
         auto shared_handle_win = static_cast<HANDLE>(shared_handle);
         if (shared_handle_win) {
@@ -484,12 +493,13 @@ struct RustLibMisaRinPlugin::Impl {
     }
 
     if (engine_created || needs_resize || layer_count_changed) {
+      auto reset_start = std::chrono::high_resolution_clock::now();
       engine_reset_canvas_with_layers(handle,
                                       static_cast<uint32_t>(layer_count),
                                       background_color);
-      PresentLog("reset_canvas surface=" + surface_id +
-                 " handle=" + std::to_string(handle) +
-                 " layers=" + std::to_string(layer_count));
+      auto reset_end = std::chrono::high_resolution_clock::now();
+      auto reset_ms = std::chrono::duration_cast<std::chrono::milliseconds>(reset_end - reset_start).count();
+      PresentLog("engine_reset_canvas_with_layers took " + std::to_string(reset_ms) + "ms");
     }
 
     flutter::EncodableMap response;
