@@ -433,18 +433,13 @@ class AppMenuActions {
       return null;
     }();
     if (!kIsWeb && CanvasBackendFacade.instance.isSupported) {
-      try {
-        final prewarmSw = Stopwatch()..start();
-        await BackendCanvasSurface.prewarm(
-          surfaceKey: document.id,
-          canvasSize: document.settings.size,
-          layerCount: document.layers.length,
-          backgroundColorArgb: document.settings.backgroundColor.value,
-        );
-        debugPrint('[Performance] _showProject: BackendCanvasSurface.prewarm took: ${prewarmSw.elapsedMilliseconds}ms');
-      } catch (e) {
-        debugPrint('[Performance] _showProject: BackendCanvasSurface.prewarm failed: $e');
-      }
+      // FIRE AND FORGET - NEVER AWAIT PREWARM ON UI THREAD
+      unawaited(BackendCanvasSurface.prewarm(
+        surfaceKey: document.id,
+        canvasSize: document.settings.size,
+        layerCount: document.layers.length,
+        backgroundColorArgb: document.settings.backgroundColor.value,
+      ).catchError((_) {}));
     }
     try {
       if (canvasState != null) {
