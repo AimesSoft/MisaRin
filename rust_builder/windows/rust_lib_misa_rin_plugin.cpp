@@ -47,22 +47,15 @@ namespace rust_lib_misa_rin {
 
 namespace {
 constexpr char kChannelName[] = "misarin/rust_canvas_texture";
-constexpr int kFallbackSize = 512;
-constexpr int kFallbackLayerCount = 1;
-constexpr uint32_t kFallbackBackground = 0xFFFFFFFF;
-constexpr int kMaxDimension = 16384;
-constexpr int kMaxLayerCount = 1024;
 }
 
 struct GpuSurfaceBinding {
-  std::mutex mutex;
   void* shared_handle = nullptr;
   FlutterDesktopGpuSurfaceDescriptor descriptor{};
 
   explicit GpuSurfaceBinding(void* h, size_t w, size_t height) { Update(h, w, height); }
 
   void Update(void* h, size_t w, size_t height) {
-    std::lock_guard<std::mutex> lock(mutex);
     shared_handle = h;
     descriptor.struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);
     descriptor.handle = h;
@@ -77,9 +70,7 @@ struct GpuSurfaceBinding {
 
   static const FlutterDesktopGpuSurfaceDescriptor* Callback(size_t, size_t, void* data) {
     auto* b = static_cast<GpuSurfaceBinding*>(data);
-    if (!b) return nullptr;
-    std::lock_guard<std::mutex> lock(b->mutex);
-    return b->shared_handle ? &b->descriptor : nullptr;
+    return (b && b->shared_handle) ? &b->descriptor : nullptr;
   }
 };
 
@@ -88,9 +79,9 @@ void ReleaseBinding(void* data) { delete static_cast<std::shared_ptr<GpuSurfaceB
 class RustLibMisaRinPlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar, FlutterDesktopPluginRegistrarRef raw_registrar);
-  explicit RustLibMisaRinPlugin(flutter::PluginRegistrarWindows* registrar, FlutterDesktopTextureRegistrarRef texture_registrar);
+  explicit RustLibMisaRinPlugin(FlutterDesktopTextureRegistrarRef texture_registrar);
   ~RustLibMisaRinPlugin() override;
-  void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) override;
+  void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;
@@ -98,14 +89,13 @@ class RustLibMisaRinPlugin : public flutter::Plugin {
 
 struct RustLibMisaRinPlugin::Impl {
   struct TextureSlot {
-    int64_t texture_id = -1;
+    int64_t tid;
     std::shared_ptr<GpuSurfaceBinding> binding;
   };
 
   struct SurfaceState {
     std::string sid;
     int w = 0, h = 0, layers = 1;
-    uint32_t bg = 0xFFFFFFFF;
     uint64_t handle = 0;
     int64_t tid = -1;
     std::shared_ptr<GpuSurfaceBinding> binding;
@@ -118,7 +108,7 @@ struct RustLibMisaRinPlugin::Impl {
       if (handle == 0 || tid < 0) return -1;
       if (engine_poll_frame_ready(handle)) {
         if (waiting_first_frame) {
-          SysLog("First frame for " + sid + " ms=" + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() - start_ms));
+          SysLog("First frame ready: " + sid + " tid=" + std::to_string(tid));
           waiting_first_frame = false;
         }
         return tid;
@@ -127,7 +117,6 @@ struct RustLibMisaRinPlugin::Impl {
     }
   };
 
-  flutter::PluginRegistrarWindows* registrar_;
   FlutterDesktopTextureRegistrarRef texture_registrar_;
   std::mutex surfaces_mutex_;
   std::unordered_map<std::string, std::shared_ptr<SurfaceState>> surfaces_;
@@ -136,11 +125,21 @@ struct RustLibMisaRinPlugin::Impl {
   std::mutex pool_mutex_;
   std::vector<TextureSlot> texture_pool_;
 
-  explicit Impl(flutter::PluginRegistrarWindows* reg, FlutterDesktopTextureRegistrarRef tex_reg)
-      : registrar_(reg), texture_registrar_(tex_reg), running_(true) {
-    SysLog("Optimized Plugin Impl starting...");
+  explicit Impl(FlutterDesktopTextureRegistrarRef tex_reg)
+      : texture_registrar_(tex_reg), running_(true) {
+    SysLog("Plugin Impl starting with Warmup...");
     for (int i = 0; i < 2; ++i) PreRegisterTexture();
     frame_thread_ = std::thread([this]() { FrameLoop(); });
+  }
+
+  ~Impl() {
+    running_.store(false);
+    if (frame_thread_.joinable()) frame_thread_.join();
+    std::lock_guard<std::mutex> lock(pool_mutex_);
+    for (const auto& slot : texture_pool_) {
+      auto* keepalive = new std::shared_ptr<GpuSurfaceBinding>(slot.binding);
+      FlutterDesktopTextureRegistrarUnregisterExternalTexture(texture_registrar_, slot.tid, ReleaseBinding, keepalive);
+    }
   }
 
   void PreRegisterTexture() {
@@ -155,6 +154,7 @@ struct RustLibMisaRinPlugin::Impl {
     if (tid >= 0) {
       std::lock_guard<std::mutex> lock(pool_mutex_);
       texture_pool_.push_back({tid, std::move(b)});
+      SysLog("Warmup tid=" + std::to_string(tid));
     }
   }
 
@@ -176,63 +176,60 @@ struct RustLibMisaRinPlugin::Impl {
       result->Success(MakeResp(s, false)); return;
     }
 
-    // REUSE TEXTURE IMMEDIATELY if available
-    bool reused = false;
-    if (s->tid < 0) {
-      std::lock_guard<std::mutex> pool_lock(pool_mutex_);
-      if (!texture_pool_.empty()) {
-        auto slot = texture_pool_.back(); texture_pool_.pop_back();
-        s->tid = slot.texture_id; s->binding = slot.binding;
-        reused = true;
-        SysLog("INSTANT POOL REUSE: " + std::to_string(s->tid));
+    bool engine_new = false;
+    if (s->handle == 0) { s->handle = engine_create(w, h); engine_new = true; }
+    else if (s->w != w || s->h != h) {
+      if (!engine_resize_canvas(s->handle, w, h, layers, bg)) {
+        engine_dispose(s->handle); s->handle = engine_create(w, h); engine_new = true;
       }
     }
 
-    // Background the heavy GPU work to unblock UI thread
-    std::thread([this, s, w, h, layers, bg, result = std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(std::move(result))]() mutable {
-      bool engine_created = false;
-      {
-        std::lock_guard<std::mutex> lock(s->mutex);
-        if (s->handle == 0) { s->handle = engine_create(w, h); engine_created = true; }
-        else if (s->w != w || s->h != h) {
-          if (!engine_resize_canvas(s->handle, w, h, layers, bg)) {
-            engine_dispose(s->handle); s->handle = engine_create(w, h); engine_created = true;
-          }
-        }
-      }
+    if (s->handle == 0) { result->Error("fail", "engine"); return; }
 
-      if (s->handle == 0) { 
-        this->registrar_->task_runner()->PostTask([result]() { result->Error("fail", "engine"); }); 
-        return; 
-      }
-
+    if (s->tid < 0 || s->w != w || s->h != h) {
+      if (s->tid >= 0) RecycleTextureLocked(s);
       void* sh = engine_create_present_dxgi_surface(s->handle, w, h);
-      
+      if (!sh) { result->Error("fail", "dxgi"); return; }
+
+      bool reused = false;
       {
-        std::lock_guard<std::mutex> lock(s->mutex);
-        s->w = w; s->h = h; s->layers = layers; s->bg = bg;
-        if (s->tid < 0) {
-          s->binding = std::make_shared<GpuSurfaceBinding>(sh, w, h);
-          FlutterDesktopTextureInfo info{};
-          info.type = kFlutterDesktopGpuSurfaceTexture;
-          info.gpu_surface_config.struct_size = sizeof(FlutterDesktopGpuSurfaceTextureConfig);
-          info.gpu_surface_config.type = kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
-          info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
-          info.gpu_surface_config.user_data = s->binding.get();
-          s->tid = FlutterDesktopTextureRegistrarRegisterExternalTexture(texture_registrar_, &info);
-        } else {
+        std::lock_guard<std::mutex> pool_lock(pool_mutex_);
+        if (!texture_pool_.empty()) {
+          auto slot = texture_pool_.back(); texture_pool_.pop_back();
+          s->tid = slot.tid; s->binding = slot.binding;
           s->binding->Update(sh, w, h);
+          reused = true;
+          SysLog("Reuse tid=" + std::to_string(s->tid));
         }
-        s->waiting_first_frame = true;
-        s->start_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-        engine_reset_canvas_with_layers(s->handle, layers, bg);
       }
 
-      // Return result back on UI thread
-      this->registrar_->task_runner()->PostTask([this, s, engine_created, result]() {
-        result->Success(MakeResp(s, engine_created));
-      });
-    }).detach();
+      if (!reused) {
+        SysLog("Pool empty, new reg");
+        s->binding = std::make_shared<GpuSurfaceBinding>(sh, w, h);
+        FlutterDesktopTextureInfo info{};
+        info.type = kFlutterDesktopGpuSurfaceTexture;
+        info.gpu_surface_config.struct_size = sizeof(FlutterDesktopGpuSurfaceTextureConfig);
+        info.gpu_surface_config.type = kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
+        info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
+        info.gpu_surface_config.user_data = s->binding.get();
+        s->tid = FlutterDesktopTextureRegistrarRegisterExternalTexture(texture_registrar_, &info);
+      }
+      s->w = w; s->h = h; s->layers = layers;
+      s->waiting_first_frame = true;
+      s->start_ms = GetNow();
+    }
+
+    engine_reset_canvas_with_layers(s->handle, layers, bg);
+    result->Success(MakeResp(s, engine_new));
+  }
+
+  void RecycleTextureLocked(std::shared_ptr<SurfaceState> s) {
+    if (s->tid >= 0 && s->binding) {
+      std::lock_guard<std::mutex> lock(pool_mutex_);
+      texture_pool_.push_back({s->tid, s->binding});
+      SysLog("Recycle tid=" + std::to_string(s->tid));
+    }
+    s->tid = -1; s->binding = nullptr;
   }
 
   flutter::EncodableValue MakeResp(const std::shared_ptr<SurfaceState>& s, bool is_new) {
@@ -246,7 +243,6 @@ struct RustLibMisaRinPlugin::Impl {
   }
 
   void FrameLoop() {
-    auto next_tick = std::chrono::steady_clock::now();
     while (running_.load()) {
       std::vector<std::shared_ptr<SurfaceState>> entries;
       { std::lock_guard<std::mutex> lock(surfaces_mutex_); for (const auto& e : surfaces_) entries.push_back(e.second); }
@@ -254,31 +250,17 @@ struct RustLibMisaRinPlugin::Impl {
         int64_t tid = s->RefreshFrame();
         if (tid >= 0) FlutterDesktopTextureRegistrarMarkExternalTextureFrameAvailable(texture_registrar_, tid);
       }
-      next_tick += std::chrono::microseconds(8000);
-      std::this_thread::sleep_until(next_tick);
-    }
-  }
-
-  void DisposeAll() {
-    std::vector<std::shared_ptr<SurfaceState>> entries;
-    { std::lock_guard<std::mutex> lock(surfaces_mutex_); for (const auto& e : surfaces_) entries.push_back(e.second); surfaces_.clear(); }
-    for (const auto& s : entries) {
-      if (s->tid >= 0 && s->binding) {
-        std::lock_guard<std::mutex> pool_lock(pool_mutex_);
-        texture_pool_.push_back({s->tid, s->binding});
-      }
-      if (s->handle != 0) engine_dispose(s->handle);
+      std::this_thread::sleep_for(std::chrono::milliseconds(8));
     }
   }
 
   std::string GetSid(const flutter::EncodableMap& args) {
     auto it = args.find(flutter::EncodableValue("surfaceId"));
-    if (it == args.end()) return "default";
-    if (const auto* s = std::get_if<std::string>(&it->second)) return *s;
+    if (it != args.end()) { if (const auto* s = std::get_if<std::string>(&it->second)) return *s; }
     return "default";
   }
-  int GetInt(const flutter::EncodableMap& args, const char* key, int def) {
-    auto it = args.find(flutter::EncodableValue(key));
+  int GetInt(const flutter::EncodableMap& args, const char* k, int def) {
+    auto it = args.find(flutter::EncodableValue(k));
     if (it == args.end()) return def;
     if (const auto* i = std::get_if<int32_t>(&it->second)) return *i;
     if (const auto* i = std::get_if<int64_t>(&it->second)) return static_cast<int>(*i);
@@ -286,27 +268,25 @@ struct RustLibMisaRinPlugin::Impl {
   }
   uint32_t GetBg(const flutter::EncodableMap& args) {
     auto it = args.find(flutter::EncodableValue("backgroundColorArgb"));
-    if (it == args.end()) return 0xFFFFFFFF;
-    if (const auto* i = std::get_if<int64_t>(&it->second)) return static_cast<uint32_t>(*i);
+    if (it != args.end()) { if (const auto* i = std::get_if<int64_t>(&it->second)) return static_cast<uint32_t>(*i); }
     return 0xFFFFFFFF;
   }
+  int64_t GetNow() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
 };
 
-RustLibMisaRinPlugin::RustLibMisaRinPlugin(flutter::PluginRegistrarWindows* registrar, FlutterDesktopTextureRegistrarRef texture_registrar)
-    : impl_(std::make_unique<Impl>(registrar, texture_registrar)) {}
+RustLibMisaRinPlugin::RustLibMisaRinPlugin(FlutterDesktopTextureRegistrarRef texture_registrar)
+    : impl_(std::make_unique<Impl>(texture_registrar)) {}
 RustLibMisaRinPlugin::~RustLibMisaRinPlugin() = default;
 void RustLibMisaRinPlugin::HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   if (call.method_name() == "getTextureInfo") {
     const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
     impl_->HandleGetTextureInfo(args ? *args : flutter::EncodableMap{}, std::move(result));
-  } else {
-    result->NotImplemented();
-  }
+  } else { result->NotImplemented(); }
 }
 
 void RustLibMisaRinPlugin::RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar, FlutterDesktopPluginRegistrarRef raw_registrar) {
   auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(registrar->messenger(), kChannelName, &flutter::StandardMethodCodec::GetInstance());
-  auto plugin = std::make_unique<RustLibMisaRinPlugin>(registrar, FlutterDesktopRegistrarGetTextureRegistrar(raw_registrar));
+  auto plugin = std::make_unique<RustLibMisaRinPlugin>(FlutterDesktopRegistrarGetTextureRegistrar(raw_registrar));
   channel->SetMethodCallHandler([p = plugin.get()](const auto& call, auto res) { p->HandleMethodCall(call, std::move(res)); });
   registrar->AddPlugin(std::move(plugin));
 }
@@ -314,5 +294,6 @@ void RustLibMisaRinPlugin::RegisterWithRegistrar(flutter::PluginRegistrarWindows
 } // namespace rust_lib_misa_rin
 
 void RustLibMisaRinPluginRegisterWithRegistrar(FlutterDesktopPluginRegistrarRef registrar) {
-  rust_lib_misa_rin::RustLibMisaRinPlugin::RegisterWithRegistrar(flutter::PluginRegistrarManager::GetInstance()->GetRegistrar<flutter::PluginRegistrarWindows>(registrar), registrar);
+  rust_lib_misa_rin::RustLibMisaRinPlugin::RegisterWithRegistrar(
+      flutter::PluginRegistrarManager::GetInstance()->GetRegistrar<flutter::PluginRegistrarWindows>(registrar), registrar);
 }
