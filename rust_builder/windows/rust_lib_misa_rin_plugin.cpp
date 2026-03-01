@@ -1,4 +1,4 @@
-#include "rust_lib_misa_rin_plugin.h"
+#include "rust_lib_misa_rin/rust_lib_misa_rin_plugin.h"
 
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
@@ -303,7 +303,7 @@ struct RustLibMisaRinPlugin::Impl {
 
   explicit Impl(FlutterDesktopTextureRegistrarRef texture_registrar)
       : texture_registrar_(texture_registrar), running_(true) {
-    // 预注册 1 个纹理以进行“预热”
+    // Warmup: register one texture at startup to skip lag later
     PreRegisterTexture();
     frame_thread_ = std::thread([this]() { FrameLoop(); });
   }
@@ -315,7 +315,7 @@ struct RustLibMisaRinPlugin::Impl {
     }
     DisposeAll();
     
-    // 清理纹理池
+    // Cleanup texture pool
     std::lock_guard<std::mutex> lock(pool_mutex_);
     for (const auto& slot : texture_pool_) {
       auto* keepalive = new std::shared_ptr<GpuSurfaceBinding>(slot.binding);
@@ -326,7 +326,6 @@ struct RustLibMisaRinPlugin::Impl {
   }
 
   void PreRegisterTexture() {
-    // 使用 1x1 的哑句柄进行预注册
     SysLog("Pre-registering texture for warmup...");
     auto binding = std::make_shared<GpuSurfaceBinding>(nullptr, 1, 1);
     
@@ -467,7 +466,7 @@ struct RustLibMisaRinPlugin::Impl {
     surface->background_color_argb = background_color;
 
     if (needs_resize || surface->texture_id < 0) {
-      // 这里的注销操作可能非常慢，改为回收
+      // Recycle instead of unregistering which is very slow
       if (surface->texture_id >= 0) {
         RecycleTextureLocked(surface);
       }
@@ -486,7 +485,7 @@ struct RustLibMisaRinPlugin::Impl {
         return;
       }
 
-      // 尝试从池中复用纹理
+      // Try reuse texture from pool
       int64_t texture_id = -1;
       std::shared_ptr<GpuSurfaceBinding> binding;
       {
@@ -501,10 +500,10 @@ struct RustLibMisaRinPlugin::Impl {
       }
 
       if (texture_id >= 0) {
-        // 复用现有纹理，只需更新句柄
+        // Reuse existing texture, just update its handle
         binding->Update(shared_handle, static_cast<size_t>(width), static_cast<size_t>(height));
       } else {
-        // 池中没有，则新注册（仅在第一次或池用尽时发生）
+        // Pool empty, register new one (should only happen once or when pool exhausted)
         SysLog("No free texture in pool, registering new one...");
         binding = std::make_shared<GpuSurfaceBinding>(shared_handle,
                                                       static_cast<size_t>(width),
@@ -670,7 +669,6 @@ struct RustLibMisaRinPlugin::Impl {
   std::atomic<bool> running_;
   std::thread frame_thread_;
 
-  // 纹理池相关
   std::mutex pool_mutex_;
   std::vector<TextureSlot> texture_pool_;
 };
