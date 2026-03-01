@@ -1,9 +1,8 @@
-#include "include/rust_lib_misa_rin/rust_lib_misa_rin_plugin.h"
+#include "rust_lib_misa_rin_plugin.h"
 
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
-#include <flutter_plugin_registrar.h>
 #include <flutter_texture_registrar.h>
 
 #ifndef NOMINMAX
@@ -15,7 +14,7 @@
 void SysLog(const std::string& msg) {
   std::string full_msg = "[MisaRin-Sys] " + msg + "\n";
   OutputDebugStringA(full_msg.c_str());
-  printf("%s", full_msg.c_str()); // 同时尝试标准输出
+  printf("%s", full_msg.c_str());
 }
 
 #include <dwmapi.h>
@@ -23,16 +22,13 @@ void SysLog(const std::string& msg) {
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <cstdlib>
-#include <cstdint>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
-#include <unordered_map>
-#include <utility>
 #include <vector>
 
 extern "C" {
@@ -126,6 +122,11 @@ std::string GetSurfaceId(const flutter::EncodableMap& args) {
 struct GpuSurfaceBinding {
   explicit GpuSurfaceBinding(void* handle, size_t width, size_t height)
       : shared_handle(handle) {
+    Update(handle, width, height);
+  }
+
+  void Update(void* handle, size_t width, size_t height) {
+    shared_handle = handle;
     descriptor.struct_size = sizeof(FlutterDesktopGpuSurfaceDescriptor);
     descriptor.handle = handle;
     descriptor.width = width;
@@ -151,20 +152,12 @@ struct GpuSurfaceBinding {
     return binding->GetDescriptor();
   }
 
-  void* shared_handle = nullptr;
+  void* shared_handle;
   FlutterDesktopGpuSurfaceDescriptor descriptor{};
 };
 
 void ReleaseBinding(void* user_data) {
   auto* keepalive = static_cast<std::shared_ptr<GpuSurfaceBinding>*>(user_data);
-  if (keepalive && *keepalive) {
-    auto handle =
-        static_cast<HANDLE>((*keepalive)->shared_handle);
-    if (handle) {
-      CloseHandle(handle);
-      (*keepalive)->shared_handle = nullptr;
-    }
-  }
   delete keepalive;
 }
 
@@ -254,6 +247,11 @@ class RustLibMisaRinPlugin : public flutter::Plugin {
 };
 
 struct RustLibMisaRinPlugin::Impl {
+  struct TextureSlot {
+    int64_t texture_id = -1;
+    std::shared_ptr<GpuSurfaceBinding> binding;
+  };
+
   struct SurfaceState {
     std::string surface_id;
     int width = 0;
@@ -305,6 +303,8 @@ struct RustLibMisaRinPlugin::Impl {
 
   explicit Impl(FlutterDesktopTextureRegistrarRef texture_registrar)
       : texture_registrar_(texture_registrar), running_(true) {
+    // 预注册 1 个纹理以进行“预热”
+    PreRegisterTexture();
     frame_thread_ = std::thread([this]() { FrameLoop(); });
   }
 
@@ -314,6 +314,42 @@ struct RustLibMisaRinPlugin::Impl {
       frame_thread_.join();
     }
     DisposeAll();
+    
+    // 清理纹理池
+    std::lock_guard<std::mutex> lock(pool_mutex_);
+    for (const auto& slot : texture_pool_) {
+      auto* keepalive = new std::shared_ptr<GpuSurfaceBinding>(slot.binding);
+      FlutterDesktopTextureRegistrarUnregisterExternalTexture(
+          texture_registrar_, slot.texture_id, ReleaseBinding, keepalive);
+    }
+    texture_pool_.clear();
+  }
+
+  void PreRegisterTexture() {
+    // 使用 1x1 的哑句柄进行预注册
+    SysLog("Pre-registering texture for warmup...");
+    auto binding = std::make_shared<GpuSurfaceBinding>(nullptr, 1, 1);
+    
+    FlutterDesktopTextureInfo texture_info{};
+    texture_info.type = kFlutterDesktopGpuSurfaceTexture;
+    texture_info.gpu_surface_config.struct_size =
+        sizeof(FlutterDesktopGpuSurfaceTextureConfig);
+    texture_info.gpu_surface_config.type =
+        kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
+    texture_info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
+    texture_info.gpu_surface_config.user_data = binding.get();
+
+    const int64_t texture_id =
+        FlutterDesktopTextureRegistrarRegisterExternalTexture(
+            texture_registrar_, &texture_info);
+    
+    if (texture_id >= 0) {
+      std::lock_guard<std::mutex> lock(pool_mutex_);
+      texture_pool_.push_back({texture_id, std::move(binding)});
+      SysLog("Pre-registration successful, texture_id=" + std::to_string(texture_id));
+    } else {
+      SysLog("Pre-registration failed.");
+    }
   }
 
   void HandleMethodCall(
@@ -371,9 +407,6 @@ struct RustLibMisaRinPlugin::Impl {
       if (surface->engine_handle != 0 && surface->texture_id >= 0 &&
           surface->width == width && surface->height == height &&
           surface->layer_count == layer_count) {
-        PresentLog("reuse texture surface=" + surface_id +
-                   " texture=" + std::to_string(surface->texture_id) +
-                   " handle=" + std::to_string(surface->engine_handle));
         flutter::EncodableMap response;
         response[flutter::EncodableValue("textureId")] =
             flutter::EncodableValue(surface->texture_id);
@@ -417,8 +450,6 @@ struct RustLibMisaRinPlugin::Impl {
         handle = engine_create(static_cast<uint32_t>(width),
                                static_cast<uint32_t>(height));
         engine_created = true;
-        PresentLog("engine_resize failed -> recreate handle=" +
-                   std::to_string(handle) + " surface=" + surface_id);
       }
     }
 
@@ -436,11 +467,11 @@ struct RustLibMisaRinPlugin::Impl {
     surface->background_color_argb = background_color;
 
     if (needs_resize || surface->texture_id < 0) {
-      UnregisterTextureLocked(surface);
-      PresentLog("create_present_dxgi_surface surface=" + surface_id +
-                 " handle=" + std::to_string(handle) + " size=" +
-                 std::to_string(width) + "x" + std::to_string(height));
-      
+      // 这里的注销操作可能非常慢，改为回收
+      if (surface->texture_id >= 0) {
+        RecycleTextureLocked(surface);
+      }
+
       auto dxgi_start = std::chrono::high_resolution_clock::now();
       void* shared_handle = engine_create_present_dxgi_surface(
           handle, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
@@ -455,34 +486,48 @@ struct RustLibMisaRinPlugin::Impl {
         return;
       }
 
-      auto binding =
-          std::make_shared<GpuSurfaceBinding>(shared_handle,
-                                              static_cast<size_t>(width),
-                                              static_cast<size_t>(height));
+      // 尝试从池中复用纹理
+      int64_t texture_id = -1;
+      std::shared_ptr<GpuSurfaceBinding> binding;
+      {
+        std::lock_guard<std::mutex> pool_lock(pool_mutex_);
+        if (!texture_pool_.empty()) {
+          auto slot = texture_pool_.back();
+          texture_pool_.pop_back();
+          texture_id = slot.texture_id;
+          binding = slot.binding;
+          SysLog("Reusing texture from pool: texture_id=" + std::to_string(texture_id));
+        }
+      }
 
-      FlutterDesktopTextureInfo texture_info{};
-      texture_info.type = kFlutterDesktopGpuSurfaceTexture;
-      texture_info.gpu_surface_config.struct_size =
-          sizeof(FlutterDesktopGpuSurfaceTextureConfig);
-      texture_info.gpu_surface_config.type =
-          kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
-      texture_info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
-      texture_info.gpu_surface_config.user_data = binding.get();
+      if (texture_id >= 0) {
+        // 复用现有纹理，只需更新句柄
+        binding->Update(shared_handle, static_cast<size_t>(width), static_cast<size_t>(height));
+      } else {
+        // 池中没有，则新注册（仅在第一次或池用尽时发生）
+        SysLog("No free texture in pool, registering new one...");
+        binding = std::make_shared<GpuSurfaceBinding>(shared_handle,
+                                                      static_cast<size_t>(width),
+                                                      static_cast<size_t>(height));
 
-      auto reg_start = std::chrono::high_resolution_clock::now();
-      const int64_t texture_id =
-          FlutterDesktopTextureRegistrarRegisterExternalTexture(
-              texture_registrar_, &texture_info);
-      auto reg_end = std::chrono::high_resolution_clock::now();
-      auto reg_ms = std::chrono::duration_cast<std::chrono::milliseconds>(reg_end - reg_start).count();
-      SysLog("FlutterDesktopTextureRegistrarRegisterExternalTexture took " + std::to_string(reg_ms) + "ms");
+        FlutterDesktopTextureInfo texture_info{};
+        texture_info.type = kFlutterDesktopGpuSurfaceTexture;
+        texture_info.gpu_surface_config.struct_size =
+            sizeof(FlutterDesktopGpuSurfaceTextureConfig);
+        texture_info.gpu_surface_config.type =
+            kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
+        texture_info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
+        texture_info.gpu_surface_config.user_data = binding.get();
+
+        auto reg_start = std::chrono::high_resolution_clock::now();
+        texture_id = FlutterDesktopTextureRegistrarRegisterExternalTexture(
+                texture_registrar_, &texture_info);
+        auto reg_end = std::chrono::high_resolution_clock::now();
+        auto reg_ms = std::chrono::duration_cast<std::chrono::milliseconds>(reg_end - reg_start).count();
+        SysLog("FlutterDesktopTextureRegistrarRegisterExternalTexture took " + std::to_string(reg_ms) + "ms");
+      }
 
       if (texture_id < 0) {
-        auto shared_handle_win = static_cast<HANDLE>(shared_handle);
-        if (shared_handle_win) {
-          CloseHandle(shared_handle_win);
-        }
-        binding->shared_handle = nullptr;
         result->Error("register_texture_failed",
                       "RegisterExternalTexture returned < 0",
                       flutter::EncodableValue());
@@ -495,19 +540,12 @@ struct RustLibMisaRinPlugin::Impl {
       surface->first_frame_start_ms = NowMs();
       surface->last_first_frame_log_ms = surface->first_frame_start_ms;
       surface->first_frame_poll_count = 0;
-      SysLog("texture registered surface=" + surface_id +
-                 " texture=" + std::to_string(texture_id) +
-                 " handle=" + std::to_string(handle));
     }
 
     if (engine_created || needs_resize || layer_count_changed) {
-      auto reset_start = std::chrono::high_resolution_clock::now();
       engine_reset_canvas_with_layers(handle,
                                       static_cast<uint32_t>(layer_count),
                                       background_color);
-      auto reset_end = std::chrono::high_resolution_clock::now();
-      auto reset_ms = std::chrono::duration_cast<std::chrono::milliseconds>(reset_end - reset_start).count();
-      SysLog("engine_reset_canvas_with_layers took " + std::to_string(reset_ms) + "ms");
     }
 
     flutter::EncodableMap response;
@@ -528,7 +566,6 @@ struct RustLibMisaRinPlugin::Impl {
       const flutter::EncodableMap& args,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
     const std::string surface_id = GetSurfaceId(args);
-    PresentLog("disposeTexture request surface=" + surface_id);
     std::shared_ptr<SurfaceState> surface;
     {
       std::lock_guard<std::mutex> lock(surfaces_mutex_);
@@ -541,16 +578,11 @@ struct RustLibMisaRinPlugin::Impl {
 
     if (surface) {
       std::lock_guard<std::mutex> lock(surface->mutex);
-      PresentLog("disposeTexture surface=" + surface_id +
-                 " handle=" + std::to_string(surface->engine_handle) +
-                 " texture=" + std::to_string(surface->texture_id));
-      UnregisterTextureLocked(surface);
+      RecycleTextureLocked(surface);
       if (surface->engine_handle != 0) {
         engine_dispose(surface->engine_handle);
         surface->engine_handle = 0;
       }
-    } else {
-      PresentLog("disposeTexture missing surface=" + surface_id);
     }
     result->Success();
   }
@@ -570,7 +602,7 @@ struct RustLibMisaRinPlugin::Impl {
         continue;
       }
       std::lock_guard<std::mutex> lock(surface->mutex);
-      UnregisterTextureLocked(surface);
+      RecycleTextureLocked(surface);
       if (surface->engine_handle != 0) {
         engine_dispose(surface->engine_handle);
         surface->engine_handle = 0;
@@ -614,28 +646,22 @@ struct RustLibMisaRinPlugin::Impl {
     }
   }
 
-  void UnregisterTextureLocked(const std::shared_ptr<SurfaceState>& surface) {
+  void RecycleTextureLocked(const std::shared_ptr<SurfaceState>& surface) {
     if (!surface || surface->texture_id < 0) {
       return;
     }
     const int64_t texture_id = surface->texture_id;
-    PresentLog("unregister texture surface=" + surface->surface_id +
-               " texture=" + std::to_string(texture_id));
-    surface->texture_id = -1;
-    surface->waiting_first_frame = false;
-    surface->first_frame_start_ms = 0;
-    surface->last_first_frame_log_ms = 0;
-    surface->first_frame_poll_count = 0;
-
     auto binding = surface->binding;
-    surface->binding.reset();
-    if (!binding) {
-      return;
-    }
+    
+    surface->texture_id = -1;
+    surface->binding = nullptr;
+    surface->waiting_first_frame = false;
 
-    auto* keepalive = new std::shared_ptr<GpuSurfaceBinding>(binding);
-    FlutterDesktopTextureRegistrarUnregisterExternalTexture(
-        texture_registrar_, texture_id, ReleaseBinding, keepalive);
+    if (texture_id >= 0 && binding) {
+      std::lock_guard<std::mutex> lock(pool_mutex_);
+      texture_pool_.push_back({texture_id, std::move(binding)});
+      SysLog("Texture recycled to pool: texture_id=" + std::to_string(texture_id));
+    }
   }
 
   FlutterDesktopTextureRegistrarRef texture_registrar_;
@@ -643,6 +669,10 @@ struct RustLibMisaRinPlugin::Impl {
   std::unordered_map<std::string, std::shared_ptr<SurfaceState>> surfaces_;
   std::atomic<bool> running_;
   std::thread frame_thread_;
+
+  // 纹理池相关
+  std::mutex pool_mutex_;
+  std::vector<TextureSlot> texture_pool_;
 };
 
 // static
