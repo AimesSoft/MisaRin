@@ -38,25 +38,44 @@ class AppMenuActions {
     if (config == null || !context.mounted) {
       return;
     }
+
+    final sw = Stopwatch()..start();
+    debugPrint('[Performance] Starting project creation...');
+
     try {
       _applyWorkspacePreset(config.workspacePreset);
+      debugPrint('[Performance] Workspace preset applied: ${sw.elapsedMilliseconds}ms');
+
+      final repoSw = Stopwatch()..start();
       ProjectDocument document = await ProjectRepository.instance
           .createDocumentFromSettings(config.settings, name: config.name);
+      debugPrint('[Performance] ProjectRepository.createDocumentFromSettings took: ${repoSw.elapsedMilliseconds}ms');
+
       if (!kIsWeb && CanvasBackendFacade.instance.isSupported) {
+        final prewarmSw = Stopwatch()..start();
         unawaited(
           BackendCanvasSurface.prewarm(
             surfaceKey: document.id,
             canvasSize: config.settings.size,
             layerCount: document.layers.length,
             backgroundColorArgb: config.settings.backgroundColor.value,
-          ).catchError((_) {}),
+          ).then((_) {
+            debugPrint('[Performance] Async BackendCanvasSurface.prewarm completed in: ${prewarmSw.elapsedMilliseconds}ms');
+          }).catchError((e) {
+            debugPrint('[Performance] Async BackendCanvasSurface.prewarm failed: $e');
+          }),
         );
       }
       document = _applyNewProjectPresetDefaults(document, config);
       if (!context.mounted) {
         return;
       }
+      
+      final showSw = Stopwatch()..start();
       await _showProject(context, document);
+      debugPrint('[Performance] _showProject total took: ${showSw.elapsedMilliseconds}ms');
+      
+      debugPrint('[Performance] createProject total took: ${sw.elapsedMilliseconds}ms');
     } catch (error) {
       if (!context.mounted) {
         return;
@@ -384,6 +403,9 @@ class AppMenuActions {
     BuildContext context,
     ProjectDocument document,
   ) async {
+    final sw = Stopwatch()..start();
+    debugPrint('[Performance] _showProject: document.id=${document.id}');
+
     OverlayEntry? loadingOverlay;
     void hideLoadingOverlay() {
       if (loadingOverlay == null) {
@@ -412,21 +434,28 @@ class AppMenuActions {
     }();
     if (!kIsWeb && CanvasBackendFacade.instance.isSupported) {
       try {
+        final prewarmSw = Stopwatch()..start();
         await BackendCanvasSurface.prewarm(
           surfaceKey: document.id,
           canvasSize: document.settings.size,
           layerCount: document.layers.length,
           backgroundColorArgb: document.settings.backgroundColor.value,
         );
-      } catch (_) {}
+        debugPrint('[Performance] _showProject: BackendCanvasSurface.prewarm took: ${prewarmSw.elapsedMilliseconds}ms');
+      } catch (e) {
+        debugPrint('[Performance] _showProject: BackendCanvasSurface.prewarm failed: $e');
+      }
     }
     try {
       if (canvasState != null) {
+        final openSw = Stopwatch()..start();
         await canvasState.openDocument(document);
+        debugPrint('[Performance] _showProject: canvasState.openDocument took: ${openSw.elapsedMilliseconds}ms');
       } else {
         if (!context.mounted) {
           return;
         }
+        final pushSw = Stopwatch()..start();
         await Navigator.of(context).push(
           PageRouteBuilder<void>(
             pageBuilder: (_, __, ___) => CanvasPage(
@@ -437,9 +466,11 @@ class AppMenuActions {
             reverseTransitionDuration: Duration.zero,
           ),
         );
+        debugPrint('[Performance] _showProject: Navigator.push/CanvasPage took: ${pushSw.elapsedMilliseconds}ms');
       }
     } finally {
       hideLoadingOverlay();
+      debugPrint('[Performance] _showProject total: ${sw.elapsedMilliseconds}ms');
     }
   }
 

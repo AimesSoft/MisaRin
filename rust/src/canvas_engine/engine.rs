@@ -311,6 +311,8 @@ static DEVICE_CONTEXT: OnceLock<Result<EngineDeviceContext, String>> = OnceLock:
 
 fn device_context() -> Result<&'static EngineDeviceContext, String> {
     let init_result = DEVICE_CONTEXT.get_or_init(|| {
+        let start = std::time::Instant::now();
+        debug::log(LogLevel::Info, format_args!("device_context: starting initialization"));
         let backends = if cfg!(any(target_os = "macos", target_os = "ios")) {
             wgpu::Backends::METAL
         } else if cfg!(target_os = "windows") {
@@ -323,6 +325,8 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
             ..Default::default()
         });
 
+        debug::log(LogLevel::Info, format_args!("device_context: instance created in {}ms", start.elapsed().as_millis()));
+        let adapter_start = std::time::Instant::now();
         let adapter =
             pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -330,7 +334,9 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
                 force_fallback_adapter: false,
             }))
             .ok_or_else(|| "wgpu: no compatible adapter found".to_string())?;
+        debug::log(LogLevel::Info, format_args!("device_context: adapter requested in {}ms", adapter_start.elapsed().as_millis()));
 
+        let device_start = std::time::Instant::now();
         let required_features = wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
         if !adapter.features().contains(required_features) {
             return Err(
@@ -348,11 +354,13 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
             None,
         ))
         .map_err(|e| format!("wgpu: request_device failed: {e:?}"))?;
+        debug::log(LogLevel::Info, format_args!("device_context: device requested in {}ms", device_start.elapsed().as_millis()));
 
         device.on_uncaptured_error(Box::new(|err| {
             eprintln!("[misa-rin][wgpu] {err}");
         }));
 
+        debug::log(LogLevel::Info, format_args!("device_context: total initialization took {}ms", start.elapsed().as_millis()));
         Ok(EngineDeviceContext {
             _instance: instance,
             _adapter: adapter,

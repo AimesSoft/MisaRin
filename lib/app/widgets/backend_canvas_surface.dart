@@ -270,6 +270,8 @@ Future<_BackendSurfaceInfo> _requestTextureInfo({
   required int backgroundColorArgb,
   required bool fromWarmup,
 }) async {
+  final sw = Stopwatch()..start();
+  debugPrint('[Performance] _requestTextureInfo: calling getTextureInfo surfaceId=$surfaceId ${width}x$height');
   final Map<dynamic, dynamic>? info =
       await _backendCanvasChannel.invokeMethod<Map<dynamic, dynamic>>(
     'getTextureInfo',
@@ -281,6 +283,7 @@ Future<_BackendSurfaceInfo> _requestTextureInfo({
       'backgroundColorArgb': backgroundColorArgb,
     },
   );
+  debugPrint('[Performance] _requestTextureInfo: getTextureInfo took ${sw.elapsedMilliseconds}ms');
   final int? textureId = (info?['textureId'] as num?)?.toInt();
   final int? engineHandle = (info?['engineHandle'] as num?)?.toInt();
   final int? engineWidth = (info?['width'] as num?)?.toInt();
