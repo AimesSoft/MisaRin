@@ -311,6 +311,7 @@ static DEVICE_CONTEXT: OnceLock<Result<EngineDeviceContext, String>> = OnceLock:
 
 fn device_context() -> Result<&'static EngineDeviceContext, String> {
     let init_result = DEVICE_CONTEXT.get_or_init(|| {
+        debug::set_level(LogLevel::Info);
         let start = std::time::Instant::now();
         debug::log(LogLevel::Info, format_args!("device_context: starting initialization"));
         let backends = if cfg!(any(target_os = "macos", target_os = "ios")) {
