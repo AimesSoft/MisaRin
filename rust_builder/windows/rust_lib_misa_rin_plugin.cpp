@@ -9,7 +9,15 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <Windows.h>
+#include <windows.h>
+#include <debugapi.h>
+
+void SysLog(const std::string& msg) {
+  std::string full_msg = "[MisaRin-Sys] " + msg + "\n";
+  OutputDebugStringA(full_msg.c_str());
+  printf("%s", full_msg.c_str()); // 同时尝试标准输出
+}
+
 #include <dwmapi.h>
 
 #include <algorithm>
@@ -438,7 +446,7 @@ struct RustLibMisaRinPlugin::Impl {
           handle, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
       auto dxgi_end = std::chrono::high_resolution_clock::now();
       auto dxgi_ms = std::chrono::duration_cast<std::chrono::milliseconds>(dxgi_end - dxgi_start).count();
-      PresentLog("engine_create_present_dxgi_surface took " + std::to_string(dxgi_ms) + "ms");
+      SysLog("engine_create_present_dxgi_surface took " + std::to_string(dxgi_ms) + "ms");
 
       if (!shared_handle) {
         result->Error("engine_create_present_failed",
@@ -467,7 +475,7 @@ struct RustLibMisaRinPlugin::Impl {
               texture_registrar_, &texture_info);
       auto reg_end = std::chrono::high_resolution_clock::now();
       auto reg_ms = std::chrono::duration_cast<std::chrono::milliseconds>(reg_end - reg_start).count();
-      PresentLog("FlutterDesktopTextureRegistrarRegisterExternalTexture took " + std::to_string(reg_ms) + "ms");
+      SysLog("FlutterDesktopTextureRegistrarRegisterExternalTexture took " + std::to_string(reg_ms) + "ms");
 
       if (texture_id < 0) {
         auto shared_handle_win = static_cast<HANDLE>(shared_handle);
@@ -487,7 +495,7 @@ struct RustLibMisaRinPlugin::Impl {
       surface->first_frame_start_ms = NowMs();
       surface->last_first_frame_log_ms = surface->first_frame_start_ms;
       surface->first_frame_poll_count = 0;
-      PresentLog("texture registered surface=" + surface_id +
+      SysLog("texture registered surface=" + surface_id +
                  " texture=" + std::to_string(texture_id) +
                  " handle=" + std::to_string(handle));
     }
@@ -499,7 +507,7 @@ struct RustLibMisaRinPlugin::Impl {
                                       background_color);
       auto reset_end = std::chrono::high_resolution_clock::now();
       auto reset_ms = std::chrono::duration_cast<std::chrono::milliseconds>(reset_end - reset_start).count();
-      PresentLog("engine_reset_canvas_with_layers took " + std::to_string(reset_ms) + "ms");
+      SysLog("engine_reset_canvas_with_layers took " + std::to_string(reset_ms) + "ms");
     }
 
     flutter::EncodableMap response;
