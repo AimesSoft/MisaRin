@@ -1,4 +1,4 @@
-#include "rust_lib_misa_rin/rust_lib_misa_rin_plugin.h"
+#include "include/rust_lib_misa_rin/rust_lib_misa_rin_plugin.h"
 
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
