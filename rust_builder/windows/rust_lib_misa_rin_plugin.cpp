@@ -26,7 +26,8 @@
 #include <vector>
 
 void SysLog(const std::string& msg) {
-  auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                 std::chrono::steady_clock::now().time_since_epoch()).count();
   std::string full_msg = "[MisaRin-Sys][" + std::to_string(now) + "] " + msg + "\n";
   OutputDebugStringA(full_msg.c_str());
   std::cerr << full_msg << std::flush;
@@ -121,7 +122,7 @@ struct RustLibMisaRinPlugin::Impl {
 
   explicit Impl(FlutterDesktopTextureRegistrarRef tex_reg)
       : texture_registrar_(tex_reg), running_(true) {
-    SysLog("Plugin Impl starting (Warmup x2)...");
+    SysLog("Plugin starting (Sync Handle + Async GPU)...");
     for (int i = 0; i < 2; ++i) PreRegisterTexture();
     frame_thread_ = std::thread([this]() { FrameLoop(); });
   }
@@ -148,7 +149,6 @@ struct RustLibMisaRinPlugin::Impl {
     if (tid >= 0) {
       std::lock_guard<std::mutex> lock(pool_mutex_);
       texture_pool_.push_back({tid, std::move(b)});
-      SysLog("Warmup success: tid=" + std::to_string(tid));
     }
   }
 
@@ -166,41 +166,49 @@ struct RustLibMisaRinPlugin::Impl {
     }
 
     std::lock_guard<std::mutex> lock(s->mutex);
-    if (s->handle != 0 && s->tid >= 0 && s->w == w && s->h == h && s->layers == layers) {
-      result->Success(MakeResp(s, false)); return;
+    
+    // 1. Synchronously create/ensure engine handle (0ms)
+    if (s->handle == 0) {
+      s->handle = engine_create(w, h);
+    } else if (s->w != w || s->h != h) {
+      if (!engine_resize_canvas(s->handle, w, h, layers, bg)) {
+        engine_dispose(s->handle);
+        s->handle = engine_create(w, h);
+      }
     }
 
+    if (s->handle == 0) { result->Error("fail", "engine_null"); return; }
+
+    // 2. Reuse texture from pool IMMEDIATELY (0ms)
     if (s->tid < 0) {
       std::lock_guard<std::mutex> pool_lock(pool_mutex_);
       if (!texture_pool_.empty()) {
         auto slot = texture_pool_.back(); texture_pool_.pop_back();
         s->tid = slot.tid; s->binding = slot.binding;
-        SysLog("Instant reuse tid=" + std::to_string(s->tid));
+        SysLog("Reuse tid=" + std::to_string(s->tid));
       }
     }
 
-    if (!s->preparing.exchange(true)) {
+    // 3. Update Surface metadata
+    bool size_changed = (s->w != w || s->h != h);
+    s->w = w; s->h = h; s->layers = layers;
+
+    // 4. Async GPU Binding
+    if (size_changed || s->preparing.load() == false) {
+      s->preparing.store(true);
       std::thread([this, s, w, h, layers, bg]() {
+        void* sh = engine_create_present_dxgi_surface(s->handle, w, h);
         {
           std::lock_guard<std::mutex> lock(s->mutex);
-          if (s->handle == 0) s->handle = engine_create(w, h);
-          else if (s->w != w || s->h != h) {
-            if (!engine_resize_canvas(s->handle, w, h, layers, bg)) {
-              engine_dispose(s->handle); s->handle = engine_create(w, h);
-            }
-          }
-        }
-        if (s->handle != 0) {
-          void* sh = engine_create_present_dxgi_surface(s->handle, w, h);
-          std::lock_guard<std::mutex> lock(s->mutex);
-          s->w = w; s->h = h; s->layers = layers;
           if (s->tid >= 0) s->binding->Update(sh, w, h);
           engine_reset_canvas_with_layers(s->handle, layers, bg);
         }
         s->preparing.store(false);
-        SysLog("Background init done for " + s->sid);
+        SysLog("GPU Ready for " + s->sid);
       }).detach();
     }
+
+    // 5. Success return (Instant)
     result->Success(MakeResp(s, false));
   }
 
