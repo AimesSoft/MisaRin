@@ -1528,16 +1528,19 @@ pub extern "C" fn engine_reset_canvas_with_layers(
     let Some(entry) = lookup_engine(handle) else {
         return;
     };
-    debug::log(
-        LogLevel::Info,
-        format_args!(
-            "engine_reset_canvas_with_layers handle={handle} layers={layer_count} bg=0x{background_color_argb:08X}"
-        ),
+    let start = std::time::Instant::now();
+    println!(
+        "[misa-rin][rust] reset_canvas: request handle={handle} layers={layer_count}"
     );
     let _ = entry.cmd_tx.send(EngineCommand::ResetCanvasWithLayers {
         layer_count,
         background_color_argb,
     });
+    // 注意：这里是异步发送，我们想看看发送本身是否会被堵住
+    println!(
+        "[misa-rin][rust] reset_canvas: sent took {}ms",
+        start.elapsed().as_millis()
+    );
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios")))]
