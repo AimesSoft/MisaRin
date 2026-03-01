@@ -25,7 +25,6 @@
 #include <thread>
 #include <vector>
 
-// High-speed logging
 void SysLog(const std::string& msg) {
   auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
   std::string full_msg = "[MisaRin-Sys][" + std::to_string(now) + "] " + msg + "\n";
@@ -73,7 +72,6 @@ struct GpuSurfaceBinding {
     auto* b = static_cast<GpuSurfaceBinding*>(data);
     if (!b) return nullptr;
     std::lock_guard<std::mutex> lock(b->mutex);
-    // If handle is null, Flutter will simply skip this frame
     return b->shared_handle ? &b->descriptor : nullptr;
   }
 };
@@ -84,8 +82,8 @@ class RustLibMisaRinPlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar, FlutterDesktopPluginRegistrarRef raw_registrar);
   explicit RustLibMisaRinPlugin(FlutterDesktopTextureRegistrarRef texture_registrar);
-  ~RustLibMisaRinPlugin() override;
-  void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) override;
+  virtual ~RustLibMisaRinPlugin();
+  void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;
@@ -123,6 +121,7 @@ struct RustLibMisaRinPlugin::Impl {
 
   explicit Impl(FlutterDesktopTextureRegistrarRef tex_reg)
       : texture_registrar_(tex_reg), running_(true) {
+    SysLog("Plugin Impl starting (Warmup x2)...");
     for (int i = 0; i < 2; ++i) PreRegisterTexture();
     frame_thread_ = std::thread([this]() { FrameLoop(); });
   }
@@ -149,6 +148,7 @@ struct RustLibMisaRinPlugin::Impl {
     if (tid >= 0) {
       std::lock_guard<std::mutex> lock(pool_mutex_);
       texture_pool_.push_back({tid, std::move(b)});
+      SysLog("Warmup success: tid=" + std::to_string(tid));
     }
   }
 
@@ -166,62 +166,41 @@ struct RustLibMisaRinPlugin::Impl {
     }
 
     std::lock_guard<std::mutex> lock(s->mutex);
-    
-    // 1. If already active and same size, return immediately (0ms)
     if (s->handle != 0 && s->tid >= 0 && s->w == w && s->h == h && s->layers == layers) {
       result->Success(MakeResp(s, false)); return;
     }
 
-    // 2. Reuse texture from pool IMMEDIATELY (0ms)
     if (s->tid < 0) {
       std::lock_guard<std::mutex> pool_lock(pool_mutex_);
       if (!texture_pool_.empty()) {
         auto slot = texture_pool_.back(); texture_pool_.pop_back();
         s->tid = slot.tid; s->binding = slot.binding;
-        SysLog("Instant Pool Reuse: tid=" + std::to_string(s->tid));
+        SysLog("Instant reuse tid=" + std::to_string(s->tid));
       }
     }
 
-    // 3. Kick off heavy work in a background thread to UNBLOCK UI THREAD
     if (!s->preparing.exchange(true)) {
       std::thread([this, s, w, h, layers, bg]() {
-        SysLog("Background: Creating engine and DXGI for " + s->sid);
-        
-        uint64_t new_handle = 0;
         {
           std::lock_guard<std::mutex> lock(s->mutex);
-          if (s->handle == 0) {
-            new_handle = engine_create(w, h);
-            s->handle = new_handle;
-          } else if (s->w != w || s->h != h) {
+          if (s->handle == 0) s->handle = engine_create(w, h);
+          else if (s->w != w || s->h != h) {
             if (!engine_resize_canvas(s->handle, w, h, layers, bg)) {
-              engine_dispose(s->handle);
-              s->handle = engine_create(w, h);
+              engine_dispose(s->handle); s->handle = engine_create(w, h);
             }
           }
         }
-
         if (s->handle != 0) {
           void* sh = engine_create_present_dxgi_surface(s->handle, w, h);
           std::lock_guard<std::mutex> lock(s->mutex);
           s->w = w; s->h = h; s->layers = layers;
-          
-          if (s->tid < 0) {
-            // Pool was empty, will register on next sync call or just wait
-            // For now, assume pool had enough items thanks to Warmup(2)
-          } else {
-            s->binding->Update(sh, w, h);
-          }
+          if (s->tid >= 0) s->binding->Update(sh, w, h);
           engine_reset_canvas_with_layers(s->handle, layers, bg);
-          SysLog("Background complete for " + s->sid);
         }
         s->preparing.store(false);
+        SysLog("Background init done for " + s->sid);
       }).detach();
     }
-
-    // 4. Return whatever we have right now. 
-    // If tid is still -1, Flutter will try again in a few ms due to prewarm retry logic.
-    // If tid is valid, UI opens instantly, content appears ~300ms later when background thread finishes.
     result->Success(MakeResp(s, false));
   }
 
@@ -247,6 +226,18 @@ struct RustLibMisaRinPlugin::Impl {
     }
   }
 
+  void DisposeAll() {
+    std::vector<std::shared_ptr<SurfaceState>> entries;
+    { std::lock_guard<std::mutex> lock(surfaces_mutex_); for (const auto& e : surfaces_) entries.push_back(e.second); surfaces_.clear(); }
+    for (const auto& s : entries) {
+      if (s->tid >= 0 && s->binding) {
+        std::lock_guard<std::mutex> pool_lock(pool_mutex_);
+        texture_pool_.push_back({s->tid, s->binding});
+      }
+      if (s->handle != 0) engine_dispose(s->handle);
+    }
+  }
+
   std::string GetSid(const flutter::EncodableMap& args) {
     auto it = args.find(flutter::EncodableValue("surfaceId"));
     if (it != args.end()) { if (const auto* val = std::get_if<std::string>(&it->second)) return *val; }
@@ -254,15 +245,15 @@ struct RustLibMisaRinPlugin::Impl {
   }
   int GetInt(const flutter::EncodableMap& args, const char* k, int def) {
     auto it = args.find(flutter::EncodableValue(k));
-    if (it == args.end()) return def;
-    if (const auto* i = std::get_if<int32_t>(&it->second)) return *i;
-    if (const auto* i = std::get_if<int64_t>(&it->second)) return static_cast<int>(*i);
+    if (it != args.end()) {
+      if (const auto* i = std::get_if<int32_t>(&it->second)) return *i;
+      if (const auto* i = std::get_if<int64_t>(&it->second)) return static_cast<int>(*i);
+    }
     return def;
   }
   uint32_t GetBg(const flutter::EncodableMap& args) {
     auto it = args.find(flutter::EncodableValue("backgroundColorArgb"));
-    if (it == args.end()) return 0xFFFFFFFF;
-    if (const auto* i = std::get_if<int64_t>(&it->second)) return static_cast<uint32_t>(*i);
+    if (it != args.end()) { if (const auto* i = std::get_if<int64_t>(&it->second)) return static_cast<uint32_t>(*i); }
     return 0xFFFFFFFF;
   }
 };
