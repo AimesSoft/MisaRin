@@ -25,7 +25,6 @@
 #include <thread>
 #include <vector>
 
-// Direct logging to stderr to ensure visibility in terminal
 void SysLog(const std::string& msg) {
   auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
                  std::chrono::steady_clock::now().time_since_epoch())
@@ -142,7 +141,7 @@ class RustLibMisaRinPlugin : public flutter::Plugin {
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar, FlutterDesktopPluginRegistrarRef raw_registrar);
   explicit RustLibMisaRinPlugin(FlutterDesktopTextureRegistrarRef texture_registrar);
   ~RustLibMisaRinPlugin() override;
-  void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) override;
+  void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;
@@ -170,7 +169,7 @@ struct RustLibMisaRinPlugin::Impl {
       if (engine_handle == 0 || texture_id < 0) return -1;
       if (engine_poll_frame_ready(engine_handle)) {
         if (waiting_first_frame) {
-          SysLog("First frame ready for " + surface_id + " texture=" + std::to_string(texture_id) + " ms=" + std::to_string(NowMs() - first_frame_start_ms));
+          SysLog("First frame ready sid=" + surface_id + " tid=" + std::to_string(texture_id) + " ms=" + std::to_string(NowMs() - first_frame_start_ms));
           waiting_first_frame = false;
         }
         return texture_id;
@@ -215,14 +214,14 @@ struct RustLibMisaRinPlugin::Impl {
     if (tid >= 0) {
       std::lock_guard<std::mutex> lock(pool_mutex_);
       texture_pool_.push_back({tid, std::move(binding)});
-      SysLog("Warmup OK: id=" + std::to_string(tid) + " took " + std::to_string(ms) + "ms");
+      SysLog("Warmup OK: id=" + std::to_string(tid) + " ms=" + std::to_string(ms));
     }
   }
 
   void HandleMethodCall(const flutter::MethodCall<flutter::EncodableValue>& method_call, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
     auto start_time = NowMs();
     const std::string& name = method_call.method_name();
-    SysLog("Method call received: " + name);
+    SysLog("Method call: " + name);
 
     const auto* args = std::get_if<flutter::EncodableMap>(method_call.arguments());
     flutter::EncodableMap empty_args;
@@ -235,7 +234,7 @@ struct RustLibMisaRinPlugin::Impl {
     } else {
       result->NotImplemented();
     }
-    SysLog("Method call handled: " + name + " total internal ms=" + std::to_string(NowMs() - start_time));
+    SysLog("Method handle exit: " + name + " internal_ms=" + std::to_string(NowMs() - start_time));
   }
 
   void HandleGetTextureInfo(const flutter::EncodableMap& args, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -271,7 +270,7 @@ struct RustLibMisaRinPlugin::Impl {
     if (surface->engine_handle == 0) {
       auto e_start = NowMs();
       surface->engine_handle = engine_create(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
-      SysLog("engine_create took " + std::to_string(NowMs() - e_start) + "ms");
+      SysLog("engine_create ms=" + std::to_string(NowMs() - e_start));
       engine_created = true;
     } else if (surface->width != w || surface->height != h) {
       if (engine_resize_canvas(surface->engine_handle, w, h, layers, bg) == 0) {
@@ -288,7 +287,7 @@ struct RustLibMisaRinPlugin::Impl {
 
       auto d_start = NowMs();
       void* sh = engine_create_present_dxgi_surface(surface->engine_handle, w, h);
-      SysLog("dxgi_surface creation took " + std::to_string(NowMs() - d_start) + "ms");
+      SysLog("dxgi_surface ms=" + std::to_string(NowMs() - d_start));
 
       if (!sh) { result->Error("dxgi_failed", "sh is null"); return; }
 
@@ -301,7 +300,7 @@ struct RustLibMisaRinPlugin::Impl {
           texture_pool_.pop_back();
           pooled_id = slot.texture_id;
           binding = slot.binding;
-          SysLog("Pool reuse: " + std::to_string(pooled_id));
+          SysLog("Reuse tid=" + std::to_string(pooled_id) + " for " + sid);
         }
       }
 
@@ -310,7 +309,7 @@ struct RustLibMisaRinPlugin::Impl {
         surface->texture_id = pooled_id;
         surface->binding = std::move(binding);
       } else {
-        SysLog("Pool empty, registering new texture");
+        SysLog("Registering new texture for " + sid);
         surface->binding = std::make_shared<GpuSurfaceBinding>(sh, w, h);
         FlutterDesktopTextureInfo info{};
         info.type = kFlutterDesktopGpuSurfaceTexture;
@@ -396,7 +395,7 @@ struct RustLibMisaRinPlugin::Impl {
     if (s->texture_id >= 0 && s->binding) {
       std::lock_guard<std::mutex> lock(pool_mutex_);
       texture_pool_.push_back({s->texture_id, s->binding});
-      SysLog("Recycled texture: " + std::to_string(s->texture_id));
+      SysLog("Recycled tid=" + std::to_string(s->texture_id));
     }
     s->texture_id = -1;
     s->binding = nullptr;
