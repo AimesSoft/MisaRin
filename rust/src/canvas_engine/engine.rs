@@ -5740,11 +5740,14 @@ fn mtl_device_ptr(_device: &wgpu::Device) -> *mut c_void {
 }
 
 pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
+    let total_start = std::time::Instant::now();
     if width == 0 || height == 0 {
         return Err("engine_create: width/height must be > 0".to_string());
     }
 
+    let ctx_start = std::time::Instant::now();
     let ctx = device_context()?;
+    println!("[misa-rin][rust] create_engine: device_context() took {}ms", ctx_start.elapsed().as_millis());
 
     let mtl_device_ptr = mtl_device_ptr(ctx.device.as_ref()) as usize;
     #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -5752,9 +5755,12 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
         return Err("wgpu: failed to extract underlying MTLDevice".to_string());
     }
 
+    let layers_start = std::time::Instant::now();
     let layers = LayerTextures::new(ctx.device.as_ref(), width, height, INITIAL_LAYER_CAPACITY)
         .map_err(|err| format!("engine_create: layer init failed: {err}"))?;
+    println!("[misa-rin][rust] create_engine: LayerTextures::new took {}ms", layers_start.elapsed().as_millis());
 
+    let spawn_start = std::time::Instant::now();
     let (cmd_tx, cmd_rx) = mpsc::channel();
     let (input_tx, input_rx) = mpsc::channel();
     let input_queue_len = Arc::new(AtomicU64::new(0));
@@ -5772,6 +5778,7 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
         width,
         height,
     );
+    println!("[misa-rin][rust] create_engine: spawn_render_thread took {}ms", spawn_start.elapsed().as_millis());
 
     let handle = NEXT_HANDLE.fetch_add(1, Ordering::Relaxed);
     let mut guard = engines()
@@ -5789,6 +5796,7 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
         },
     );
 
+    println!("[misa-rin][rust] create_engine: total took {}ms", total_start.elapsed().as_millis());
     Ok(handle)
 }
 
