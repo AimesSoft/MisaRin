@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -62,6 +63,8 @@ constexpr int64_t kFirstFrameForceAfterMs = 120;
 constexpr int64_t kFirstFrameLogIntervalMs = 500;
 constexpr UINT kAsyncCompletionMessage = WM_APP + 0x4A1;
 constexpr wchar_t kCompletionWindowClass[] = L"MisaRinBackendCompletionWindow";
+constexpr size_t kMaxPooledSurfaces = 3;
+constexpr uint64_t kMaxPooledPixels = 48ull * 1024ull * 1024ull;
 
 std::optional<int64_t> GetIntValue(const flutter::EncodableValue& value) {
   if (const auto* int32_value = std::get_if<int32_t>(&value)) {
@@ -316,6 +319,7 @@ struct RustLibMisaRinPlugin::Impl {
     uint32_t first_frame_poll_count = 0;
     bool first_frame_force_logged = false;
     bool pooled = false;
+    int64_t last_used_ms = 0;
 
     int64_t RefreshFrame() {
       std::lock_guard<std::mutex> lock(mutex);
@@ -421,6 +425,7 @@ struct RustLibMisaRinPlugin::Impl {
                " layers=" + std::to_string(layer_count));
 
     std::shared_ptr<SurfaceState> surface;
+    std::shared_ptr<SurfaceState> invalid_pooled;
     bool reused_from_pool = false;
     {
       std::lock_guard<std::mutex> lock(surfaces_mutex_);
@@ -428,12 +433,15 @@ struct RustLibMisaRinPlugin::Impl {
       if (it != surfaces_.end()) {
         surface = it->second;
       } else {
-        if (pooled_surface_ && pooled_surface_->engine_handle != 0 &&
-            pooled_surface_->texture_id >= 0) {
-          surface = pooled_surface_;
-          pooled_surface_.reset();
+        surface = TakePooledSurfaceLocked(width, height);
+        if (surface && (surface->engine_handle == 0 || surface->texture_id < 0)) {
+          invalid_pooled = surface;
+          surface.reset();
+        }
+        if (surface && surface->engine_handle != 0 && surface->texture_id >= 0) {
           surface->surface_id = surface_id;
           surface->pooled = false;
+          surface->last_used_ms = NowMs();
           surfaces_.emplace(surface_id, surface);
           reused_from_pool = true;
           PresentLog("reuse pooled surface surface=" + surface_id +
@@ -444,6 +452,18 @@ struct RustLibMisaRinPlugin::Impl {
           surface->surface_id = surface_id;
           surfaces_.emplace(surface_id, surface);
         }
+      }
+    }
+    if (invalid_pooled) {
+      std::lock_guard<std::mutex> lock(invalid_pooled->mutex);
+      PresentLog("disposeTexture invalid pooled surface=" +
+                 invalid_pooled->surface_id +
+                 " handle=" + std::to_string(invalid_pooled->engine_handle) +
+                 " texture=" + std::to_string(invalid_pooled->texture_id));
+      UnregisterTextureLocked(invalid_pooled);
+      if (invalid_pooled->engine_handle != 0) {
+        engine_dispose(invalid_pooled->engine_handle);
+        invalid_pooled->engine_handle = 0;
       }
     }
 
@@ -481,6 +501,33 @@ struct RustLibMisaRinPlugin::Impl {
             flutter::EncodableValue(surface->height);
         response[flutter::EncodableValue("isNewEngine")] =
             flutter::EncodableValue(reused_from_pool);
+        result->Success(flutter::EncodableValue(response));
+        return;
+      }
+      if (surface->engine_handle != 0 && surface->texture_id >= 0 &&
+          surface->width == width && surface->height == height &&
+          surface->layer_count != layer_count) {
+        PresentLog("reuse texture (layer reset) surface=" + surface_id +
+                   " texture=" + std::to_string(surface->texture_id) +
+                   " handle=" + std::to_string(surface->engine_handle) +
+                   " layers=" + std::to_string(layer_count));
+        surface->background_color_argb = background_color;
+        surface->layer_count = layer_count;
+        engine_reset_canvas_with_layers(surface->engine_handle,
+                                        static_cast<uint32_t>(layer_count),
+                                        background_color);
+        flutter::EncodableMap response;
+        response[flutter::EncodableValue("textureId")] =
+            flutter::EncodableValue(surface->texture_id);
+        response[flutter::EncodableValue("engineHandle")] =
+            flutter::EncodableValue(
+                static_cast<int64_t>(surface->engine_handle));
+        response[flutter::EncodableValue("width")] =
+            flutter::EncodableValue(surface->width);
+        response[flutter::EncodableValue("height")] =
+            flutter::EncodableValue(surface->height);
+        response[flutter::EncodableValue("isNewEngine")] =
+            flutter::EncodableValue(true);
         result->Success(flutter::EncodableValue(response));
         return;
       }
@@ -705,6 +752,7 @@ struct RustLibMisaRinPlugin::Impl {
     const std::string surface_id = GetSurfaceId(args);
     PresentLog("disposeTexture request surface=" + surface_id);
     std::shared_ptr<SurfaceState> surface;
+    std::vector<std::shared_ptr<SurfaceState>> to_dispose;
     {
       std::lock_guard<std::mutex> lock(surfaces_mutex_);
       auto it = surfaces_.find(surface_id);
@@ -715,41 +763,52 @@ struct RustLibMisaRinPlugin::Impl {
       if (surface) {
         std::lock_guard<std::mutex> lock_surface(surface->mutex);
         surface->request_id += 1;
-        if (!pooled_surface_ && surface->engine_handle != 0 &&
-            surface->texture_id >= 0) {
-          pooled_surface_ = surface;
+        if (surface->engine_handle != 0 && surface->texture_id >= 0) {
           surface->disposed = false;
           surface->pooled = true;
+          surface->last_used_ms = NowMs();
+          pooled_surfaces_.push_back(surface);
           PresentLog("disposeTexture pooled surface=" + surface_id +
                      " handle=" + std::to_string(surface->engine_handle) +
                      " texture=" + std::to_string(surface->texture_id));
+          TrimPoolLocked(to_dispose);
         } else {
           surface->disposed = true;
-          PresentLog("disposeTexture surface=" + surface_id +
-                     " handle=" + std::to_string(surface->engine_handle) +
-                     " texture=" + std::to_string(surface->texture_id));
-          UnregisterTextureLocked(surface);
-          if (surface->engine_handle != 0) {
-            engine_dispose(surface->engine_handle);
-            surface->engine_handle = 0;
-          }
+          to_dispose.push_back(surface);
         }
       }
     }
     if (!surface) {
       PresentLog("disposeTexture missing surface=" + surface_id);
     }
+    for (const auto& entry : to_dispose) {
+      if (!entry) {
+        continue;
+      }
+      std::lock_guard<std::mutex> lock(entry->mutex);
+      entry->disposed = true;
+      PresentLog("disposeTexture surface=" + entry->surface_id +
+                 " handle=" + std::to_string(entry->engine_handle) +
+                 " texture=" + std::to_string(entry->texture_id));
+      UnregisterTextureLocked(entry);
+      if (entry->engine_handle != 0) {
+        engine_dispose(entry->engine_handle);
+        entry->engine_handle = 0;
+      }
+    }
     result->Success();
   }
 
   void DisposeAll() {
     std::vector<std::shared_ptr<SurfaceState>> entries;
+    std::vector<std::shared_ptr<SurfaceState>> pooled;
     {
       std::lock_guard<std::mutex> lock(surfaces_mutex_);
       for (const auto& entry : surfaces_) {
         entries.push_back(entry.second);
       }
       surfaces_.clear();
+      pooled.swap(pooled_surfaces_);
     }
 
     for (const auto& surface : entries) {
@@ -765,20 +824,82 @@ struct RustLibMisaRinPlugin::Impl {
         surface->engine_handle = 0;
       }
     }
-    std::shared_ptr<SurfaceState> pooled;
-    {
-      std::lock_guard<std::mutex> lock(surfaces_mutex_);
-      pooled = pooled_surface_;
-      pooled_surface_.reset();
+    for (const auto& surface : pooled) {
+      if (!surface) {
+        continue;
+      }
+      std::lock_guard<std::mutex> lock(surface->mutex);
+      surface->disposed = true;
+      surface->request_id += 1;
+      UnregisterTextureLocked(surface);
+      if (surface->engine_handle != 0) {
+        engine_dispose(surface->engine_handle);
+        surface->engine_handle = 0;
+      }
     }
-    if (pooled) {
-      std::lock_guard<std::mutex> lock(pooled->mutex);
-      pooled->disposed = true;
-      pooled->request_id += 1;
-      UnregisterTextureLocked(pooled);
-      if (pooled->engine_handle != 0) {
-        engine_dispose(pooled->engine_handle);
-        pooled->engine_handle = 0;
+  }
+
+  std::shared_ptr<SurfaceState> TakePooledSurfaceLocked(int width, int height) {
+    if (pooled_surfaces_.empty()) {
+      return nullptr;
+    }
+    for (size_t i = 0; i < pooled_surfaces_.size(); ++i) {
+      const auto& entry = pooled_surfaces_[i];
+      if (!entry) {
+        continue;
+      }
+      if (entry->width == width && entry->height == height) {
+        auto surface = entry;
+        pooled_surfaces_.erase(pooled_surfaces_.begin() + i);
+        return surface;
+      }
+    }
+    return nullptr;
+  }
+
+  void TrimPoolLocked(
+      std::vector<std::shared_ptr<SurfaceState>>& to_dispose) {
+    uint64_t total_pixels = 0;
+    for (const auto& entry : pooled_surfaces_) {
+      if (!entry) {
+        continue;
+      }
+      total_pixels +=
+          static_cast<uint64_t>(entry->width) * static_cast<uint64_t>(entry->height);
+    }
+
+    auto should_trim = [&]() {
+      return pooled_surfaces_.size() > kMaxPooledSurfaces ||
+             total_pixels > kMaxPooledPixels;
+    };
+
+    while (should_trim()) {
+      size_t oldest_index = 0;
+      int64_t oldest_ts = std::numeric_limits<int64_t>::max();
+      for (size_t i = 0; i < pooled_surfaces_.size(); ++i) {
+        const auto& entry = pooled_surfaces_[i];
+        if (!entry) {
+          continue;
+        }
+        if (entry->last_used_ms < oldest_ts) {
+          oldest_ts = entry->last_used_ms;
+          oldest_index = i;
+        }
+      }
+      if (oldest_ts == std::numeric_limits<int64_t>::max()) {
+        break;
+      }
+      if (pooled_surfaces_.empty()) {
+        break;
+      }
+      auto victim = pooled_surfaces_[oldest_index];
+      pooled_surfaces_.erase(pooled_surfaces_.begin() + oldest_index);
+      if (victim) {
+        total_pixels -= static_cast<uint64_t>(victim->width) *
+                        static_cast<uint64_t>(victim->height);
+        to_dispose.push_back(victim);
+      } else {
+        break;
       }
     }
   }
@@ -881,7 +1002,7 @@ struct RustLibMisaRinPlugin::Impl {
   std::vector<std::function<void()>> completions_;
   std::mutex surfaces_mutex_;
   std::unordered_map<std::string, std::shared_ptr<SurfaceState>> surfaces_;
-  std::shared_ptr<SurfaceState> pooled_surface_;
+  std::vector<std::shared_ptr<SurfaceState>> pooled_surfaces_;
   std::atomic<bool> running_;
   std::thread frame_thread_;
 };

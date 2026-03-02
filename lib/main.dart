@@ -37,6 +37,9 @@ Future<void> main() async {
         await CanvasRasterBackend.prewarmRustWgpuEngine();
         // Also pre-warm the Texture engine used by BackendCanvasSurface.
         await BackendCanvasSurface.prewarmTextureEngine();
+        // Prewarm a default-size backend canvas in the background to avoid
+        // blocking the first new canvas creation.
+        unawaited(_prewarmDefaultBackendCanvas());
       }
       // Pre-warm Flutter's image decoding pipeline.
       await _prewarmImageDecoder();
@@ -173,6 +176,25 @@ Future<void> _initializePerformancePulse() async {
   } catch (error, stackTrace) {
     debugPrint('Performance monitor init failed: $error\n$stackTrace');
   }
+}
+
+Future<void> _prewarmDefaultBackendCanvas() async {
+  try {
+    final AppPreferences prefs = AppPreferences.instance;
+    final int width = prefs.newCanvasWidth;
+    final int height = prefs.newCanvasHeight;
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+    final String surfaceKey = 'prewarm_default_${width}x$height';
+    await BackendCanvasSurface.prewarm(
+      surfaceKey: surfaceKey,
+      canvasSize: Size(width.toDouble(), height.toDouble()),
+      layerCount: 2,
+      backgroundColorArgb: prefs.newCanvasBackgroundColor.value,
+    );
+    await BackendCanvasSurface.cancelWarmup(surfaceKey: surfaceKey);
+  } catch (_) {}
 }
 
 class _MisarinWebLoadingApp extends StatelessWidget {
