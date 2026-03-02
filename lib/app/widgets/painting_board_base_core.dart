@@ -20,6 +20,32 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   int _backendLayerSnapshotHeight = 0;
   int? _backendLayerSnapshotHandle;
   int? _backendPixelsSyncedHandle;
+  bool _backendSkipInitialSyncOnce = false;
+
+  bool _isBlankInitialLayers() {
+    final List<CanvasLayerData>? layers = widget.initialLayers;
+    if (layers == null || layers.isEmpty) {
+      return true;
+    }
+    final Color expectedBackground = widget.settings.backgroundColor;
+    for (int i = 0; i < layers.length; i++) {
+      final CanvasLayerData layer = layers[i];
+      if (i == 0) {
+        if (layer.fillColor == null ||
+            layer.fillColor!.value != expectedBackground.value) {
+          return false;
+        }
+        if (layer.hasBitmap || layer.text != null) {
+          return false;
+        }
+      } else {
+        if (layer.fillColor != null || layer.hasBitmap || layer.text != null) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
 
   CanvasTool _activeTool = CanvasTool.pen;
   bool _isDrawing = false;
@@ -1124,6 +1150,8 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     if (engineReset) {
       _backendCanvasSyncedLayerCount = 0;
       _backendPixelsSyncedHandle = null;
+      _backendSkipInitialSyncOnce =
+          isNewEngine && _isBlankInitialLayers();
       _purgeBackendHistoryActions();
       _backendLayerSnapshotDirty = false;
       if (_backendLayerSnapshots.isNotEmpty) {
@@ -1462,6 +1490,15 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     }
     final int handle = _backendCanvasEngineHandle!;
     if (_backendPixelsSyncedHandle == handle) {
+      return;
+    }
+    if (_backendSkipInitialSyncOnce) {
+      _backendSkipInitialSyncOnce = false;
+      _backendPixelsSyncedHandle = handle;
+      debugPrint(
+        'paintingBoard: sync backend pixels skipped surfaceKey=${widget.surfaceKey} '
+        'handle=$handle reason=blank-initial-layers',
+      );
       return;
     }
     final Stopwatch watch = Stopwatch()..start();
