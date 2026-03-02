@@ -61,6 +61,7 @@ constexpr int64_t kMaxIntervalUs = 33333;
 constexpr int64_t kFirstFrameForceAfterMs = 120;
 constexpr int64_t kFirstFrameLogIntervalMs = 500;
 constexpr UINT kAsyncCompletionMessage = WM_APP + 0x4A1;
+constexpr wchar_t kCompletionWindowClass[] = L"MisaRinBackendCompletionWindow";
 
 std::optional<int64_t> GetIntValue(const flutter::EncodableValue& value) {
   if (const auto* int32_value = std::get_if<int32_t>(&value)) {
@@ -251,6 +252,52 @@ class RustLibMisaRinPlugin : public flutter::Plugin {
 };
 
 struct RustLibMisaRinPlugin::Impl {
+  static LRESULT CALLBACK CompletionWindowProc(HWND hwnd,
+                                               UINT message,
+                                               WPARAM wparam,
+                                               LPARAM lparam) {
+    if (message == WM_NCCREATE) {
+      auto* create = reinterpret_cast<CREATESTRUCTW*>(lparam);
+      SetWindowLongPtrW(
+          hwnd,
+          GWLP_USERDATA,
+          reinterpret_cast<LONG_PTR>(create->lpCreateParams));
+      return TRUE;
+    }
+    auto* self =
+        reinterpret_cast<Impl*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+    if (self && message == kAsyncCompletionMessage) {
+      self->DrainCompletions();
+      return 0;
+    }
+    return DefWindowProcW(hwnd, message, wparam, lparam);
+  }
+
+  static HWND CreateCompletionWindow(Impl* owner) {
+    static std::once_flag register_flag;
+    std::call_once(register_flag, []() {
+      WNDCLASSEXW wc{};
+      wc.cbSize = sizeof(WNDCLASSEXW);
+      wc.lpfnWndProc = CompletionWindowProc;
+      wc.hInstance = GetModuleHandleW(nullptr);
+      wc.lpszClassName = kCompletionWindowClass;
+      RegisterClassExW(&wc);
+    });
+    return CreateWindowExW(
+        0,
+        kCompletionWindowClass,
+        L"",
+        0,
+        0,
+        0,
+        0,
+        0,
+        HWND_MESSAGE,
+        nullptr,
+        GetModuleHandleW(nullptr),
+        owner);
+  }
+
   struct SurfaceState {
     std::string surface_id;
     int width = 0;
@@ -318,27 +365,9 @@ struct RustLibMisaRinPlugin::Impl {
   };
 
   explicit Impl(FlutterDesktopTextureRegistrarRef texture_registrar,
-                flutter::PluginRegistrarWindows* registrar)
-      : texture_registrar_(texture_registrar),
-        registrar_(registrar),
-        running_(true) {
-    if (registrar_) {
-      if (auto* view = registrar_->GetView()) {
-        hwnd_ = view->GetNativeWindow();
-      }
-      if (hwnd_) {
-        window_proc_delegate_id_ =
-            registrar_->RegisterTopLevelWindowProcDelegate(
-                [this](HWND, UINT message, WPARAM, LPARAM)
-                    -> std::optional<LRESULT> {
-                  if (message == kAsyncCompletionMessage) {
-                    DrainCompletions();
-                    return 0;
-                  }
-                  return std::nullopt;
-                });
-      }
-    }
+                flutter::PluginRegistrarWindows*)
+      : texture_registrar_(texture_registrar), running_(true) {
+    message_window_ = CreateCompletionWindow(this);
     frame_thread_ = std::thread([this]() { FrameLoop(); });
   }
 
@@ -347,10 +376,9 @@ struct RustLibMisaRinPlugin::Impl {
     if (frame_thread_.joinable()) {
       frame_thread_.join();
     }
-    if (registrar_ && window_proc_delegate_id_ != 0) {
-      registrar_->UnregisterTopLevelWindowProcDelegate(
-          window_proc_delegate_id_);
-      window_proc_delegate_id_ = 0;
+    if (message_window_) {
+      DestroyWindow(message_window_);
+      message_window_ = nullptr;
     }
     DisposeAll();
   }
@@ -707,7 +735,7 @@ struct RustLibMisaRinPlugin::Impl {
     if (!running_.load()) {
       return;
     }
-    if (!hwnd_) {
+    if (!message_window_) {
       task();
       return;
     }
@@ -715,7 +743,7 @@ struct RustLibMisaRinPlugin::Impl {
       std::lock_guard<std::mutex> lock(completions_mutex_);
       completions_.push_back(std::move(task));
     }
-    PostMessage(hwnd_, kAsyncCompletionMessage, 0, 0);
+    PostMessage(message_window_, kAsyncCompletionMessage, 0, 0);
   }
 
   void DrainCompletions() {
@@ -793,9 +821,7 @@ struct RustLibMisaRinPlugin::Impl {
   }
 
   FlutterDesktopTextureRegistrarRef texture_registrar_;
-  flutter::PluginRegistrarWindows* registrar_ = nullptr;
-  HWND hwnd_ = nullptr;
-  int window_proc_delegate_id_ = 0;
+  HWND message_window_ = nullptr;
   std::mutex completions_mutex_;
   std::vector<std::function<void()>> completions_;
   std::mutex surfaces_mutex_;
