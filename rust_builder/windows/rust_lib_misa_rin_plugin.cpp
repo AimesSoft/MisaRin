@@ -57,6 +57,8 @@ constexpr int kMaxLayerCount = 1024;
 constexpr int64_t kFallbackIntervalUs = 8000;
 constexpr int64_t kMinIntervalUs = 4000;
 constexpr int64_t kMaxIntervalUs = 33333;
+constexpr int64_t kFirstFrameForceAfterMs = 120;
+constexpr int64_t kFirstFrameLogIntervalMs = 500;
 
 std::optional<int64_t> GetIntValue(const flutter::EncodableValue& value) {
   if (const auto* int32_value = std::get_if<int32_t>(&value)) {
@@ -260,6 +262,7 @@ struct RustLibMisaRinPlugin::Impl {
     int64_t first_frame_start_ms = 0;
     int64_t last_first_frame_log_ms = 0;
     uint32_t first_frame_poll_count = 0;
+    bool first_frame_force_logged = false;
 
     int64_t RefreshFrame() {
       std::lock_guard<std::mutex> lock(mutex);
@@ -270,22 +273,36 @@ struct RustLibMisaRinPlugin::Impl {
       if (waiting_first_frame) {
         first_frame_poll_count += 1;
         const int64_t now_ms = NowMs();
+        const int64_t elapsed_ms = now_ms - first_frame_start_ms;
         if (ready) {
           PresentLog(
               "first frame ready surface=" + surface_id +
               " handle=" + std::to_string(engine_handle) +
               " texture=" + std::to_string(texture_id) +
               " polls=" + std::to_string(first_frame_poll_count) +
-              " elapsed_ms=" + std::to_string(now_ms - first_frame_start_ms));
+              " elapsed_ms=" + std::to_string(elapsed_ms));
           waiting_first_frame = false;
-        } else if (now_ms - last_first_frame_log_ms >= 500) {
+          first_frame_force_logged = false;
+        } else if (elapsed_ms >= kFirstFrameForceAfterMs) {
+          if (!first_frame_force_logged) {
+            first_frame_force_logged = true;
+            PresentLog(
+                "first frame forced surface=" + surface_id +
+                " handle=" + std::to_string(engine_handle) +
+                " texture=" + std::to_string(texture_id) +
+                " polls=" + std::to_string(first_frame_poll_count) +
+                " elapsed_ms=" + std::to_string(elapsed_ms));
+          }
+          return texture_id;
+        } else if (now_ms - last_first_frame_log_ms >=
+                   kFirstFrameLogIntervalMs) {
           last_first_frame_log_ms = now_ms;
           PresentLog(
               "waiting first frame surface=" + surface_id +
               " handle=" + std::to_string(engine_handle) +
               " texture=" + std::to_string(texture_id) +
               " polls=" + std::to_string(first_frame_poll_count) +
-              " elapsed_ms=" + std::to_string(now_ms - first_frame_start_ms));
+              " elapsed_ms=" + std::to_string(elapsed_ms));
         }
       }
       if (!ready) {
@@ -475,6 +492,7 @@ struct RustLibMisaRinPlugin::Impl {
       surface->first_frame_start_ms = NowMs();
       surface->last_first_frame_log_ms = surface->first_frame_start_ms;
       surface->first_frame_poll_count = 0;
+      surface->first_frame_force_logged = false;
       PresentLog("texture registered surface=" + surface_id +
                  " texture=" + std::to_string(texture_id) +
                  " handle=" + std::to_string(handle));
@@ -605,6 +623,7 @@ struct RustLibMisaRinPlugin::Impl {
     surface->first_frame_start_ms = 0;
     surface->last_first_frame_log_ms = 0;
     surface->first_frame_poll_count = 0;
+    surface->first_frame_force_logged = false;
 
     auto binding = surface->binding;
     surface->binding.reset();
