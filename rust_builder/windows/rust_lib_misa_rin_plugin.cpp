@@ -17,6 +17,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -59,6 +60,7 @@ constexpr int64_t kMinIntervalUs = 4000;
 constexpr int64_t kMaxIntervalUs = 33333;
 constexpr int64_t kFirstFrameForceAfterMs = 120;
 constexpr int64_t kFirstFrameLogIntervalMs = 500;
+constexpr UINT kAsyncCompletionMessage = WM_APP + 0x4A1;
 
 std::optional<int64_t> GetIntValue(const flutter::EncodableValue& value) {
   if (const auto* int32_value = std::get_if<int32_t>(&value)) {
@@ -231,7 +233,8 @@ class RustLibMisaRinPlugin : public flutter::Plugin {
       FlutterDesktopPluginRegistrarRef raw_registrar);
 
   explicit RustLibMisaRinPlugin(
-      FlutterDesktopTextureRegistrarRef texture_registrar);
+      FlutterDesktopTextureRegistrarRef texture_registrar,
+      flutter::PluginRegistrarWindows* registrar);
 
   ~RustLibMisaRinPlugin() override;
 
@@ -258,6 +261,8 @@ struct RustLibMisaRinPlugin::Impl {
     int64_t texture_id = -1;
     std::shared_ptr<GpuSurfaceBinding> binding;
     std::mutex mutex;
+    bool disposed = false;
+    uint64_t request_id = 0;
     bool waiting_first_frame = false;
     int64_t first_frame_start_ms = 0;
     int64_t last_first_frame_log_ms = 0;
@@ -312,8 +317,28 @@ struct RustLibMisaRinPlugin::Impl {
     }
   };
 
-  explicit Impl(FlutterDesktopTextureRegistrarRef texture_registrar)
-      : texture_registrar_(texture_registrar), running_(true) {
+  explicit Impl(FlutterDesktopTextureRegistrarRef texture_registrar,
+                flutter::PluginRegistrarWindows* registrar)
+      : texture_registrar_(texture_registrar),
+        registrar_(registrar),
+        running_(true) {
+    if (registrar_) {
+      if (auto* view = registrar_->GetView()) {
+        hwnd_ = view->GetNativeWindow();
+      }
+      if (hwnd_) {
+        window_proc_delegate_id_ =
+            registrar_->RegisterTopLevelWindowProcDelegate(
+                [this](HWND, UINT message, WPARAM, LPARAM)
+                    -> std::optional<LRESULT> {
+                  if (message == kAsyncCompletionMessage) {
+                    DrainCompletions();
+                    return 0;
+                  }
+                  return std::nullopt;
+                });
+      }
+    }
     frame_thread_ = std::thread([this]() { FrameLoop(); });
   }
 
@@ -321,6 +346,11 @@ struct RustLibMisaRinPlugin::Impl {
     running_.store(false);
     if (frame_thread_.joinable()) {
       frame_thread_.join();
+    }
+    if (registrar_ && window_proc_delegate_id_ != 0) {
+      registrar_->UnregisterTopLevelWindowProcDelegate(
+          window_proc_delegate_id_);
+      window_proc_delegate_id_ = 0;
     }
     DisposeAll();
   }
@@ -374,10 +404,10 @@ struct RustLibMisaRinPlugin::Impl {
       }
     }
 
-    bool needs_resize = false;
-    bool layer_count_changed = false;
+    uint64_t request_id = 0;
     {
       std::lock_guard<std::mutex> lock(surface->mutex);
+      surface->disposed = false;
       if (surface->engine_handle != 0 && surface->texture_id >= 0 &&
           surface->width == width && surface->height == height &&
           surface->layer_count == layer_count) {
@@ -399,134 +429,217 @@ struct RustLibMisaRinPlugin::Impl {
         result->Success(flutter::EncodableValue(response));
         return;
       }
-      needs_resize =
-          surface->engine_handle != 0 &&
-          (surface->width != width || surface->height != height);
-      layer_count_changed =
-          surface->engine_handle != 0 && surface->layer_count != layer_count;
+      surface->request_id += 1;
+      request_id = surface->request_id;
     }
 
-    std::lock_guard<std::mutex> lock(surface->mutex);
-    uint64_t handle = surface->engine_handle;
-    bool engine_created = false;
-    if (handle == 0) {
-      handle = engine_create(static_cast<uint32_t>(width),
-                             static_cast<uint32_t>(height));
-      engine_created = true;
-      PresentLog("engine_create handle=" + std::to_string(handle) +
-                 " surface=" + surface_id);
-    } else if (needs_resize) {
-      if (engine_resize_canvas(handle, static_cast<uint32_t>(width),
-                               static_cast<uint32_t>(height),
-                               static_cast<uint32_t>(layer_count),
-                               background_color) == 0) {
-        engine_dispose(handle);
+    auto shared_result =
+        std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(
+            result.release());
+
+    std::thread([this, surface, surface_id, width, height, layer_count,
+                 background_color, request_id, shared_result, start_ms]() mutable {
+      const int64_t async_start_ms = NowMs();
+      uint64_t handle = 0;
+      bool engine_created = false;
+      bool owns_handle = false;
+      int64_t prev_texture_id = -1;
+      int prev_width = 0;
+      int prev_height = 0;
+      int prev_layer_count = 0;
+      {
+        std::lock_guard<std::mutex> lock(surface->mutex);
+        handle = surface->engine_handle;
+        prev_texture_id = surface->texture_id;
+        prev_width = surface->width;
+        prev_height = surface->height;
+        prev_layer_count = surface->layer_count;
+      }
+
+      bool resize_needed =
+          handle != 0 &&
+          (prev_width != width || prev_height != height);
+      bool layer_changed =
+          handle != 0 && prev_layer_count != layer_count;
+
+      if (handle == 0) {
         handle = engine_create(static_cast<uint32_t>(width),
                                static_cast<uint32_t>(height));
         engine_created = true;
-        PresentLog("engine_resize failed -> recreate handle=" +
-                   std::to_string(handle) + " surface=" + surface_id);
-      }
-    }
-
-    if (handle == 0) {
-      result->Error("engine_create_failed",
-                    "engine_create returned 0",
-                    flutter::EncodableValue());
-      PresentLog("getTextureInfo failed surface=" + surface_id +
-                 " elapsed_ms=" + std::to_string(NowMs() - start_ms));
-      return;
-    }
-
-    surface->engine_handle = handle;
-    surface->width = width;
-    surface->height = height;
-    surface->layer_count = layer_count;
-    surface->background_color_argb = background_color;
-
-    if (needs_resize || surface->texture_id < 0) {
-      UnregisterTextureLocked(surface);
-      PresentLog("create_present_dxgi_surface surface=" + surface_id +
-                 " handle=" + std::to_string(handle) + " size=" +
-                 std::to_string(width) + "x" + std::to_string(height));
-      void* shared_handle = engine_create_present_dxgi_surface(
-          handle, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-      if (!shared_handle) {
-        result->Error("engine_create_present_failed",
-                      "engine_create_present_dxgi_surface returned null",
-                      flutter::EncodableValue());
-        return;
-      }
-      PresentLog("create_present_dxgi_surface ok surface=" + surface_id +
-                 " handle=" + std::to_string(handle));
-
-      auto binding =
-          std::make_shared<GpuSurfaceBinding>(shared_handle,
-                                              static_cast<size_t>(width),
-                                              static_cast<size_t>(height));
-
-      FlutterDesktopTextureInfo texture_info{};
-      texture_info.type = kFlutterDesktopGpuSurfaceTexture;
-      texture_info.gpu_surface_config.struct_size =
-          sizeof(FlutterDesktopGpuSurfaceTextureConfig);
-      texture_info.gpu_surface_config.type =
-          kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
-      texture_info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
-      texture_info.gpu_surface_config.user_data = binding.get();
-
-      const int64_t texture_id =
-          FlutterDesktopTextureRegistrarRegisterExternalTexture(
-              texture_registrar_, &texture_info);
-      if (texture_id < 0) {
-        auto shared_handle_win = static_cast<HANDLE>(shared_handle);
-        if (shared_handle_win) {
-          CloseHandle(shared_handle_win);
+        owns_handle = true;
+        PresentLog("engine_create handle=" + std::to_string(handle) +
+                   " surface=" + surface_id);
+      } else if (resize_needed) {
+        if (engine_resize_canvas(handle, static_cast<uint32_t>(width),
+                                 static_cast<uint32_t>(height),
+                                 static_cast<uint32_t>(layer_count),
+                                 background_color) == 0) {
+          engine_dispose(handle);
+          handle = engine_create(static_cast<uint32_t>(width),
+                                 static_cast<uint32_t>(height));
+          engine_created = true;
+          owns_handle = true;
+          PresentLog("engine_resize failed -> recreate handle=" +
+                     std::to_string(handle) + " surface=" + surface_id);
         }
-        binding->shared_handle = nullptr;
-        result->Error("register_texture_failed",
-                      "RegisterExternalTexture returned < 0",
-                      flutter::EncodableValue());
+      }
+
+      if (handle == 0) {
+        PostCompletion([shared_result, surface_id, start_ms]() {
+          shared_result->Error("engine_create_failed",
+                               "engine_create returned 0",
+                               flutter::EncodableValue());
+          PresentLog("getTextureInfo failed surface=" + surface_id +
+                     " elapsed_ms=" + std::to_string(NowMs() - start_ms));
+        });
         return;
       }
 
-      surface->binding = std::move(binding);
-      surface->texture_id = texture_id;
-      surface->waiting_first_frame = true;
-      surface->first_frame_start_ms = NowMs();
-      surface->last_first_frame_log_ms = surface->first_frame_start_ms;
-      surface->first_frame_poll_count = 0;
-      surface->first_frame_force_logged = false;
-      PresentLog("texture registered surface=" + surface_id +
-                 " texture=" + std::to_string(texture_id) +
-                 " handle=" + std::to_string(handle));
-    }
+      const bool needs_texture =
+          engine_created || resize_needed || prev_texture_id < 0;
+      void* shared_handle = nullptr;
+      if (needs_texture) {
+        PresentLog("create_present_dxgi_surface surface=" + surface_id +
+                   " handle=" + std::to_string(handle) + " size=" +
+                   std::to_string(width) + "x" + std::to_string(height));
+        shared_handle = engine_create_present_dxgi_surface(
+            handle, static_cast<uint32_t>(width),
+            static_cast<uint32_t>(height));
+        if (!shared_handle) {
+          PostCompletion([shared_result, surface_id]() {
+            shared_result->Error(
+                "engine_create_present_failed",
+                "engine_create_present_dxgi_surface returned null",
+                flutter::EncodableValue());
+          });
+          return;
+        }
+        PresentLog("create_present_dxgi_surface ok surface=" + surface_id +
+                   " handle=" + std::to_string(handle));
+      }
 
-    if (engine_created || needs_resize || layer_count_changed) {
-      engine_reset_canvas_with_layers(handle,
-                                      static_cast<uint32_t>(layer_count),
-                                      background_color);
-      PresentLog("reset_canvas surface=" + surface_id +
-                 " handle=" + std::to_string(handle) +
-                 " layers=" + std::to_string(layer_count));
-    }
+      PostCompletion([this, surface, surface_id, width, height, layer_count,
+                      background_color, handle, shared_handle, engine_created,
+                      resize_needed, layer_changed, needs_texture, owns_handle,
+                      request_id, shared_result, start_ms, async_start_ms]() mutable {
+        std::lock_guard<std::mutex> lock(surface->mutex);
+        if (surface->disposed || surface->request_id != request_id) {
+          if (shared_handle) {
+            auto shared_handle_win = static_cast<HANDLE>(shared_handle);
+            if (shared_handle_win) {
+              CloseHandle(shared_handle_win);
+            }
+          }
+          if (owns_handle && surface->engine_handle == 0) {
+            engine_dispose(handle);
+          }
+          if (surface->engine_handle != 0 && surface->texture_id >= 0) {
+            flutter::EncodableMap response;
+            response[flutter::EncodableValue("textureId")] =
+                flutter::EncodableValue(surface->texture_id);
+            response[flutter::EncodableValue("engineHandle")] =
+                flutter::EncodableValue(
+                    static_cast<int64_t>(surface->engine_handle));
+            response[flutter::EncodableValue("width")] =
+                flutter::EncodableValue(surface->width);
+            response[flutter::EncodableValue("height")] =
+                flutter::EncodableValue(surface->height);
+            response[flutter::EncodableValue("isNewEngine")] =
+                flutter::EncodableValue(false);
+            shared_result->Success(flutter::EncodableValue(response));
+          } else {
+            shared_result->Error("request_canceled",
+                                 "getTextureInfo superseded",
+                                 flutter::EncodableValue());
+          }
+          return;
+        }
 
-    flutter::EncodableMap response;
-    response[flutter::EncodableValue("textureId")] =
-        flutter::EncodableValue(surface->texture_id);
-    response[flutter::EncodableValue("engineHandle")] =
-        flutter::EncodableValue(static_cast<int64_t>(surface->engine_handle));
-    response[flutter::EncodableValue("width")] =
-        flutter::EncodableValue(surface->width);
-    response[flutter::EncodableValue("height")] =
-        flutter::EncodableValue(surface->height);
-    response[flutter::EncodableValue("isNewEngine")] =
-        flutter::EncodableValue(engine_created || needs_resize);
-    result->Success(flutter::EncodableValue(response));
-    PresentLog("getTextureInfo done surface=" + surface_id +
-               " texture=" + std::to_string(surface->texture_id) +
-               " handle=" + std::to_string(surface->engine_handle) +
-               " newEngine=" + std::to_string(engine_created || needs_resize) +
-               " elapsed_ms=" + std::to_string(NowMs() - start_ms));
+        surface->engine_handle = handle;
+        surface->width = width;
+        surface->height = height;
+        surface->layer_count = layer_count;
+        surface->background_color_argb = background_color;
+
+        if (needs_texture) {
+          UnregisterTextureLocked(surface);
+          auto binding =
+              std::make_shared<GpuSurfaceBinding>(shared_handle,
+                                                  static_cast<size_t>(width),
+                                                  static_cast<size_t>(height));
+
+          FlutterDesktopTextureInfo texture_info{};
+          texture_info.type = kFlutterDesktopGpuSurfaceTexture;
+          texture_info.gpu_surface_config.struct_size =
+              sizeof(FlutterDesktopGpuSurfaceTextureConfig);
+          texture_info.gpu_surface_config.type =
+              kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle;
+          texture_info.gpu_surface_config.callback = GpuSurfaceBinding::Callback;
+          texture_info.gpu_surface_config.user_data = binding.get();
+
+          const int64_t texture_id =
+              FlutterDesktopTextureRegistrarRegisterExternalTexture(
+                  texture_registrar_, &texture_info);
+          if (texture_id < 0) {
+            auto shared_handle_win = static_cast<HANDLE>(shared_handle);
+            if (shared_handle_win) {
+              CloseHandle(shared_handle_win);
+            }
+            binding->shared_handle = nullptr;
+            shared_result->Error("register_texture_failed",
+                                 "RegisterExternalTexture returned < 0",
+                                 flutter::EncodableValue());
+            return;
+          }
+
+          surface->binding = std::move(binding);
+          surface->texture_id = texture_id;
+          surface->waiting_first_frame = true;
+          surface->first_frame_start_ms = NowMs();
+          surface->last_first_frame_log_ms = surface->first_frame_start_ms;
+          surface->first_frame_poll_count = 0;
+          surface->first_frame_force_logged = false;
+          PresentLog("texture registered surface=" + surface_id +
+                     " texture=" + std::to_string(texture_id) +
+                     " handle=" + std::to_string(handle));
+        } else if (shared_handle) {
+          auto shared_handle_win = static_cast<HANDLE>(shared_handle);
+          if (shared_handle_win) {
+            CloseHandle(shared_handle_win);
+          }
+        }
+
+        if (engine_created || resize_needed || layer_changed) {
+          engine_reset_canvas_with_layers(handle,
+                                          static_cast<uint32_t>(layer_count),
+                                          background_color);
+          PresentLog("reset_canvas surface=" + surface_id +
+                     " handle=" + std::to_string(handle) +
+                     " layers=" + std::to_string(layer_count));
+        }
+
+        flutter::EncodableMap response;
+        response[flutter::EncodableValue("textureId")] =
+            flutter::EncodableValue(surface->texture_id);
+        response[flutter::EncodableValue("engineHandle")] =
+            flutter::EncodableValue(
+                static_cast<int64_t>(surface->engine_handle));
+        response[flutter::EncodableValue("width")] =
+            flutter::EncodableValue(surface->width);
+        response[flutter::EncodableValue("height")] =
+            flutter::EncodableValue(surface->height);
+        response[flutter::EncodableValue("isNewEngine")] =
+            flutter::EncodableValue(engine_created || resize_needed);
+        shared_result->Success(flutter::EncodableValue(response));
+        PresentLog("getTextureInfo done surface=" + surface_id +
+                   " texture=" + std::to_string(surface->texture_id) +
+                   " handle=" + std::to_string(surface->engine_handle) +
+                   " newEngine=" +
+                   std::to_string(engine_created || resize_needed) +
+                   " elapsed_ms=" + std::to_string(NowMs() - start_ms) +
+                   " async_ms=" + std::to_string(NowMs() - async_start_ms));
+      });
+    }).detach();
   }
 
   void HandleDisposeTexture(
@@ -546,6 +659,8 @@ struct RustLibMisaRinPlugin::Impl {
 
     if (surface) {
       std::lock_guard<std::mutex> lock(surface->mutex);
+      surface->disposed = true;
+      surface->request_id += 1;
       PresentLog("disposeTexture surface=" + surface_id +
                  " handle=" + std::to_string(surface->engine_handle) +
                  " texture=" + std::to_string(surface->texture_id));
@@ -575,10 +690,43 @@ struct RustLibMisaRinPlugin::Impl {
         continue;
       }
       std::lock_guard<std::mutex> lock(surface->mutex);
+      surface->disposed = true;
+      surface->request_id += 1;
       UnregisterTextureLocked(surface);
       if (surface->engine_handle != 0) {
         engine_dispose(surface->engine_handle);
         surface->engine_handle = 0;
+      }
+    }
+  }
+
+  void PostCompletion(std::function<void()> task) {
+    if (!task) {
+      return;
+    }
+    if (!running_.load()) {
+      return;
+    }
+    if (!hwnd_) {
+      task();
+      return;
+    }
+    {
+      std::lock_guard<std::mutex> lock(completions_mutex_);
+      completions_.push_back(std::move(task));
+    }
+    PostMessage(hwnd_, kAsyncCompletionMessage, 0, 0);
+  }
+
+  void DrainCompletions() {
+    std::vector<std::function<void()>> tasks;
+    {
+      std::lock_guard<std::mutex> lock(completions_mutex_);
+      tasks.swap(completions_);
+    }
+    for (auto& task : tasks) {
+      if (task) {
+        task();
       }
     }
   }
@@ -645,6 +793,11 @@ struct RustLibMisaRinPlugin::Impl {
   }
 
   FlutterDesktopTextureRegistrarRef texture_registrar_;
+  flutter::PluginRegistrarWindows* registrar_ = nullptr;
+  HWND hwnd_ = nullptr;
+  int window_proc_delegate_id_ = 0;
+  std::mutex completions_mutex_;
+  std::vector<std::function<void()>> completions_;
   std::mutex surfaces_mutex_;
   std::unordered_map<std::string, std::shared_ptr<SurfaceState>> surfaces_;
   std::atomic<bool> running_;
@@ -661,7 +814,7 @@ void RustLibMisaRinPlugin::RegisterWithRegistrar(
           &flutter::StandardMethodCodec::GetInstance());
 
   auto plugin = std::make_unique<RustLibMisaRinPlugin>(
-      FlutterDesktopRegistrarGetTextureRegistrar(raw_registrar));
+      FlutterDesktopRegistrarGetTextureRegistrar(raw_registrar), registrar);
 
   channel->SetMethodCallHandler(
       [plugin_pointer = plugin.get()](const auto& call, auto result) {
@@ -672,8 +825,9 @@ void RustLibMisaRinPlugin::RegisterWithRegistrar(
 }
 
 RustLibMisaRinPlugin::RustLibMisaRinPlugin(
-    FlutterDesktopTextureRegistrarRef texture_registrar)
-    : impl_(std::make_unique<Impl>(texture_registrar)) {}
+    FlutterDesktopTextureRegistrarRef texture_registrar,
+    flutter::PluginRegistrarWindows* registrar)
+    : impl_(std::make_unique<Impl>(texture_registrar, registrar)) {}
 
 RustLibMisaRinPlugin::~RustLibMisaRinPlugin() = default;
 
