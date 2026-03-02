@@ -474,6 +474,13 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     if (!_backend.isReady) {
       return false;
     }
+    final bool debugTiming =
+        bool.fromEnvironment(
+          'MISA_RIN_DEBUG_BACKEND_CANVAS_READY',
+          defaultValue: false,
+        );
+    final Stopwatch totalWatch =
+        debugTiming ? (Stopwatch()..start()) : Stopwatch();
     final Size engineSize = _backendCanvasEngineSize ?? _canvasSize;
     final int width = engineSize.width.round();
     final int height = engineSize.height.round();
@@ -484,15 +491,32 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     bool allOk = true;
     for (int i = 0; i < layers.length; i++) {
       final CanvasLayerInfo layer = layers[i];
+      final Stopwatch? layerWatch =
+          debugTiming ? (Stopwatch()..start()) : null;
       final Size? surfaceSize = _controller.readLayerSurfaceSize(layer.id);
       if (surfaceSize == null ||
           surfaceSize.width.round() != width ||
           surfaceSize.height.round() != height) {
+        if (debugTiming) {
+          debugPrint(
+            'paintingBoard: sync backend layer skip size surfaceKey=${widget.surfaceKey} '
+            'layer=$i id=${layer.id} '
+            'surface=${surfaceSize?.width.round()}x${surfaceSize?.height.round()} '
+            'engine=${width}x$height',
+          );
+        }
         allOk = false;
         continue;
       }
       final Uint32List? pixels = _controller.readLayerPixels(layer.id);
       if (pixels == null || pixels.length != width * height) {
+        if (debugTiming) {
+          debugPrint(
+            'paintingBoard: sync backend layer skip pixels surfaceKey=${widget.surfaceKey} '
+            'layer=$i id=${layer.id} '
+            'pixels=${pixels?.length ?? 0} expected=${width * height}',
+          );
+        }
         allOk = false;
         continue;
       }
@@ -503,11 +527,25 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
         recordHistory: false,
         markDirty: false,
       );
+      if (debugTiming) {
+        final int bytes = pixels.length * 4;
+        debugPrint(
+          'paintingBoard: sync backend layer surfaceKey=${widget.surfaceKey} '
+          'layer=$i id=${layer.id} bytes=$bytes applied=$applied '
+          'elapsedMs=${layerWatch!.elapsedMilliseconds}',
+        );
+      }
       if (!applied) {
         allOk = false;
         continue;
       }
       _bumpBackendLayerPreviewRevision(layer.id);
+    }
+    if (debugTiming) {
+      debugPrint(
+        'paintingBoard: sync backend layers done surfaceKey=${widget.surfaceKey} '
+        'elapsedMs=${totalWatch.elapsedMilliseconds} ok=$allOk',
+      );
     }
     return allOk;
   }
@@ -1426,6 +1464,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     if (_backendPixelsSyncedHandle == handle) {
       return;
     }
+    final Stopwatch watch = Stopwatch()..start();
     debugPrint(
       'paintingBoard: sync backend pixels start surfaceKey=${widget.surfaceKey} '
       'handle=$handle prevSynced=$_backendPixelsSyncedHandle '
@@ -1435,12 +1474,12 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
       _backendPixelsSyncedHandle = handle;
       debugPrint(
         'paintingBoard: sync backend pixels ok surfaceKey=${widget.surfaceKey} '
-        'handle=$handle',
+        'handle=$handle elapsedMs=${watch.elapsedMilliseconds}',
       );
     } else {
       debugPrint(
         'paintingBoard: sync backend pixels failed surfaceKey=${widget.surfaceKey} '
-        'handle=$handle',
+        'handle=$handle elapsedMs=${watch.elapsedMilliseconds}',
       );
     }
   }
