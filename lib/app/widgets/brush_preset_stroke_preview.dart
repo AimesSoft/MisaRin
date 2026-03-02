@@ -1228,7 +1228,7 @@ class _BrushPreviewWorker {
   bool _starting = false;
   Timer? _startTimeout;
 
-  static const Duration _kStartTimeout = Duration(milliseconds: 2000);
+  static const Duration _kStartTimeout = Duration(milliseconds: 100);
 
   Future<void> _ensureStarted() async {
     if (_useMainThread || _sendPort != null || _starting) {

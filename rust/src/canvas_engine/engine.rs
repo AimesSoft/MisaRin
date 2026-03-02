@@ -2484,6 +2484,7 @@ fn handle_engine_command(
             height,
             reply,
         } => {
+            let attach_start = Instant::now();
             if width == 0 || height == 0 {
                 let _ = reply.send(None);
                 *present = None;
@@ -2514,6 +2515,7 @@ fn handle_engine_command(
 
             match create_dxgi_shared_present_target(device.as_ref(), width, height) {
                 Ok(mut target) => {
+                    let elapsed_ms = attach_start.elapsed().as_millis();
                     let handle = target.take_dxgi_handle();
                     *present = Some(target);
                     if handle.is_some() {
@@ -2521,7 +2523,7 @@ fn handle_engine_command(
                             debug::log(
                                 LogLevel::Info,
                                 format_args!(
-                                    "AttachPresentDxgi ok size={width}x{height} shared=0x{shared:x}"
+                                    "AttachPresentDxgi ok size={width}x{height} shared=0x{shared:x} elapsed_ms={elapsed_ms}"
                                 ),
                             );
                         }
