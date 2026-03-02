@@ -26,6 +26,11 @@ final bool _kDebugBackendCanvasInput =
       'MISA_RIN_DEBUG_RUST_CANVAS_INPUT',
       defaultValue: false,
     );
+final bool _kDebugBackendCanvasReady =
+    bool.fromEnvironment(
+      'MISA_RIN_DEBUG_BACKEND_CANVAS_READY',
+      defaultValue: false,
+    );
 
 String _surfaceIdForKey(String surfaceKey) {
   final String normalized = surfaceKey.trim();
@@ -431,6 +436,7 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
   int? _lastNotifiedEngineHandle;
   Size? _lastNotifiedEngineSize;
   int? _lastNotifiedTextureId;
+  int _lastBlockedInputLogMs = 0;
 
   @override
   void initState() {
@@ -557,6 +563,7 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
 
   Future<void> _loadTextureInfo() async {
     try {
+      final Stopwatch watch = Stopwatch()..start();
       final int requestId = ++_requestSerial;
       _activeRequest = requestId;
       final int width = widget.canvasSize.width.round().clamp(1, 16384);
@@ -619,6 +626,13 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
         'prevEngine=${prevEngineSize?.width.round()}x${prevEngineSize?.height.round()} '
         'nextEngine=${nextSize?.width.round()}x${nextSize?.height.round()}',
       );
+      if (_kDebugBackendCanvasReady) {
+        debugPrint(
+          'backendSurface: response timing req=$requestId surface=$_surfaceId '
+          'elapsedMs=${watch.elapsedMilliseconds} '
+          'fromWarmup=${info.fromWarmup} newEngine=${info.isNewEngine}',
+        );
+      }
       debugPrint(
         'backendSurface: ready textureId=$textureId handle=$engineHandle '
         'engine=${engineWidth}x${engineHeight} '
@@ -788,9 +802,14 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
 
   void _handlePointerDown(PointerDownEvent event) {
     if (!widget.enableDrawing) {
+      _maybeLogBlockedInput(event, 'enableDrawing=false');
       return;
     }
     if (!_canSendPoints() || !_isDrawingPointer(event)) {
+      _maybeLogBlockedInput(
+        event,
+        _canSendPoints() ? 'notDrawingPointer' : 'backendNotReady',
+      );
       return;
     }
     final int? handle = _engineHandle;
@@ -920,6 +939,25 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
       pointCount: count,
     );
     _points.clear();
+  }
+
+  void _maybeLogBlockedInput(PointerEvent event, String reason) {
+    if (!_kDebugBackendCanvasReady && !_kDebugBackendCanvasInput) {
+      return;
+    }
+    final int nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (nowMs - _lastBlockedInputLogMs < 250) {
+      return;
+    }
+    _lastBlockedInputLogMs = nowMs;
+    debugPrint(
+      'backendSurface: input blocked surface=$_surfaceId reason=$reason '
+      'enableDrawing=${widget.enableDrawing} '
+      'textureId=$_textureId handle=$_engineHandle '
+      'engineSize=${_engineSize?.width.round()}x${_engineSize?.height.round()} '
+      'pointer=${event.pointer} kind=${event.kind} '
+      'pos=${event.localPosition}',
+    );
   }
 
   double? _normalizeStylusPressure(PointerEvent event) {

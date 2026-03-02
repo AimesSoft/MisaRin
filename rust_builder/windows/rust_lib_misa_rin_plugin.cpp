@@ -348,6 +348,7 @@ struct RustLibMisaRinPlugin::Impl {
   void HandleGetTextureInfo(
       const flutter::EncodableMap& args,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+    const int64_t start_ms = NowMs();
     const std::string surface_id = GetSurfaceId(args);
     const int width =
         GetClampedInt(args, "width", kFallbackSize, 1, kMaxDimension);
@@ -432,6 +433,8 @@ struct RustLibMisaRinPlugin::Impl {
       result->Error("engine_create_failed",
                     "engine_create returned 0",
                     flutter::EncodableValue());
+      PresentLog("getTextureInfo failed surface=" + surface_id +
+                 " elapsed_ms=" + std::to_string(NowMs() - start_ms));
       return;
     }
 
@@ -519,6 +522,11 @@ struct RustLibMisaRinPlugin::Impl {
     response[flutter::EncodableValue("isNewEngine")] =
         flutter::EncodableValue(engine_created || needs_resize);
     result->Success(flutter::EncodableValue(response));
+    PresentLog("getTextureInfo done surface=" + surface_id +
+               " texture=" + std::to_string(surface->texture_id) +
+               " handle=" + std::to_string(surface->engine_handle) +
+               " newEngine=" + std::to_string(engine_created || needs_resize) +
+               " elapsed_ms=" + std::to_string(NowMs() - start_ms));
   }
 
   void HandleDisposeTexture(
