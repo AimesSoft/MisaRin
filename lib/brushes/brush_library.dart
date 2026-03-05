@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -13,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../app/preferences/app_preferences.dart';
 import '../canvas/canvas_tools.dart';
 import '../l10n/app_localizations.dart';
+import 'abr_brush_converter.dart';
 import 'brush_package.dart';
 import 'brush_preset.dart';
 import 'brush_shape_library.dart';
@@ -30,16 +30,17 @@ class BrushLibrary extends ChangeNotifier {
     required Map<String, BrushPreset> overrides,
     required Map<String, BrushLocalizationTable> localizations,
     required String selectedId,
-  })  : _shapeLibrary = shapeLibrary,
-        _presets = presets,
-        _basePresets = basePresets,
-        _sources = sources,
-        _overrides = overrides,
-        _localizations = localizations,
-        _selectedId = selectedId;
+  }) : _shapeLibrary = shapeLibrary,
+       _presets = presets,
+       _basePresets = basePresets,
+       _sources = sources,
+       _overrides = overrides,
+       _localizations = localizations,
+       _selectedId = selectedId;
 
   static const int _version = 1;
   static const String brushFileExtension = 'mrb';
+  static const String abrFileExtension = 'abr';
   static const String _folderName = 'MisaRin';
   static const String _brushFolderName = 'brushes';
   static const String _libraryFileName = 'brush_library.json';
@@ -89,8 +90,7 @@ class BrushLibrary extends ChangeNotifier {
   String displayNameFor(BrushPreset preset, ui.Locale locale) {
     final BrushLocalizationTable? table = _localizations[preset.id];
     if (table != null) {
-      final String? resolved =
-          table.resolve(preset.name, _localeTag(locale));
+      final String? resolved = table.resolve(preset.name, _localeTag(locale));
       if (resolved != null && resolved.isNotEmpty) {
         return resolved;
       }
@@ -132,8 +132,9 @@ class BrushLibrary extends ChangeNotifier {
     // Load built-in brush packages from assets.
     for (final String assetPath in _defaultBrushAssets) {
       final ByteData data = await rootBundle.load(assetPath);
-      final BrushPackageData? package =
-          BrushPackageCodec.decode(_byteDataToUint8List(data));
+      final BrushPackageData? package = BrushPackageCodec.decode(
+        _byteDataToUint8List(data),
+      );
       if (package == null) {
         continue;
       }
@@ -181,9 +182,7 @@ class BrushLibrary extends ChangeNotifier {
       }
     }
 
-    userPresets.sort(
-      (a, b) => a.preset.name.compareTo(b.preset.name),
-    );
+    userPresets.sort((a, b) => a.preset.name.compareTo(b.preset.name));
     for (final _UserBrushEntry entry in userPresets) {
       BrushPreset preset = entry.preset;
       if (basePresets.containsKey(preset.id)) {
@@ -233,7 +232,9 @@ class BrushLibrary extends ChangeNotifier {
       final Map<String, dynamic>? legacy = await _readLegacyPayload();
       if (legacy != null) {
         selectedId = legacy['selectedId'] as String?;
-        final List<BrushPreset> legacyPresets = _legacyPresetsFromPayload(legacy);
+        final List<BrushPreset> legacyPresets = _legacyPresetsFromPayload(
+          legacy,
+        );
         overrides = await _migrateLegacyPresets(
           legacyPresets,
           basePresets,
@@ -272,7 +273,10 @@ class BrushLibrary extends ChangeNotifier {
     }
 
     String resolvedSelectedId = selectedId ?? effectivePresets.first.id;
-    if (effectivePresets.indexWhere((preset) => preset.id == resolvedSelectedId) < 0) {
+    if (effectivePresets.indexWhere(
+          (preset) => preset.id == resolvedSelectedId,
+        ) <
+        0) {
       resolvedSelectedId = effectivePresets.first.id;
     }
 
@@ -312,8 +316,9 @@ class BrushLibrary extends ChangeNotifier {
   }
 
   void updatePreset(BrushPreset preset) {
-    final int index =
-        _presets.indexWhere((BrushPreset entry) => entry.id == preset.id);
+    final int index = _presets.indexWhere(
+      (BrushPreset entry) => entry.id == preset.id,
+    );
     if (index < 0) {
       return;
     }
@@ -346,8 +351,10 @@ class BrushLibrary extends ChangeNotifier {
       id: _uniqueId(sanitized.id, ids),
       name: _uniqueName(sanitized.name, _presets.map((p) => p.name).toSet()),
     );
-    final String? filePath =
-        await _writeUserBrushPackage(sanitized, _shapeLibrary);
+    final String? filePath = await _writeUserBrushPackage(
+      sanitized,
+      _shapeLibrary,
+    );
     if (filePath == null) {
       return;
     }
@@ -366,7 +373,9 @@ class BrushLibrary extends ChangeNotifier {
     if (source == null || source.isBuiltIn) {
       return;
     }
-    final int index = _presets.indexWhere((BrushPreset preset) => preset.id == id);
+    final int index = _presets.indexWhere(
+      (BrushPreset preset) => preset.id == id,
+    );
     if (index < 0) {
       return;
     }
@@ -405,12 +414,11 @@ class BrushLibrary extends ChangeNotifier {
     if (package.localizations != null) {
       _localizations[preset.id] = package.localizations!;
     }
-    final String? filePath =
-        await _writeUserBrushPackage(
-          preset,
-          _shapeLibrary,
-          package: package,
-        );
+    final String? filePath = await _writeUserBrushPackage(
+      preset,
+      _shapeLibrary,
+      package: package,
+    );
     if (filePath == null) {
       return null;
     }
@@ -430,8 +438,35 @@ class BrushLibrary extends ChangeNotifier {
     if (!await file.exists()) {
       return null;
     }
+    if (path.toLowerCase().endsWith('.$abrFileExtension')) {
+      return _importAbrFile(path);
+    }
     final Uint8List bytes = await file.readAsBytes();
     return importBrushBytes(bytes);
+  }
+
+  Future<BrushPreset?> _importAbrFile(String path) async {
+    final Set<String> usedIds = _basePresets.keys.toSet();
+    final Set<String> usedNames = _presets.map((p) => p.name).toSet();
+    final AbrNativeConversionResult? converted =
+        await AbrBrushConverter.convertFileToNativePackages(
+          path,
+          usedIds: usedIds,
+          usedNames: usedNames,
+        );
+    if (converted == null || converted.packages.isEmpty) {
+      return null;
+    }
+
+    BrushPreset? firstImported;
+    for (final AbrConvertedPackage convertedPackage in converted.packages) {
+      final BrushPreset? imported = await importBrushBytes(
+        convertedPackage.packageBytes,
+      );
+      firstImported ??= imported;
+    }
+
+    return firstImported;
   }
 
   Future<bool> exportBrush(String id, String outputPath) async {
@@ -445,8 +480,9 @@ class BrushLibrary extends ChangeNotifier {
     if (preset == null) {
       return false;
     }
-    final BrushShapeDefinition? shape =
-        _shapeLibrary.resolve(preset.resolvedShapeId);
+    final BrushShapeDefinition? shape = _shapeLibrary.resolve(
+      preset.resolvedShapeId,
+    );
     Uint8List? shapeBytes;
     String? shapeFileName;
     BrushShapeFileType? shapeType;
@@ -638,10 +674,14 @@ class BrushLibrary extends ChangeNotifier {
         preset.name,
         basePresets.values.map((p) => p.name).toSet(),
       );
-      final BrushPreset sanitized =
-          preset.sanitized().copyWith(id: newId, name: newName);
-      final String? filePath =
-          await _writeUserBrushPackage(sanitized, shapeLibrary);
+      final BrushPreset sanitized = preset.sanitized().copyWith(
+        id: newId,
+        name: newName,
+      );
+      final String? filePath = await _writeUserBrushPackage(
+        sanitized,
+        shapeLibrary,
+      );
       if (filePath == null) {
         continue;
       }
@@ -670,28 +710,31 @@ class BrushLibrary extends ChangeNotifier {
       if (packageBytes == null || packageType == null) {
         return;
       }
-      final Uint8List existingBytes =
-          await shapeLibrary.loadShapeBytes(existing.id);
+      final Uint8List existingBytes = await shapeLibrary.loadShapeBytes(
+        existing.id,
+      );
       if (existingBytes.isNotEmpty &&
           _bytesEqual(existingBytes, packageBytes)) {
         return;
       }
-      final BrushShapeDefinition? imported = await shapeLibrary.importShapeBytes(
-        id: shapeId,
-        bytes: packageBytes,
-        type: packageType,
-      );
+      final BrushShapeDefinition? imported = await shapeLibrary
+          .importShapeBytes(
+            id: shapeId,
+            bytes: packageBytes,
+            type: packageType,
+          );
       if (imported != null && imported.id != shapeId) {
         preset.shapeId = imported.id;
       }
       return;
     }
     if (packageBytes != null && packageType != null) {
-      final BrushShapeDefinition? imported = await shapeLibrary.importShapeBytes(
-        id: shapeId,
-        bytes: packageBytes,
-        type: packageType,
-      );
+      final BrushShapeDefinition? imported = await shapeLibrary
+          .importShapeBytes(
+            id: shapeId,
+            bytes: packageBytes,
+            type: packageType,
+          );
       if (imported != null && imported.id != shapeId) {
         preset.shapeId = imported.id;
       }
@@ -719,8 +762,9 @@ class BrushLibrary extends ChangeNotifier {
       suffix += 1;
     }
 
-    final BrushShapeDefinition? shape =
-        shapeLibrary.resolve(preset.resolvedShapeId);
+    final BrushShapeDefinition? shape = shapeLibrary.resolve(
+      preset.resolvedShapeId,
+    );
     Uint8List? shapeBytes = package?.shapeBytes;
     String? shapeFileName = package?.shapeFileName;
     BrushShapeFileType? shapeType = package?.shapeType;
@@ -926,10 +970,7 @@ class BrushLibrary extends ChangeNotifier {
 }
 
 class _BrushSource {
-  const _BrushSource._({
-    required this.path,
-    required this.isBuiltIn,
-  });
+  const _BrushSource._({required this.path, required this.isBuiltIn});
 
   final String path;
   final bool isBuiltIn;

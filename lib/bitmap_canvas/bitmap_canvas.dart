@@ -475,14 +475,20 @@ class BitmapSurface {
     }
 
     final double radiusValue = resolvedRadius.abs();
-    final int left = (resolvedCenter.dx - radiusValue).floor();
-    final int right = (resolvedCenter.dx + radiusValue).ceil();
-    final int top = (resolvedCenter.dy - radiusValue).floor();
-    final int bottom = (resolvedCenter.dy + radiusValue).ceil();
-    if (right < 0 ||
-        bottom < 0 ||
-        left >= width ||
-        top >= height) {
+    final double shapeWidth = shape.width.toDouble();
+    final double shapeHeight = shape.height.toDouble();
+    final double maxShapeDim = math.max(shapeWidth, shapeHeight);
+    if (maxShapeDim <= 0.0) {
+      return;
+    }
+    // Preserve source tip aspect ratio: radius maps to the longer half-axis.
+    final double halfWidth = radiusValue * (shapeWidth / maxShapeDim);
+    final double halfHeight = radiusValue * (shapeHeight / maxShapeDim);
+    final int left = (resolvedCenter.dx - halfWidth).floor();
+    final int right = (resolvedCenter.dx + halfWidth).ceil();
+    final int top = (resolvedCenter.dy - halfHeight).floor();
+    final int bottom = (resolvedCenter.dy + halfHeight).ceil();
+    if (right < 0 || bottom < 0 || left >= width || top >= height) {
       return;
     }
 
@@ -503,10 +509,11 @@ class BitmapSurface {
         ? screentoneSoftness.clamp(0.0, 1.0)
         : 0.0;
     final double toneRadius = toneSpacing * 0.5 * toneDotSize;
-    final double toneAngle = (screentoneRotation.isFinite
-            ? screentoneRotation
-            : 45.0)
-        .clamp(-180.0, 180.0) *
+    final double toneAngle =
+        (screentoneRotation.isFinite ? screentoneRotation : 45.0).clamp(
+          -180.0,
+          180.0,
+        ) *
         (math.pi / 180.0);
     final double toneSin = math.sin(toneAngle);
     final double toneCos = math.cos(toneAngle);
@@ -521,7 +528,8 @@ class BitmapSurface {
     }
     final double cosR = math.cos(rotation);
     final double sinR = math.sin(rotation);
-    final double invRadius = radiusValue <= 0.0 ? 0.0 : 1.0 / radiusValue;
+    final double invHalfWidth = halfWidth <= 0.0 ? 0.0 : 1.0 / halfWidth;
+    final double invHalfHeight = halfHeight <= 0.0 ? 0.0 : 1.0 / halfHeight;
     final int colorArgb = color.toARGB32();
     final int baseAlpha = (colorArgb >> 24) & 0xff;
 
@@ -536,21 +544,31 @@ class BitmapSurface {
         final double dy = (y + 0.5) - resolvedCenter.dy;
         final double rx = dx * cosR + dy * sinR;
         final double ry = -dx * sinR + dy * cosR;
-        final double u = rx * invRadius * 0.5 + 0.5;
-        final double v = ry * invRadius * 0.5 + 0.5;
+        final double u = rx * invHalfWidth * 0.5 + 0.5;
+        final double v = ry * invHalfHeight * 0.5 + 0.5;
         if (u < 0.0 || u > 1.0 || v < 0.0 || v > 1.0) {
           continue;
         }
-        final double alphaBase = _sampleMask(shape.alpha, shape.width, shape.height, u, v);
+        final double alphaBase = _sampleMask(
+          shape.alpha,
+          shape.width,
+          shape.height,
+          u,
+          v,
+        );
         if (alphaBase <= 0.0001) {
           continue;
         }
         double alpha = alphaBase;
         if (softnessValue > 0.0001) {
-          final double alphaSoft =
-              _sampleMask(shape.softAlpha, shape.width, shape.height, u, v);
-          alpha = alphaBase * (1.0 - softnessValue) +
-              alphaSoft * softnessValue;
+          final double alphaSoft = _sampleMask(
+            shape.softAlpha,
+            shape.width,
+            shape.height,
+            u,
+            v,
+          );
+          alpha = alphaBase * (1.0 - softnessValue) + alphaSoft * softnessValue;
         }
         alpha = alpha.clamp(0.0, 1.0);
         if (useScreentone) {
@@ -579,16 +597,14 @@ class BitmapSurface {
         if (erase) {
           final int dst = pixels[pixelIndex];
           final int dstA = (dst >> 24) & 0xff;
-          final int outA =
-              (dstA * (1.0 - alpha)).round().clamp(0, 255);
+          final int outA = (dstA * (1.0 - alpha)).round().clamp(0, 255);
           pixels[pixelIndex] = (outA << 24) | (dst & 0x00ffffff);
         } else {
           final int srcA = (baseAlpha * alpha).round().clamp(0, 255);
           if (srcA <= 0) {
             continue;
           }
-          final int src =
-              (srcA << 24) | (colorArgb & 0x00ffffff);
+          final int src = (srcA << 24) | (colorArgb & 0x00ffffff);
           pixels[pixelIndex] = blend_utils.blendArgb(pixels[pixelIndex], src);
         }
       }
@@ -671,7 +687,8 @@ class BitmapSurface {
         dist = dotRadius + _signedDistanceBox(dx, dy, halfSide);
         break;
       case BrushShape.triangle:
-        final List<Offset> verts = polygonVertices ??
+        final List<Offset> verts =
+            polygonVertices ??
             _scaleVertices(_kTriangleUnitVertices, dotRadius);
         dist = dotRadius + _signedDistanceToPolygon(dx, dy, verts);
         break;
@@ -685,7 +702,10 @@ class BitmapSurface {
         break;
     }
     final double aaFeather = _featherForLevel(antialiasLevel);
-    final double edge = math.max(aaFeather, dotRadius * softness.clamp(0.0, 1.0));
+    final double edge = math.max(
+      aaFeather,
+      dotRadius * softness.clamp(0.0, 1.0),
+    );
     if (edge <= 0.0) {
       return dist <= dotRadius ? 1.0 : 0.0;
     }

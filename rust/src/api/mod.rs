@@ -1,3 +1,4 @@
+pub mod abr;
 pub mod bucket_fill;
 pub mod cpu_blend;
 pub mod cpu_brush;

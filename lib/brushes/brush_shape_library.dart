@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -47,8 +46,8 @@ class BrushShapeLibrary {
   BrushShapeLibrary._({
     required List<BrushShapeDefinition> shapes,
     required Directory? shapeDirectory,
-  })  : _shapes = shapes,
-        _shapeDirectory = shapeDirectory;
+  }) : _shapes = shapes,
+       _shapeDirectory = shapeDirectory;
 
   static const String _folderName = 'MisaRin';
   static const String _shapeFolderName = 'brush_shapes';
@@ -82,7 +81,8 @@ class BrushShapeLibrary {
 
   final List<BrushShapeDefinition> _shapes;
   final Directory? _shapeDirectory;
-  final Map<String, BrushShapeRaster> _rasterCache = <String, BrushShapeRaster>{};
+  final Map<String, BrushShapeRaster> _rasterCache =
+      <String, BrushShapeRaster>{};
 
   List<BrushShapeDefinition> get shapes =>
       List<BrushShapeDefinition>.unmodifiable(_shapes);
@@ -110,10 +110,7 @@ class BrushShapeLibrary {
 
   BrushShapeRaster? getCachedRaster(String id) => _rasterCache[id];
 
-  Future<BrushShapeRaster?> loadRaster(
-    String id, {
-    int size = 128,
-  }) async {
+  Future<BrushShapeRaster?> loadRaster(String id, {int? size}) async {
     if (id.isEmpty) {
       return null;
     }
@@ -134,8 +131,9 @@ class BrushShapeLibrary {
       return null;
     }
     try {
-      final ByteData? data =
-          await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      final ByteData? data = await image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      );
       if (data == null) {
         return null;
       }
@@ -145,8 +143,7 @@ class BrushShapeLibrary {
       for (int i = 0; i < pixelCount; i++) {
         alpha[i] = rgba[i * 4 + 3];
       }
-      final Uint8List softAlpha =
-          _blurAlpha(alpha, image.width, image.height);
+      final Uint8List softAlpha = _blurAlpha(alpha, image.width, image.height);
       final BrushShapeRaster raster = BrushShapeRaster(
         id: shape.id,
         width: image.width,
@@ -178,7 +175,8 @@ class BrushShapeLibrary {
     if (kIsWeb) {
       return null;
     }
-    final Directory? directory = _shapeDirectory ?? await _resolveShapeDirectory();
+    final Directory? directory =
+        _shapeDirectory ?? await _resolveShapeDirectory();
     if (directory == null) {
       return null;
     }
@@ -199,7 +197,7 @@ class BrushShapeLibrary {
           if (!entryName.startsWith(prefix)) {
             continue;
           }
-          if (p.extension(entryName).toLowerCase() != '.${extension}') {
+          if (p.extension(entryName).toLowerCase() != '.$extension') {
             continue;
           }
           final Uint8List entryBytes = await entry.readAsBytes();
@@ -264,13 +262,17 @@ class BrushShapeLibrary {
 
   static Future<BrushShapeLibrary> load() async {
     if (kIsWeb) {
-      final List<BrushShapeDefinition> shapes =
-          _builtInShapes.map((shape) => shape.toDefinition()).toList();
+      final List<BrushShapeDefinition> shapes = _builtInShapes
+          .map((shape) => shape.toDefinition())
+          .toList();
       return BrushShapeLibrary._(shapes: shapes, shapeDirectory: null);
     }
     final Directory? directory = await _resolveShapeDirectory();
     if (directory == null) {
-      return BrushShapeLibrary._(shapes: const <BrushShapeDefinition>[], shapeDirectory: null);
+      return BrushShapeLibrary._(
+        shapes: const <BrushShapeDefinition>[],
+        shapeDirectory: null,
+      );
     }
     await directory.create(recursive: true);
     await _copyDefaultShapes(directory);
@@ -289,9 +291,12 @@ class BrushShapeLibrary {
 
   static Future<void> _copyDefaultShapes(Directory directory) async {
     for (final _BuiltInShapeAsset shape in _builtInShapes) {
-      final String extension =
-          shape.type == BrushShapeFileType.svg ? 'svg' : 'png';
-      final File target = File(p.join(directory.path, '${shape.id}.$extension'));
+      final String extension = shape.type == BrushShapeFileType.svg
+          ? 'svg'
+          : 'png';
+      final File target = File(
+        p.join(directory.path, '${shape.id}.$extension'),
+      );
       if (await target.exists()) {
         continue;
       }
@@ -304,8 +309,7 @@ class BrushShapeLibrary {
     Directory directory,
   ) async {
     final List<BrushShapeDefinition> shapes = <BrushShapeDefinition>[];
-    final List<FileSystemEntity> entries =
-        await directory.list().toList();
+    final List<FileSystemEntity> entries = await directory.list().toList();
     for (final FileSystemEntity entry in entries) {
       if (entry is! File) {
         continue;
@@ -322,17 +326,15 @@ class BrushShapeLibrary {
       final String id = p.basenameWithoutExtension(entry.path);
       final _BuiltInShapeAsset? builtIn = _builtInShapes
           .cast<_BuiltInShapeAsset?>()
-          .firstWhere(
-            (shape) => shape?.id == id,
-            orElse: () => null,
-          );
+          .firstWhere((shape) => shape?.id == id, orElse: () => null);
       shapes.add(
         BrushShapeDefinition(
           id: id,
           name: _titleCaseId(id),
           type: type,
-          source:
-              builtIn != null ? BrushShapeSource.builtIn : BrushShapeSource.user,
+          source: builtIn != null
+              ? BrushShapeSource.builtIn
+              : BrushShapeSource.user,
           assetPath: builtIn?.assetPath,
           filePath: entry.path,
           builtInShape: builtIn?.builtInShape,
@@ -388,15 +390,22 @@ class BrushShapeLibrary {
   Future<ui.Image?> _decodeShapeImage(
     BrushShapeDefinition shape,
     Uint8List bytes,
-    int size,
+    int? size,
   ) async {
     if (shape.type == BrushShapeFileType.png) {
-      final ui.Codec codec =
-          await ui.instantiateImageCodec(bytes, targetWidth: size, targetHeight: size);
+      final int? target = size != null && size > 0 ? size : null;
+      final ui.Codec codec = target == null
+          ? await ui.instantiateImageCodec(bytes)
+          : await ui.instantiateImageCodec(
+              bytes,
+              targetWidth: target,
+              targetHeight: target,
+            );
       final ui.FrameInfo frame = await codec.getNextFrame();
       return frame.image;
     }
     try {
+      final int rasterSize = size != null && size > 0 ? size : 128;
       final svg.PictureInfo pictureInfo = await svg.vg.loadPicture(
         svg.SvgBytesLoader(bytes),
         null,
@@ -406,17 +415,20 @@ class BrushShapeLibrary {
       final ui.PictureRecorder recorder = ui.PictureRecorder();
       final ui.Canvas canvas = ui.Canvas(recorder);
       if (sourceSize.width > 0 && sourceSize.height > 0) {
-        final double scaleX = size / sourceSize.width;
-        final double scaleY = size / sourceSize.height;
+        final double scaleX = rasterSize / sourceSize.width;
+        final double scaleY = rasterSize / sourceSize.height;
         final double scale = math.min(scaleX, scaleY);
-        final double dx = (size - sourceSize.width * scale) * 0.5;
-        final double dy = (size - sourceSize.height * scale) * 0.5;
+        final double dx = (rasterSize - sourceSize.width * scale) * 0.5;
+        final double dy = (rasterSize - sourceSize.height * scale) * 0.5;
         canvas.translate(dx, dy);
         canvas.scale(scale, scale);
       }
       canvas.drawPicture(picture);
       final ui.Picture scaledPicture = recorder.endRecording();
-      final ui.Image image = await scaledPicture.toImage(size, size);
+      final ui.Image image = await scaledPicture.toImage(
+        rasterSize,
+        rasterSize,
+      );
       picture.dispose();
       scaledPicture.dispose();
       return image;

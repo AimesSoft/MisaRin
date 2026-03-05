@@ -1,13 +1,11 @@
 import 'dart:math' as math;
-import 'dart:typed_data';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:misa_rin/mobile/responsive_dialog.dart';
 import 'package:misa_rin/mobile/mobile_bottom_sheet.dart';
 import 'package:misa_rin/mobile/mobile_utils.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart' show Localizations;
+import 'package:flutter/services.dart';
 
 import '../../brushes/brush_library.dart';
 import '../../brushes/brush_preset.dart';
@@ -33,10 +31,8 @@ Future<String?> showBrushPresetPickerDialog(
 }) {
   return showResponsiveDialog<String>(
     context: context,
-    builder: (_) => _BrushPresetPickerDialog(
-      library: library,
-      selectedId: selectedId,
-    ),
+    builder: (_) =>
+        _BrushPresetPickerDialog(library: library, selectedId: selectedId),
   );
 }
 
@@ -58,6 +54,8 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
   late final ScrollController _scrollController;
   late List<BrushPreset> _presets;
   late String _selectedId;
+  Set<String> _selectedIds = <String>{};
+  String? _selectionAnchorId;
   BrushPreset? _draftPreset;
   int _editorResetToken = 0;
   DateTime? _lastTapAt;
@@ -71,6 +69,8 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     _scrollController = ScrollController();
     _presets = widget.library.presets;
     _selectedId = _resolveSelectedId(widget.selectedId, _presets);
+    _selectedIds = _selectedId.isEmpty ? <String>{} : <String>{_selectedId};
+    _selectionAnchorId = _selectedId.isEmpty ? null : _selectedId;
     _syncDraftWithSelection();
     widget.library.addListener(_handleLibraryChanged);
     _refreshShapes();
@@ -90,6 +90,20 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     setState(() {
       _presets = widget.library.presets;
       _selectedId = _resolveSelectedId(_selectedId, _presets);
+      final Set<String> availableIds = _presets
+          .map((BrushPreset preset) => preset.id)
+          .toSet();
+      _selectedIds.removeWhere((String id) => !availableIds.contains(id));
+      if (_selectedIds.isEmpty && _selectedId.isNotEmpty) {
+        _selectedIds = <String>{_selectedId};
+      } else if (_selectedIds.isNotEmpty &&
+          !_selectedIds.contains(_selectedId)) {
+        _selectedId = _resolveSelectedId(_selectedIds.first, _presets);
+      }
+      if (_selectionAnchorId == null ||
+          !availableIds.contains(_selectionAnchorId)) {
+        _selectionAnchorId = _selectedId.isEmpty ? null : _selectedId;
+      }
       _syncDraftWithSelection();
     });
   }
@@ -101,6 +115,20 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
       }
       setState(() {});
     });
+  }
+
+  void _ensureSelectionState() {
+    final Set<String> availableIds = _presets
+        .map((BrushPreset preset) => preset.id)
+        .toSet();
+    _selectedIds.removeWhere((String id) => !availableIds.contains(id));
+    if (_selectedIds.isEmpty && _selectedId.isNotEmpty) {
+      _selectedIds = <String>{_selectedId};
+    }
+    if (_selectionAnchorId == null ||
+        !availableIds.contains(_selectionAnchorId)) {
+      _selectionAnchorId = _selectedId.isEmpty ? null : _selectedId;
+    }
   }
 
   String _resolveSelectedId(String desired, List<BrushPreset> presets) {
@@ -137,12 +165,16 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
   }
 
   void _selectPreset(String id) {
-    if (_selectedId == id) {
+    if (_selectedId == id &&
+        _selectedIds.length == 1 &&
+        _selectedIds.contains(id)) {
       return;
     }
     BrushPresetTimeline.start('select_preset id=$id');
     setState(() {
       _selectedId = id;
+      _selectedIds = <String>{id};
+      _selectionAnchorId = id;
       _syncDraftWithSelection(id);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -150,16 +182,55 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     });
   }
 
+  bool _isShiftPressed() {
+    final Set<LogicalKeyboardKey> keys =
+        HardwareKeyboard.instance.logicalKeysPressed;
+    return keys.contains(LogicalKeyboardKey.shiftLeft) ||
+        keys.contains(LogicalKeyboardKey.shiftRight);
+  }
+
+  List<String> _rangeSelectionIds(String fromId, String toId) {
+    final int fromIndex = _presets.indexWhere(
+      (BrushPreset p) => p.id == fromId,
+    );
+    final int toIndex = _presets.indexWhere((BrushPreset p) => p.id == toId);
+    if (fromIndex < 0 || toIndex < 0) {
+      return <String>[toId];
+    }
+    int start = fromIndex;
+    int end = toIndex;
+    if (start > end) {
+      final int temp = start;
+      start = end;
+      end = temp;
+    }
+    return _presets
+        .sublist(start, end + 1)
+        .map((BrushPreset preset) => preset.id)
+        .toList();
+  }
+
   void _handlePresetTap(String id) {
-    BrushPresetTimeline.mark('tap_pressed id=$id');
+    final bool shiftPressed = _isShiftPressed();
+    BrushPresetTimeline.mark('tap_pressed id=$id shift=$shiftPressed');
     final DateTime now = DateTime.now();
-    final bool isDoubleTap = _lastTapId == id &&
+    final bool isDoubleTap =
+        _lastTapId == id &&
         _lastTapAt != null &&
         now.difference(_lastTapAt!) <= _doubleTapThreshold;
     _lastTapId = id;
     _lastTapAt = now;
-    _selectPreset(id);
-    if (isDoubleTap) {
+    if (shiftPressed && _selectionAnchorId != null) {
+      final List<String> range = _rangeSelectionIds(_selectionAnchorId!, id);
+      setState(() {
+        _selectedId = id;
+        _selectedIds = range.toSet();
+        _syncDraftWithSelection(id);
+      });
+    } else {
+      _selectPreset(id);
+    }
+    if (isDoubleTap && !shiftPressed) {
       _confirm();
     }
   }
@@ -188,16 +259,35 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     widget.library.updatePreset(updated);
     setState(() {
       _selectedId = updated.id;
+      _selectedIds = <String>{updated.id};
+      _selectionAnchorId = updated.id;
       _draftPreset = updated.sanitized();
     });
   }
 
   Future<void> _deleteSelected() async {
-    final BrushPreset? preset = _selectedPreset;
-    if (preset == null) {
+    if (_presets.length <= 1) {
       return;
     }
-    await widget.library.removePreset(preset.id);
+    final List<String> orderedSelected = _presets
+        .where(
+          (BrushPreset preset) =>
+              _selectedIds.contains(preset.id) &&
+              !widget.library.isBuiltInPreset(preset.id),
+        )
+        .map((BrushPreset preset) => preset.id)
+        .toList();
+    if (orderedSelected.isEmpty) {
+      return;
+    }
+    int remainingRemovalsBudget = _presets.length - 1;
+    for (final String id in orderedSelected) {
+      if (remainingRemovalsBudget <= 0) {
+        break;
+      }
+      await widget.library.removePreset(id);
+      remainingRemovalsBudget -= 1;
+    }
   }
 
   Future<void> _resetSelectedToDefault() async {
@@ -208,6 +298,8 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     await widget.library.resetPreset(preset.id);
     setState(() {
       _selectedId = preset.id;
+      _selectedIds = <String>{preset.id};
+      _selectionAnchorId = preset.id;
       _draftPreset = widget.library.selectedPreset.sanitized();
       _editorResetToken += 1;
     });
@@ -251,7 +343,12 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
       shapeId: preset.shapeId,
     );
     await widget.library.addPreset(copy);
-    setState(() => _selectedId = id);
+    setState(() {
+      _selectedId = id;
+      _selectedIds = <String>{id};
+      _selectionAnchorId = id;
+      _syncDraftWithSelection(id);
+    });
     _scrollToId(id);
   }
 
@@ -268,8 +365,9 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
   }
 
   String _uniqueName(String base) {
-    final Set<String> names =
-        _presets.map((preset) => _displayNameFor(preset)).toSet();
+    final Set<String> names = _presets
+        .map((preset) => _displayNameFor(preset))
+        .toSet();
     if (!names.contains(base)) {
       return base;
     }
@@ -291,8 +389,7 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     if (!_scrollController.hasClients) {
       return;
     }
-    final int index =
-        _presets.indexWhere((preset) => preset.id == id);
+    final int index = _presets.indexWhere((preset) => preset.id == id);
     if (index < 0) {
       return;
     }
@@ -363,7 +460,10 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
   Future<void> _importBrush() async {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: [BrushLibrary.brushFileExtension],
+      allowedExtensions: [
+        BrushLibrary.brushFileExtension,
+        BrushLibrary.abrFileExtension,
+      ],
       withData: kIsWeb,
     );
     if (result == null || result.files.isEmpty) {
@@ -388,6 +488,8 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     }
     setState(() {
       _selectedId = imported!.id;
+      _selectedIds = <String>{imported.id};
+      _selectionAnchorId = imported.id;
       _syncDraftWithSelection(imported.id);
     });
     _scrollToId(imported.id);
@@ -645,6 +747,7 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    _ensureSelectionState();
     final Stopwatch? buildTimer = BrushPresetTimeline.enabled
         ? (Stopwatch()..start())
         : null;
@@ -653,14 +756,15 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     final BrushPreset? selected = _selectedPreset;
     final BrushPreset? previewPreset =
         (_draftPreset != null && _draftPreset?.id == selected?.id)
-            ? _draftPreset
-            : selected;
-    final bool isBuiltInPreset =
-        selected != null && widget.library.isBuiltInPreset(selected.id);
-    final bool canDelete =
-        selected != null && !isBuiltInPreset && _presets.length > 1;
-    final Color selectedBackground =
-        theme.accentColor.defaultBrushFor(theme.brightness);
+        ? _draftPreset
+        : selected;
+    final int deletableSelectedCount = _selectedIds.where((String id) {
+      return !widget.library.isBuiltInPreset(id);
+    }).length;
+    final bool canDelete = deletableSelectedCount > 0 && _presets.length > 1;
+    final Color selectedBackground = theme.accentColor.defaultBrushFor(
+      theme.brightness,
+    );
     final Color selectedForeground =
         theme.resources.textOnAccentFillColorPrimary;
     final bool isMobile = isMobileOrPhone(context);
@@ -687,12 +791,12 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
                 itemCount: _presets.length,
                 itemBuilder: (context, index) {
                   final BrushPreset preset = _presets[index];
-                  final bool isSelected = preset.id == _selectedId;
+                  final bool isSelected = _selectedIds.contains(preset.id);
                   final String displayName = _displayNameFor(preset);
                   final Color foreground = isSelected
                       ? selectedForeground
                       : theme.typography.body?.color ??
-                          theme.resources.textFillColorPrimary;
+                            theme.resources.textFillColorPrimary;
                   return Listener(
                     behavior: HitTestBehavior.translucent,
                     onPointerDown: (_) {
@@ -706,17 +810,18 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
                         padding: WidgetStateProperty.all<EdgeInsets>(
                           const EdgeInsets.symmetric(horizontal: 10),
                         ),
-                        backgroundColor: WidgetStateProperty.resolveWith<Color?>(
-                          (states) {
-                            if (isSelected) {
-                              return selectedBackground;
-                            }
-                            if (states.contains(WidgetState.hovered)) {
-                              return theme.resources.controlFillColorSecondary;
-                            }
-                            return Colors.transparent;
-                          },
-                        ),
+                        backgroundColor:
+                            WidgetStateProperty.resolveWith<Color?>((states) {
+                              if (isSelected) {
+                                return selectedBackground;
+                              }
+                              if (states.contains(WidgetState.hovered)) {
+                                return theme
+                                    .resources
+                                    .controlFillColorSecondary;
+                              }
+                              return Colors.transparent;
+                            }),
                       ),
                       onPressed: () => _handlePresetTap(preset.id),
                       child: Row(
@@ -767,10 +872,7 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
                   color: theme.resources.textFillColorPrimary,
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  l10n.brushPresetDesc,
-                  style: theme.typography.caption,
-                ),
+                Text(l10n.brushPresetDesc, style: theme.typography.caption),
               ],
             ),
     );
@@ -781,23 +883,18 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
           onPressed: selected == null ? null : _resetSelectedToDefault,
           child: Text(l10n.reset),
         ),
-        if (!isBuiltInPreset) ...[
-          const SizedBox(width: 8),
-          Button(
-            onPressed: canDelete ? _deleteSelected : null,
-            child: Text(l10n.delete),
-          ),
-        ],
+        const SizedBox(width: 8),
+        Button(
+          onPressed: canDelete ? _deleteSelected : null,
+          child: Text(l10n.delete),
+        ),
         const SizedBox(width: 8),
         Button(
           onPressed: selected == null ? null : _duplicateSelected,
           child: Text(l10n.duplicate),
         ),
         const SizedBox(width: 8),
-        Button(
-          onPressed: _importBrush,
-          child: Text(l10n.importBrush),
-        ),
+        Button(onPressed: _importBrush, child: Text(l10n.importBrush)),
         const SizedBox(width: 8),
         Button(
           onPressed: selected == null ? null : _exportBrush,
@@ -814,7 +911,7 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     final Widget editorContent = selected == null
         ? Text('--', style: theme.typography.caption)
         : BrushPresetEditorForm(
-            key: ValueKey<String?>('${selected?.id}-${_editorResetToken}'),
+            key: ValueKey<String>('${selected.id}-$_editorResetToken'),
             preset: previewPreset ?? selected,
             scrollable: false,
             onChanged: _handleDraftChanged,
@@ -920,10 +1017,7 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
           },
           child: Text(l10n.cancel),
         ),
-        FilledButton(
-          onPressed: _confirm,
-          child: Text(l10n.confirm),
-        ),
+        FilledButton(onPressed: _confirm, child: Text(l10n.confirm)),
       ],
     );
     if (buildTimer != null) {
@@ -934,5 +1028,4 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     }
     return dialog;
   }
-
 }

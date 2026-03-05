@@ -78,8 +78,12 @@ fn screentone_settings_from_params(
     }
     let spacing = if spacing.is_finite() { spacing } else { 10.0 }.clamp(2.0, 200.0);
     let dot_size = if dot_size.is_finite() { dot_size } else { 0.6 }.clamp(0.0, 1.0);
-    let rotation = if rotation_deg.is_finite() { rotation_deg } else { 45.0 }
-        .clamp(-180.0, 180.0);
+    let rotation = if rotation_deg.is_finite() {
+        rotation_deg
+    } else {
+        45.0
+    }
+    .clamp(-180.0, 180.0);
     let angle = rotation * (PI / 180.0);
     let rot_sin = angle.sin();
     let rot_cos = angle.cos();
@@ -214,10 +218,8 @@ fn radial_coverage(distance: f32, radius: f32, feather: f32, antialias_level: u3
 }
 
 fn integration_slices_for_radius(radius: f32) -> i32 {
-    let scaled = (radius * 32.0).clamp(
-        MIN_INTEGRATION_SLICES as f32,
-        MAX_INTEGRATION_SLICES as f32,
-    );
+    let scaled =
+        (radius * 32.0).clamp(MIN_INTEGRATION_SLICES as f32, MAX_INTEGRATION_SLICES as f32);
     let rounded = scaled.round() as i32;
     rounded.clamp(MIN_INTEGRATION_SLICES, MAX_INTEGRATION_SLICES)
 }
@@ -233,7 +235,11 @@ fn vertical_intersection_length(sample_x: f32, cx: f32, cy: f32, radius: f32) ->
     let low = (-HALF_PIXEL).max(cy - chord);
     let high = HALF_PIXEL.min(cy + chord);
     let span = high - low;
-    if span > 0.0 { span } else { 0.0 }
+    if span > 0.0 {
+        span
+    } else {
+        0.0
+    }
 }
 
 fn projected_pixel_coverage(dx: f32, dy: f32, radius: f32) -> f32 {
@@ -369,8 +375,18 @@ fn custom_mask_alpha(
     if mask.width == 0 || mask.height == 0 {
         return 0.0;
     }
-    let u = rel_x / radius * 0.5 + 0.5;
-    let v = rel_y / radius * 0.5 + 0.5;
+    // Preserve the original tip aspect ratio. `radius` controls the half-size
+    // of the longer side, matching Krita-style image brush scaling.
+    let mask_w = mask.width as f32;
+    let mask_h = mask.height as f32;
+    let max_dim = mask_w.max(mask_h).max(1.0);
+    let half_w = radius * (mask_w / max_dim);
+    let half_h = radius * (mask_h / max_dim);
+    if half_w <= EPS || half_h <= EPS {
+        return 0.0;
+    }
+    let u = rel_x / half_w * 0.5 + 0.5;
+    let v = rel_y / half_h * 0.5 + 0.5;
     if u < 0.0 || u > 1.0 || v < 0.0 || v > 1.0 {
         return 0.0;
     }
@@ -469,7 +485,11 @@ fn signed_distance_triangle_unit(px: f32, py: f32) -> f32 {
         }
         j = i;
     }
-    if inside { -min_dist } else { min_dist }
+    if inside {
+        -min_dist
+    } else {
+        min_dist
+    }
 }
 
 fn signed_distance_star_unit(px: f32, py: f32) -> f32 {
@@ -488,7 +508,11 @@ fn signed_distance_star_unit(px: f32, py: f32) -> f32 {
         }
         j = i;
     }
-    if inside { -min_dist } else { min_dist }
+    if inside {
+        -min_dist
+    } else {
+        min_dist
+    }
 }
 
 fn shape_distance_to_point(
@@ -748,7 +772,11 @@ fn signed_distance_to_polygon(px: f32, py: f32, vertices: &[(f32, f32)]) -> f32 
         }
     }
     let distance = (min_dist_sq.max(0.0)).sqrt();
-    if inside { -distance } else { distance }
+    if inside {
+        -distance
+    } else {
+        distance
+    }
 }
 
 fn polygon_coverage_at_point(px: f32, py: f32, vertices: &[(f32, f32)], feather: f32) -> f32 {
@@ -823,13 +851,106 @@ fn brush_scatter_offset(
 }
 
 fn stroke_stamp_spacing(radius: f32, spacing: f32) -> f32 {
-    let mut r = if radius.is_finite() { radius.abs() } else { 0.0 };
+    let mut r = if radius.is_finite() {
+        radius.abs()
+    } else {
+        0.0
+    };
     if !r.is_finite() {
         r = 0.0;
     }
     let mut s = if spacing.is_finite() { spacing } else { 0.15 };
     s = s.clamp(0.02, 2.5);
     (r * 2.0 * s).max(0.1)
+}
+
+fn custom_mask_half_extents(radius: f32, mask_width: u32, mask_height: u32) -> (f32, f32) {
+    let mut r = if radius.is_finite() {
+        radius.abs()
+    } else {
+        0.0
+    };
+    if !r.is_finite() || r <= 0.0 {
+        r = 0.0;
+    }
+
+    let w = mask_width as f32;
+    let h = mask_height as f32;
+    if w <= 0.0 || h <= 0.0 || r <= 0.0 {
+        return (0.0, 0.0);
+    }
+
+    let max_dim = w.max(h).max(1.0);
+    (r * (w / max_dim), r * (h / max_dim))
+}
+
+fn projected_half_extent_along_direction(
+    half_w: f32,
+    half_h: f32,
+    dir_x: f32,
+    dir_y: f32,
+    rot_sin: f32,
+    rot_cos: f32,
+) -> f32 {
+    if half_w <= EPS || half_h <= EPS {
+        return 0.0;
+    }
+
+    let len = (dir_x * dir_x + dir_y * dir_y).sqrt();
+    if !len.is_finite() || len <= EPS {
+        return half_w.min(half_h);
+    }
+
+    let ux = dir_x / len;
+    let uy = dir_y / len;
+
+    // Convert the movement direction into brush local space.
+    let bx = ux * rot_cos + uy * rot_sin;
+    let by = -ux * rot_sin + uy * rot_cos;
+
+    let inv_w2 = 1.0 / (half_w * half_w);
+    let inv_h2 = 1.0 / (half_h * half_h);
+    let denom = bx * bx * inv_w2 + by * by * inv_h2;
+    if !denom.is_finite() || denom <= EPS {
+        return half_w.min(half_h);
+    }
+
+    let extent = 1.0 / denom.sqrt();
+    if extent.is_finite() {
+        extent
+    } else {
+        half_w.min(half_h)
+    }
+}
+
+fn stroke_stamp_spacing_custom_mask(
+    radius: f32,
+    spacing: f32,
+    mask_width: u32,
+    mask_height: u32,
+    dir_x: f32,
+    dir_y: f32,
+    rot_sin: f32,
+    rot_cos: f32,
+    may_random_rotate: bool,
+) -> f32 {
+    let mut s = if spacing.is_finite() { spacing } else { 0.15 };
+    s = s.clamp(0.02, 2.5);
+
+    let (half_w, half_h) = custom_mask_half_extents(radius, mask_width, mask_height);
+    if half_w <= EPS || half_h <= EPS {
+        return (radius.abs() * 2.0 * s).max(0.1);
+    }
+
+    // If random rotation is enabled, use the most conservative axis so stamps
+    // don't separate when orientation jitters.
+    let extent = if may_random_rotate {
+        half_w.min(half_h)
+    } else {
+        projected_half_extent_along_direction(half_w, half_h, dir_x, dir_y, rot_sin, rot_cos)
+    };
+
+    (extent * 2.0 * s).max(0.1)
 }
 
 #[derive(Clone, Copy)]
@@ -962,8 +1083,7 @@ fn draw_points_sampled<'a>(
                                 let rel_y = sample_y - p.y;
                                 let (rx, ry) =
                                     rotate_to_brush_space(rel_x, rel_y, p.rot_sin, p.rot_cos);
-                                custom_mask_alpha(rx, ry, p.radius, soft, mask)
-                                    * clamp01(p.alpha)
+                                custom_mask_alpha(rx, ry, p.radius, soft, mask) * clamp01(p.alpha)
                             } else {
                                 let dist = shape_distance_to_point(
                                     sample_x,
@@ -994,8 +1114,7 @@ fn draw_points_sampled<'a>(
                                 let rel_y = sample_y - p.y;
                                 let (rx, ry) =
                                     rotate_to_brush_space(rel_x, rel_y, p.rot_sin, p.rot_cos);
-                                custom_mask_alpha(rx, ry, p.radius, soft, mask)
-                                    * clamp01(p.alpha)
+                                custom_mask_alpha(rx, ry, p.radius, soft, mask) * clamp01(p.alpha)
                             } else {
                                 let dist = shape_distance_to_point(
                                     sample_x,
@@ -1102,8 +1221,12 @@ pub extern "C" fn cpu_brush_draw_stamp(
         r = 0.01;
     }
     let _ = smooth_rotation;
-    let custom_mask =
-        custom_mask_view_from_params(custom_mask_width, custom_mask_height, custom_mask_ptr, custom_mask_len);
+    let custom_mask = custom_mask_view_from_params(
+        custom_mask_width,
+        custom_mask_height,
+        custom_mask_ptr,
+        custom_mask_len,
+    );
     let supports_rotation = brush_shape != 0 || custom_mask.is_some();
     let needs_rotation = random_rotation != 0 && rotation_jitter > 0.0001 && supports_rotation;
     let (rot_sin, rot_cos) = if needs_rotation {
@@ -1201,7 +1324,11 @@ pub extern "C" fn cpu_brush_draw_stamp_segment(
 
     let distance = ((end_x - start_x).powi(2) + (end_y - start_y).powi(2)).sqrt();
     if !distance.is_finite() || distance <= 0.0001 {
-        let sample_radius = if end_radius.is_finite() { end_radius } else { 0.01 };
+        let sample_radius = if end_radius.is_finite() {
+            end_radius
+        } else {
+            0.01
+        };
         return cpu_brush_draw_stamp(
             pixels_ptr,
             pixels_len,
@@ -1235,11 +1362,36 @@ pub extern "C" fn cpu_brush_draw_stamp_segment(
         );
     }
 
-    let max_radius = start_radius
-        .abs()
-        .max(end_radius.abs())
-        .max(0.01);
-    let step = stroke_stamp_spacing(max_radius, spacing);
+    let custom_mask = custom_mask_view_from_params(
+        custom_mask_width,
+        custom_mask_height,
+        custom_mask_ptr,
+        custom_mask_len,
+    );
+    let supports_rotation = brush_shape != 0 || custom_mask.is_some();
+    let needs_rotation = random_rotation != 0 && rotation_jitter > 0.0001 && supports_rotation;
+    let base_angle = if smooth_rotation != 0 && supports_rotation {
+        (end_y - start_y).atan2(end_x - start_x)
+    } else {
+        0.0
+    };
+    let max_radius = start_radius.abs().max(end_radius.abs()).max(0.01);
+    let (base_sin, base_cos) = (base_angle.sin(), base_angle.cos());
+    let step = if let Some(mask) = custom_mask.as_ref() {
+        stroke_stamp_spacing_custom_mask(
+            max_radius,
+            spacing,
+            mask.width,
+            mask.height,
+            end_x - start_x,
+            end_y - start_y,
+            base_sin,
+            base_cos,
+            needs_rotation,
+        )
+    } else {
+        stroke_stamp_spacing(max_radius, spacing)
+    };
     let samples = ((distance / step).ceil() as i32).max(1);
     let start_index = if include_start != 0 { 0 } else { 1 };
     let scatter_factor = if scatter.is_finite() {
@@ -1251,17 +1403,12 @@ pub extern "C" fn cpu_brush_draw_stamp_segment(
 
     let mut points: Vec<BrushPoint> =
         Vec::with_capacity((samples - start_index + 1).max(1) as usize);
-    let custom_mask =
-        custom_mask_view_from_params(custom_mask_width, custom_mask_height, custom_mask_ptr, custom_mask_len);
-    let supports_rotation = brush_shape != 0 || custom_mask.is_some();
-    let needs_rotation = random_rotation != 0 && rotation_jitter > 0.0001 && supports_rotation;
-    let base_angle = if smooth_rotation != 0 && supports_rotation {
-        (end_y - start_y).atan2(end_x - start_x)
-    } else {
-        0.0
-    };
     for i in start_index..=samples {
-        let t = if samples == 0 { 1.0 } else { i as f32 / samples as f32 };
+        let t = if samples == 0 {
+            1.0
+        } else {
+            i as f32 / samples as f32
+        };
         let mut radius = if start_radius.is_finite() && end_radius.is_finite() {
             start_radius + (end_radius - start_radius) * t
         } else if end_radius.is_finite() {
@@ -1301,8 +1448,8 @@ pub extern "C" fn cpu_brush_draw_stamp_segment(
         let (rot_sin, rot_cos) = if needs_rotation || smooth_rotation != 0 {
             let mut angle = base_angle;
             if needs_rotation {
-                angle +=
-                    brush_random_rotation_radians(sample_x, sample_y, rotation_seed) * rotation_jitter;
+                angle += brush_random_rotation_radians(sample_x, sample_y, rotation_seed)
+                    * rotation_jitter;
             }
             (angle.sin(), angle.cos())
         } else {
@@ -1836,8 +1983,18 @@ fn streamline_point_distance(a: StrokeSample, b: StrokeSample) -> f32 {
     (dx * dx + dy * dy).sqrt()
 }
 
-fn streamline_catmull_rom(p0: StrokeSample, p1: StrokeSample, p2: StrokeSample, p3: StrokeSample, t: f32) -> StrokeSample {
-    let t = if t.is_finite() { t.clamp(0.0, 1.0) } else { 0.0 };
+fn streamline_catmull_rom(
+    p0: StrokeSample,
+    p1: StrokeSample,
+    p2: StrokeSample,
+    p3: StrokeSample,
+    t: f32,
+) -> StrokeSample {
+    let t = if t.is_finite() {
+        t.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
     let t2 = t * t;
     let t3 = t2 * t;
     let x = 0.5
@@ -1912,7 +2069,11 @@ fn streamline_resample(samples: &[StrokeSample], target_count: usize) -> Vec<Str
         let denom = (seg_end - seg_start).max(1.0e-6);
         let t = ((target - seg_start) / denom).clamp(0.0, 1.0);
 
-        let p0 = if seg_index == 0 { samples[0] } else { samples[seg_index - 1] };
+        let p0 = if seg_index == 0 {
+            samples[0]
+        } else {
+            samples[seg_index - 1]
+        };
         let p1 = samples[seg_index];
         let p2 = samples[seg_index + 1];
         let p3 = if seg_index + 2 < samples.len() {
@@ -1930,7 +2091,11 @@ fn streamline_resample(samples: &[StrokeSample], target_count: usize) -> Vec<Str
 }
 
 fn apply_streamline_samples(samples: &[StrokeSample], strength: f32) -> Vec<StrokeSample> {
-    let strength = if strength.is_finite() { strength.clamp(0.0, 1.0) } else { 0.0 };
+    let strength = if strength.is_finite() {
+        strength.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
     if strength <= 0.0001 || samples.len() < 3 {
         return samples.to_vec();
     }
@@ -1948,7 +2113,11 @@ fn apply_streamline_samples(samples: &[StrokeSample], strength: f32) -> Vec<Stro
         let x = orig.x + (smooth.x - orig.x) * eased;
         let y = orig.y + (smooth.y - orig.y) * eased;
         let blended_r = orig.r + (smooth.r - orig.r) * (eased * 0.5);
-        let r = if blended_r.is_finite() { blended_r } else { orig.r };
+        let r = if blended_r.is_finite() {
+            blended_r
+        } else {
+            orig.r
+        };
         output.push(StrokeSample { x, y, r });
     }
     output
