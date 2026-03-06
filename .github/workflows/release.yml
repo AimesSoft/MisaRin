@@ -81,13 +81,23 @@ jobs:
       arch: x64
     secrets: inherit
 
+  android:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.should_run == 'true' }}
+    uses: ./.github/workflows/android-build.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      arch: arm64
+    secrets: inherit
+
   publish_release:
     needs:
       - prepare
       - macos
       - windows
       - linux
-    if: ${{ needs.prepare.outputs.should_run == 'true' && needs.macos.result == 'success' && needs.windows.result == 'success' && needs.linux.result == 'success' }}
+      - android
+    if: ${{ needs.prepare.outputs.should_run == 'true' && needs.macos.result == 'success' && needs.windows.result == 'success' && needs.linux.result == 'success' && needs.android.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: 下载构建产物
@@ -109,6 +119,7 @@ jobs:
             - Windows x64 ZIP
             - Windows x64 安装程序 EXE
             - Linux x64 TAR.GZ
+            - Android arm64 APK
           files: dist/*
 
   version_bump:
@@ -117,6 +128,7 @@ jobs:
       - macos
       - windows
       - linux
+      - android
       - publish_release
     if: ${{ needs.prepare.outputs.should_run == 'true' && needs.publish_release.result == 'success' }}
     uses: ./.github/workflows/version-bump.yml

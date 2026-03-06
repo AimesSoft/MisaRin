@@ -1,0 +1,34 @@
+{
+  "name": "file_selector_macos",
+  "version": "0.0.1",
+  "summary": "macOS implementation of file_selector.",
+  "description": "Displays native macOS open and save panels.",
+  "license": {
+    "type": "BSD",
+    "file": "../LICENSE"
+  },
+  "homepage": "https://github.com/flutter/packages/tree/main/packages/file_selector",
+  "authors": {
+    "Flutter Dev Team": "flutter-dev@googlegroups.com"
+  },
+  "source": {
+    "http": "https://github.com/flutter/packages/tree/main/packages/file_selector/file_selector_macos"
+  },
+  "source_files": "file_selector_macos/Sources/file_selector_macos/**/*.swift",
+  "resource_bundles": {
+    "file_selector_macos_privacy": [
+      "file_selector_macos/Sources/file_selector_macos/Resources/PrivacyInfo.xcprivacy"
+    ]
+  },
+  "dependencies": {
+    "FlutterMacOS": []
+  },
+  "platforms": {
+    "osx": "10.15"
+  },
+  "pod_target_xcconfig": {
+    "DEFINES_MODULE": "YES"
+  },
+  "swift_versions": "5.0",
+  "swift_version": "5.0"
+}

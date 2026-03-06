@@ -44,6 +44,16 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
+		<key>file_selector_macos-file_selector_macos_privacy.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>file_selector_macos.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>package_info_plus-package_info_plus_privacy.xcscheme</key>
 		<dict>
 			<key>isShown</key>

@@ -1,0 +1,92 @@
+name: Build Android APK
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Target version used for artifact naming
+        required: true
+        type: string
+      arch:
+        description: CPU architecture label used in artifact naming
+        required: false
+        default: arm64
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      APP_VERSION: ${{ inputs.version }}
+      TARGET_ARCH: ${{ inputs.arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: 获取依赖
+        run: flutter pub get
+      - name: 构建 Android APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${TARGET_ARCH}" in
+            arm64)
+              TARGET_PLATFORM="android-arm64"
+              ABI_SUFFIX="arm64-v8a"
+              ;;
+            armv7)
+              TARGET_PLATFORM="android-arm"
+              ABI_SUFFIX="armeabi-v7a"
+              ;;
+            x64|x86_64)
+              TARGET_PLATFORM="android-x64"
+              ABI_SUFFIX="x86_64"
+              ;;
+            *)
+              echo "不支持的 Android 架构: ${TARGET_ARCH}" >&2
+              exit 1
+              ;;
+          esac
+
+          flutter build apk --release --target-platform "${TARGET_PLATFORM}"
+
+          OUTPUT_DIR="build/app/outputs/flutter-apk"
+          if [[ ! -d "${OUTPUT_DIR}" ]]; then
+            echo "未找到 Android 构建输出目录: ${OUTPUT_DIR}" >&2
+            exit 1
+          fi
+
+          APK_PATH="${OUTPUT_DIR}/app-${ABI_SUFFIX}-release.apk"
+          if [[ ! -f "${APK_PATH}" ]]; then
+            APK_PATH=$(find "${OUTPUT_DIR}" -maxdepth 1 -type f -name "*${ABI_SUFFIX}*release*.apk" -print -quit || true)
+          fi
+          if [[ -z "${APK_PATH}" ]] || [[ ! -f "${APK_PATH}" ]]; then
+            if [[ -f "${OUTPUT_DIR}/app-release.apk" ]]; then
+              APK_PATH="${OUTPUT_DIR}/app-release.apk"
+            else
+              echo "未找到 Android APK 输出文件" >&2
+              ls -al "${OUTPUT_DIR}" >&2
+              exit 1
+            fi
+          fi
+
+          ARTIFACT_DIR="build/artifacts"
+          mkdir -p "${ARTIFACT_DIR}"
+          ARTIFACT_NAME="MisaRin-android-${TARGET_ARCH}-${APP_VERSION}.apk"
+          cp "${APK_PATH}" "${ARTIFACT_DIR}/${ARTIFACT_NAME}"
+      - name: 上传 Android 构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: MisaRin-android-${{ env.TARGET_ARCH }}-${{ env.APP_VERSION }}.apk
+          path: build/artifacts/MisaRin-android-${{ env.TARGET_ARCH }}-${{ env.APP_VERSION }}.apk
+          if-no-files-found: error
