@@ -328,18 +328,28 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
         } else {
             wgpu::Backends::PRIMARY
         };
+        let instance_flags = if cfg!(target_os = "android") {
+            wgpu::InstanceFlags::empty()
+        } else {
+            wgpu::InstanceFlags::default()
+        };
         let instance = Arc::new(wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends,
+            flags: instance_flags,
             ..Default::default()
         }));
 
-        let adapter =
+        let adapter = if cfg!(target_os = "android") {
+            crate::wgpu_adapter::select_compute_adapter(instance.as_ref(), backends)
+                .ok_or_else(|| "wgpu: no compute-capable adapter found".to_string())?
+        } else {
             pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: None,
                 force_fallback_adapter: false,
             }))
-            .ok_or_else(|| "wgpu: no compatible adapter found".to_string())?;
+            .ok_or_else(|| "wgpu: no compatible adapter found".to_string())?
+        };
         let adapter = Arc::new(adapter);
 
         let required_features = wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
@@ -350,11 +360,12 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
             );
         }
 
+        let adapter_limits = adapter.limits();
         let (device, queue) = pollster::block_on(adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: Some("misa-rin CanvasEngine device"),
                 required_features,
-                required_limits: wgpu::Limits::default(),
+                required_limits: adapter_limits,
             },
             None,
         ))
