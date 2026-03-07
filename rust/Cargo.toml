@@ -25,6 +25,11 @@ wgpu-hal = { version = "0.19.5", features = ["dx12"] }
 d3d12 = { version = "0.19.0", features = ["libloading"] }
 winapi = { version = "0.3", features = ["d3d12", "dxgiformat", "dxgitype", "handleapi", "winnt"] }
 
+[target.'cfg(target_os = "android")'.dependencies]
+jni-sys = "0.3"
+ndk-sys = "0.5"
+raw-window-handle = "0.6"
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
 

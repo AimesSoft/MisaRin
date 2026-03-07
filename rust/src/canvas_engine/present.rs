@@ -5,6 +5,8 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 #[cfg(target_os = "windows")]
 use std::time::Instant;
+#[cfg(target_os = "android")]
+use std::{ffi::c_void, ptr::NonNull};
 
 use crate::gpu::debug::{self, LogLevel};
 
@@ -24,8 +26,26 @@ use winapi::shared::{dxgiformat, dxgitype};
 use winapi::Interface as _;
 #[cfg(target_os = "windows")]
 use winapi::um::{d3d12 as d3d12_ty, handleapi::CloseHandle, winnt};
+#[cfg(target_os = "android")]
+use {
+    ndk_sys::ANativeWindow,
+    raw_window_handle::{AndroidDisplayHandle, AndroidNdkWindowHandle, RawDisplayHandle, RawWindowHandle},
+    wgpu::SurfaceTargetUnsafe,
+};
 
-pub(crate) struct PresentTarget {
+#[cfg(target_os = "android")]
+#[link(name = "android")]
+extern "C" {
+    fn ANativeWindow_release(window: *mut ANativeWindow);
+}
+
+pub(crate) enum PresentTarget {
+    Texture(PresentTextureTarget),
+    #[cfg(target_os = "android")]
+    Surface(PresentSurfaceTarget),
+}
+
+pub(crate) struct PresentTextureTarget {
     render_texture: wgpu::Texture,
     pub(crate) render_view: wgpu::TextureView,
     shared_texture: Option<wgpu::Texture>,
@@ -37,6 +57,56 @@ pub(crate) struct PresentTarget {
 }
 
 impl PresentTarget {
+    pub(crate) fn format(&self) -> wgpu::TextureFormat {
+        match self {
+            PresentTarget::Texture(_) => wgpu::TextureFormat::Bgra8Unorm,
+            #[cfg(target_os = "android")]
+            PresentTarget::Surface(surface) => surface.format(),
+        }
+    }
+
+    pub(crate) fn width(&self) -> u32 {
+        match self {
+            PresentTarget::Texture(target) => target.width,
+            #[cfg(target_os = "android")]
+            PresentTarget::Surface(surface) => surface.width(),
+        }
+    }
+
+    pub(crate) fn height(&self) -> u32 {
+        match self {
+            PresentTarget::Texture(target) => target.height,
+            #[cfg(target_os = "android")]
+            PresentTarget::Surface(surface) => surface.height(),
+        }
+    }
+
+    pub(crate) fn as_texture(&self) -> Option<&PresentTextureTarget> {
+        match self {
+            PresentTarget::Texture(target) => Some(target),
+            #[cfg(target_os = "android")]
+            PresentTarget::Surface(_) => None,
+        }
+    }
+
+    pub(crate) fn as_texture_mut(&mut self) -> Option<&mut PresentTextureTarget> {
+        match self {
+            PresentTarget::Texture(target) => Some(target),
+            #[cfg(target_os = "android")]
+            PresentTarget::Surface(_) => None,
+        }
+    }
+
+    #[cfg(target_os = "android")]
+    pub(crate) fn as_surface_mut(&mut self) -> Option<&mut PresentSurfaceTarget> {
+        match self {
+            PresentTarget::Surface(surface) => Some(surface),
+            _ => None,
+        }
+    }
+}
+
+impl PresentTextureTarget {
     pub(crate) fn render_texture(&self) -> &wgpu::Texture {
         &self.render_texture
     }
@@ -65,7 +135,7 @@ impl PresentTarget {
 }
 
 #[cfg(target_os = "windows")]
-impl Drop for PresentTarget {
+impl Drop for PresentTextureTarget {
     fn drop(&mut self) {
         if let Some(handle) = self.dxgi_handle.take() {
             unsafe {
@@ -75,7 +145,69 @@ impl Drop for PresentTarget {
     }
 }
 
+#[cfg(target_os = "android")]
+pub(crate) struct PresentSurfaceTarget {
+    surface: wgpu::Surface<'static>,
+    config: wgpu::SurfaceConfiguration,
+    window: AndroidNativeWindow,
+}
+
+#[cfg(target_os = "android")]
+impl PresentSurfaceTarget {
+    pub(crate) fn format(&self) -> wgpu::TextureFormat {
+        self.config.format
+    }
+
+    pub(crate) fn width(&self) -> u32 {
+        self.config.width
+    }
+
+    pub(crate) fn height(&self) -> u32 {
+        self.config.height
+    }
+
+    pub(crate) fn surface(&self) -> &wgpu::Surface<'static> {
+        &self.surface
+    }
+
+    pub(crate) fn configure(&mut self, device: &wgpu::Device) {
+        self.surface.configure(device, &self.config);
+    }
+}
+
+#[cfg(target_os = "android")]
+struct AndroidNativeWindow {
+    ptr: NonNull<ANativeWindow>,
+}
+
+#[cfg(target_os = "android")]
+impl AndroidNativeWindow {
+    unsafe fn from_raw(ptr: *mut ANativeWindow) -> Option<Self> {
+        NonNull::new(ptr).map(|ptr| Self { ptr })
+    }
+
+    fn as_ptr(&self) -> *mut ANativeWindow {
+        self.ptr.as_ptr()
+    }
+}
+
+#[cfg(target_os = "android")]
+unsafe impl Send for AndroidNativeWindow {}
+
+#[cfg(target_os = "android")]
+unsafe impl Sync for AndroidNativeWindow {}
+
+#[cfg(target_os = "android")]
+impl Drop for AndroidNativeWindow {
+    fn drop(&mut self) {
+        unsafe {
+            ANativeWindow_release(self.ptr.as_ptr());
+        }
+    }
+}
+
 pub(crate) struct PresentRenderer {
+    format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
     bind_group_layout: wgpu::BindGroupLayout,
 }
@@ -213,7 +345,7 @@ pub(crate) fn create_present_params_buffer(
 }
 
 impl PresentRenderer {
-    pub(crate) fn new(device: &wgpu::Device) -> Self {
+    pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let shader_source = include_str!("../canvas_present_rgba8.wgsl");
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("misa-rin present renderer shader"),
@@ -289,7 +421,7 @@ impl PresentRenderer {
                 module: &shader,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Bgra8Unorm,
+                    format,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -309,6 +441,7 @@ impl PresentRenderer {
         });
 
         Self {
+            format,
             pipeline,
             bind_group_layout,
         }
@@ -351,7 +484,7 @@ impl PresentRenderer {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bind_group: &wgpu::BindGroup,
-        target: &PresentTarget,
+        target: &PresentTextureTarget,
         frame_ready: Arc<AtomicBool>,
         frame_in_flight: Arc<AtomicBool>,
     ) {
@@ -418,7 +551,7 @@ impl PresentRenderer {
 
 pub(crate) fn copy_render_to_shared(
     encoder: &mut wgpu::CommandEncoder,
-    target: &PresentTarget,
+    target: &PresentTextureTarget,
 ) {
     let Some(shared_texture) = target.shared_texture() else {
         return;
@@ -550,14 +683,16 @@ pub(crate) fn attach_present_texture(
         let texture = unsafe { device.create_texture_from_hal::<Metal>(hal_texture, &desc) };
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        return Some(PresentTarget {
+        return Some(PresentTarget::Texture(PresentTextureTarget {
             render_texture: texture,
             render_view: view,
             shared_texture: None,
             width,
             height,
             _bytes_per_row: bytes_per_row,
-        });
+            #[cfg(target_os = "windows")]
+            dxgi_handle: None,
+        }));
     }
     #[cfg(target_os = "windows")]
     {
@@ -588,15 +723,97 @@ pub(crate) fn attach_present_texture(
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let bytes_per_row = width.saturating_mul(4);
-        return Some(PresentTarget {
+        return Some(PresentTarget::Texture(PresentTextureTarget {
             render_texture: texture,
             render_view: view,
             shared_texture: None,
             width,
             height,
             _bytes_per_row: bytes_per_row,
-        });
+            #[cfg(target_os = "windows")]
+            dxgi_handle: None,
+        }));
     }
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn attach_present_surface(
+    instance: &wgpu::Instance,
+    adapter: &wgpu::Adapter,
+    device: &wgpu::Device,
+    native_window_ptr: *mut c_void,
+    width: u32,
+    height: u32,
+) -> Result<PresentTarget, String> {
+    if native_window_ptr.is_null() || width == 0 || height == 0 {
+        return Err("present surface requires valid window and size".to_string());
+    }
+
+    let window = unsafe {
+        AndroidNativeWindow::from_raw(native_window_ptr as *mut ANativeWindow)
+            .ok_or_else(|| "present surface invalid ANativeWindow".to_string())?
+    };
+
+    let raw_window_handle = RawWindowHandle::AndroidNdk(AndroidNdkWindowHandle::new(
+        // Safety: ANativeWindow pointer must be valid and non-null.
+        NonNull::new(window.as_ptr() as *mut c_void)
+            .ok_or_else(|| "present surface invalid window pointer".to_string())?,
+    ));
+    let raw_display_handle = RawDisplayHandle::Android(AndroidDisplayHandle::new());
+
+    let surface = unsafe {
+        instance
+            .create_surface_unsafe(SurfaceTargetUnsafe::RawHandle {
+                raw_display_handle,
+                raw_window_handle,
+            })
+            .map_err(|err| format!("wgpu: create_surface failed: {err:?}"))?
+    };
+
+    let caps = surface.get_capabilities(adapter);
+    let format = if caps
+        .formats
+        .iter()
+        .any(|fmt| *fmt == wgpu::TextureFormat::Bgra8Unorm)
+    {
+        wgpu::TextureFormat::Bgra8Unorm
+    } else if caps
+        .formats
+        .iter()
+        .any(|fmt| *fmt == wgpu::TextureFormat::Rgba8Unorm)
+    {
+        wgpu::TextureFormat::Rgba8Unorm
+    } else {
+        *caps
+            .formats
+            .first()
+            .ok_or_else(|| "wgpu: surface has no supported formats".to_string())?
+    };
+
+    let alpha_mode = caps
+        .alpha_modes
+        .first()
+        .copied()
+        .unwrap_or(wgpu::CompositeAlphaMode::Opaque);
+
+    let config = wgpu::SurfaceConfiguration {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        format,
+        width,
+        height,
+        present_mode: wgpu::PresentMode::Fifo,
+        alpha_mode,
+        desired_maximum_frame_latency: 2,
+        view_formats: vec![],
+    };
+
+    surface.configure(device, &config);
+
+    Ok(PresentTarget::Surface(PresentSurfaceTarget {
+        surface,
+        config,
+        window,
+    }))
 }
 
 #[cfg(target_os = "windows")]
@@ -724,7 +941,7 @@ pub(crate) fn create_dxgi_shared_present_target(
     let shared_texture = unsafe { device.create_texture_from_hal::<Dx12>(hal_texture, &desc) };
     let bytes_per_row = width.saturating_mul(4);
 
-    Ok(PresentTarget {
+    Ok(PresentTarget::Texture(PresentTextureTarget {
         render_texture,
         render_view,
         shared_texture: Some(shared_texture),
@@ -732,5 +949,5 @@ pub(crate) fn create_dxgi_shared_present_target(
         height,
         _bytes_per_row: bytes_per_row,
         dxgi_handle: Some(shared_handle),
-    })
+    }))
 }

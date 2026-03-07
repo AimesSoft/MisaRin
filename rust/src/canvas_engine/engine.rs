@@ -28,6 +28,8 @@ use super::present::{
     copy_render_to_shared, signal_frame_ready, write_present_config, write_present_transform,
     PresentRenderer, PresentTarget,
 };
+#[cfg(target_os = "android")]
+use super::present::attach_present_surface;
 use super::preview::{PreviewConfig, PreviewRenderer, PreviewSegment};
 #[cfg(target_os = "windows")]
 use super::present::create_dxgi_shared_present_target;
@@ -94,6 +96,12 @@ pub(crate) enum EngineCommand {
         width: u32,
         height: u32,
         bytes_per_row: u32,
+    },
+    #[cfg(target_os = "android")]
+    AttachPresentSurface {
+        native_window_ptr: usize,
+        width: u32,
+        height: u32,
     },
     #[cfg(target_os = "windows")]
     AttachPresentDxgi {
@@ -301,8 +309,8 @@ fn engines() -> &'static Mutex<HashMap<u64, EngineEntry>> {
 }
 
 struct EngineDeviceContext {
-    _instance: wgpu::Instance,
-    _adapter: wgpu::Adapter,
+    instance: Arc<wgpu::Instance>,
+    adapter: Arc<wgpu::Adapter>,
     device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
 }
@@ -315,13 +323,15 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
             wgpu::Backends::METAL
         } else if cfg!(target_os = "windows") {
             wgpu::Backends::DX12
+        } else if cfg!(target_os = "android") {
+            wgpu::Backends::VULKAN | wgpu::Backends::GL
         } else {
             wgpu::Backends::PRIMARY
         };
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = Arc::new(wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends,
             ..Default::default()
-        });
+        }));
 
         let adapter =
             pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
@@ -330,6 +340,7 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
                 force_fallback_adapter: false,
             }))
             .ok_or_else(|| "wgpu: no compatible adapter found".to_string())?;
+        let adapter = Arc::new(adapter);
 
         let required_features = wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
         if !adapter.features().contains(required_features) {
@@ -354,8 +365,8 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
         }));
 
         Ok(EngineDeviceContext {
-            _instance: instance,
-            _adapter: adapter,
+            instance,
+            adapter,
             device: Arc::new(device),
             queue: Arc::new(queue),
         })
@@ -1157,6 +1168,8 @@ fn commit_preview_stroke(
 }
 
 fn spawn_render_thread(
+    instance: Arc<wgpu::Instance>,
+    adapter: Arc<wgpu::Adapter>,
     device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
     layer_textures: LayerTextures,
@@ -1172,6 +1185,8 @@ fn spawn_render_thread(
         .name("misa-rin-canvas-render".to_string())
         .spawn(move || {
             render_thread_main(
+                instance,
+                adapter,
                 device,
                 queue,
                 layer_textures,
@@ -1187,6 +1202,8 @@ fn spawn_render_thread(
 }
 
 fn render_thread_main(
+    instance: Arc<wgpu::Instance>,
+    adapter: Arc<wgpu::Adapter>,
     device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
     layer_textures: LayerTextures,
@@ -1216,7 +1233,8 @@ fn render_thread_main(
     let mut bucket_fill_renderer: Option<BucketFillRenderer> = None;
     let mut filter_renderer: Option<FilterRenderer> = None;
 
-    let present_renderer = PresentRenderer::new(device.as_ref());
+    let mut present_format = wgpu::TextureFormat::Bgra8Unorm;
+    let mut present_renderer = PresentRenderer::new(device.as_ref(), present_format);
     let mut layer_opacity: Vec<f32> = vec![1.0; layer_count];
     let mut layer_visible: Vec<bool> = vec![true; layer_count];
     let mut layer_clipping_mask: Vec<bool> = vec![false; layer_count];
@@ -1341,6 +1359,8 @@ fn render_thread_main(
                 }
             }
             let outcome = handle_engine_command(
+                &instance,
+                &adapter,
                 &device,
                 &queue,
                 &mut present,
@@ -1356,15 +1376,17 @@ fn render_thread_main(
                 &mut layer_blend_mode,
                 &mut layer_uniform,
                 &mut view_flags,
-                &present_renderer,
+                &mut present_renderer,
                 &present_config_buffer,
                 &present_transform_buffer,
                 &mut transform_matrix,
                 &mut transform_layer_index,
                 &mut transform_flags,
+                &mut present_format,
                 &mut present_params_buffer,
                 &mut present_params_capacity,
                 &mut present_bind_group,
+                &mut preview_renderer,
                 &mut transform_renderer,
                 &mut brush,
                 &mut brush_settings,
@@ -1471,6 +1493,8 @@ fn render_thread_main(
                     }
                 }
                 let outcome = handle_engine_command(
+                    &instance,
+                    &adapter,
                     &device,
                     &queue,
                     &mut present,
@@ -1486,15 +1510,17 @@ fn render_thread_main(
                     &mut layer_blend_mode,
                     &mut layer_uniform,
                     &mut view_flags,
-                    &present_renderer,
+                    &mut present_renderer,
                     &present_config_buffer,
                     &present_transform_buffer,
                     &mut transform_matrix,
                     &mut transform_layer_index,
                     &mut transform_flags,
+                    &mut present_format,
                     &mut present_params_buffer,
                     &mut present_params_capacity,
                     &mut present_bind_group,
+                    &mut preview_renderer,
                     &mut transform_renderer,
                     &mut brush,
                     &mut brush_settings,
@@ -2106,6 +2132,8 @@ fn render_thread_main(
             let pending = std::mem::take(&mut deferred_reads);
             for cmd in pending {
                 let outcome = handle_engine_command(
+                    &instance,
+                    &adapter,
                     &device,
                     &queue,
                     &mut present,
@@ -2121,15 +2149,17 @@ fn render_thread_main(
                     &mut layer_blend_mode,
                     &mut layer_uniform,
                     &mut view_flags,
-                    &present_renderer,
+                    &mut present_renderer,
                     &present_config_buffer,
                     &present_transform_buffer,
                     &mut transform_matrix,
                     &mut transform_layer_index,
                     &mut transform_flags,
+                    &mut present_format,
                     &mut present_params_buffer,
                     &mut present_params_capacity,
                     &mut present_bind_group,
+                    &mut preview_renderer,
                     &mut transform_renderer,
                     &mut brush,
                     &mut brush_settings,
@@ -2160,128 +2190,239 @@ fn render_thread_main(
         }
 
         if pending_present {
-            if let Some(target) = &present {
-                let mut block_present = if cfg!(target_os = "windows") {
-                    frame_in_flight.load(Ordering::Acquire)
-                        || frame_ready.load(Ordering::Acquire)
-                } else {
-                    false
-                };
-                let mut forced_present = false;
-                if block_present && cfg!(target_os = "windows") {
-                    if let Some(since) = pending_present_since {
-                        if since.elapsed() >= Duration::from_millis(100) {
-                            block_present = false;
-                            forced_present = true;
-                        }
-                    }
-                }
-                if block_present {
-                    // Avoid overwriting a frame that is still in-flight or unconsumed.
-                } else {
-                    #[cfg(target_os = "windows")]
-                    if let Some(since) = pending_present_since {
-                        record_present_wait(since.elapsed().as_micros() as u64);
-                    }
-                    pending_present = false;
-                    pending_present_since = None;
-                    if forced_present {
-                        debug::log(
-                            LogLevel::Warn,
-                            format_args!(
-                                "present render forced after stalled ready frame seq={} active_layer={}",
-                                debug::next_seq(),
-                                active_layer_index,
-                            ),
-                        );
-                    }
-                    if debug::level() >= LogLevel::Info {
-                        debug::log(
-                            LogLevel::Info,
-                            format_args!(
-                                "present render call seq={} active_layer={} streamline_active={}",
-                                debug::next_seq(),
-                                active_layer_index,
-                                streamline_animation.is_some()
-                            ),
-                        );
-                    }
-                    if let Some(state) = preview_state.as_ref() {
-                        present_renderer.render_base(
-                            device.as_ref(),
-                            queue.as_ref(),
-                            &present_bind_group,
-                            target.render_view(),
-                        );
-                        let layer_idx = state.layer_index as usize;
-                        let layer_visible_value =
-                            layer_visible.get(layer_idx).copied().unwrap_or(true);
-                        let layer_opacity_value =
-                            layer_opacity.get(layer_idx).copied().unwrap_or(1.0);
-                        if layer_visible_value && layer_opacity_value > 0.0001 {
-                            let preview_points: &[(
-                                Point2D,
-                                f32,
-                            )] = if let Some(animation) = streamline_animation.as_ref() {
-                                if animation.scratch.is_empty() {
-                                    state.points.as_slice()
-                                } else {
-                                    animation.scratch.as_slice()
-                                }
-                            } else {
-                                state.points.as_slice()
-                            };
-                            if !preview_points.is_empty() {
-                                let segments = build_preview_segments(
-                                    preview_points,
-                                    &state.brush_settings,
-                                );
-                                if !segments.is_empty() {
-                                    let preview = preview_renderer.get_or_insert_with(
-                                        || PreviewRenderer::new(device.as_ref()),
-                                    );
-                                    let config = build_preview_config(
-                                        &state.brush_settings,
-                                        canvas_width,
-                                        canvas_height,
-                                        view_flags,
-                                        layer_opacity_value,
-                                    );
-                                    preview.render(
-                                        device.as_ref(),
-                                        queue.as_ref(),
-                                        target.render_view(),
-                                        config,
-                                        &segments,
-                                        state.use_accumulate,
-                                    );
+            if let Some(target) = present.as_mut() {
+                let mut drop_present = false;
+                match target {
+                    PresentTarget::Texture(target) => {
+                        let mut block_present = if cfg!(target_os = "windows") {
+                            frame_in_flight.load(Ordering::Acquire)
+                                || frame_ready.load(Ordering::Acquire)
+                        } else {
+                            false
+                        };
+                        let mut forced_present = false;
+                        if block_present && cfg!(target_os = "windows") {
+                            if let Some(since) = pending_present_since {
+                                if since.elapsed() >= Duration::from_millis(100) {
+                                    block_present = false;
+                                    forced_present = true;
                                 }
                             }
                         }
-                        if target.shared_texture().is_some() {
-                            let mut encoder = device.create_command_encoder(
-                                &wgpu::CommandEncoderDescriptor {
-                                    label: Some("misa-rin present copy encoder"),
-                                },
-                            );
-                            copy_render_to_shared(&mut encoder, target);
-                            queue.submit(Some(encoder.finish()));
+                        if block_present {
+                            // Avoid overwriting a frame that is still in-flight or unconsumed.
+                        } else {
+                            #[cfg(target_os = "windows")]
+                            if let Some(since) = pending_present_since {
+                                record_present_wait(since.elapsed().as_micros() as u64);
+                            }
+                            pending_present = false;
+                            pending_present_since = None;
+                            if forced_present {
+                                debug::log(
+                                    LogLevel::Warn,
+                                    format_args!(
+                                        "present render forced after stalled ready frame seq={} active_layer={}",
+                                        debug::next_seq(),
+                                        active_layer_index,
+                                    ),
+                                );
+                            }
+                            if debug::level() >= LogLevel::Info {
+                                debug::log(
+                                    LogLevel::Info,
+                                    format_args!(
+                                        "present render call seq={} active_layer={} streamline_active={}",
+                                        debug::next_seq(),
+                                        active_layer_index,
+                                        streamline_animation.is_some()
+                                    ),
+                                );
+                            }
+                            if let Some(state) = preview_state.as_ref() {
+                                present_renderer.render_base(
+                                    device.as_ref(),
+                                    queue.as_ref(),
+                                    &present_bind_group,
+                                    target.render_view(),
+                                );
+                                let layer_idx = state.layer_index as usize;
+                                let layer_visible_value =
+                                    layer_visible.get(layer_idx).copied().unwrap_or(true);
+                                let layer_opacity_value =
+                                    layer_opacity.get(layer_idx).copied().unwrap_or(1.0);
+                                if layer_visible_value && layer_opacity_value > 0.0001 {
+                                    let preview_points: &[(
+                                        Point2D,
+                                        f32,
+                                    )] = if let Some(animation) = streamline_animation.as_ref() {
+                                        if animation.scratch.is_empty() {
+                                            state.points.as_slice()
+                                        } else {
+                                            animation.scratch.as_slice()
+                                        }
+                                    } else {
+                                        state.points.as_slice()
+                                    };
+                                    if !preview_points.is_empty() {
+                                        let segments = build_preview_segments(
+                                            preview_points,
+                                            &state.brush_settings,
+                                        );
+                                        if !segments.is_empty() {
+                                            let preview = preview_renderer.get_or_insert_with(
+                                                || {
+                                                    PreviewRenderer::new(
+                                                        device.as_ref(),
+                                                        present_format,
+                                                    )
+                                                },
+                                            );
+                                            let config = build_preview_config(
+                                                &state.brush_settings,
+                                                canvas_width,
+                                                canvas_height,
+                                                view_flags,
+                                                layer_opacity_value,
+                                            );
+                                            preview.render(
+                                                device.as_ref(),
+                                                queue.as_ref(),
+                                                target.render_view(),
+                                                config,
+                                                &segments,
+                                                state.use_accumulate,
+                                            );
+                                        }
+                                    }
+                                }
+                                if target.shared_texture().is_some() {
+                                    let mut encoder = device.create_command_encoder(
+                                        &wgpu::CommandEncoderDescriptor {
+                                            label: Some("misa-rin present copy encoder"),
+                                        },
+                                    );
+                                    copy_render_to_shared(&mut encoder, target);
+                                    queue.submit(Some(encoder.finish()));
+                                }
+                                signal_frame_ready(
+                                    queue.as_ref(),
+                                    Arc::clone(&frame_ready),
+                                    Arc::clone(&frame_in_flight),
+                                );
+                            } else {
+                                present_renderer.render_present(
+                                    device.as_ref(),
+                                    queue.as_ref(),
+                                    &present_bind_group,
+                                    target,
+                                    Arc::clone(&frame_ready),
+                                    Arc::clone(&frame_in_flight),
+                                );
+                            }
                         }
-                        signal_frame_ready(
-                            queue.as_ref(),
-                            Arc::clone(&frame_ready),
-                            Arc::clone(&frame_in_flight),
-                        );
-                    } else {
-                        present_renderer.render_present(
-                            device.as_ref(),
-                            queue.as_ref(),
-                            &present_bind_group,
-                            target,
-                            Arc::clone(&frame_ready),
-                            Arc::clone(&frame_in_flight),
-                        );
                     }
+                    #[cfg(target_os = "android")]
+                    PresentTarget::Surface(surface) => {
+                        pending_present = false;
+                        pending_present_since = None;
+                        let frame = surface.surface().get_current_texture();
+                        match frame {
+                            Ok(frame) => {
+                                let view =
+                                    frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+                                if let Some(state) = preview_state.as_ref() {
+                                    present_renderer.render_base(
+                                        device.as_ref(),
+                                        queue.as_ref(),
+                                        &present_bind_group,
+                                        &view,
+                                    );
+                                    let layer_idx = state.layer_index as usize;
+                                    let layer_visible_value =
+                                        layer_visible.get(layer_idx).copied().unwrap_or(true);
+                                    let layer_opacity_value =
+                                        layer_opacity.get(layer_idx).copied().unwrap_or(1.0);
+                                    if layer_visible_value && layer_opacity_value > 0.0001 {
+                                        let preview_points: &[(
+                                            Point2D,
+                                            f32,
+                                        )] = if let Some(animation) = streamline_animation.as_ref() {
+                                            if animation.scratch.is_empty() {
+                                                state.points.as_slice()
+                                            } else {
+                                                animation.scratch.as_slice()
+                                            }
+                                        } else {
+                                            state.points.as_slice()
+                                        };
+                                        if !preview_points.is_empty() {
+                                            let segments = build_preview_segments(
+                                                preview_points,
+                                                &state.brush_settings,
+                                            );
+                                            if !segments.is_empty() {
+                                                let preview = preview_renderer.get_or_insert_with(
+                                                    || {
+                                                        PreviewRenderer::new(
+                                                            device.as_ref(),
+                                                            present_format,
+                                                        )
+                                                    },
+                                                );
+                                                let config = build_preview_config(
+                                                    &state.brush_settings,
+                                                    canvas_width,
+                                                    canvas_height,
+                                                    view_flags,
+                                                    layer_opacity_value,
+                                                );
+                                                preview.render(
+                                                    device.as_ref(),
+                                                    queue.as_ref(),
+                                                    &view,
+                                                    config,
+                                                    &segments,
+                                                    state.use_accumulate,
+                                                );
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    present_renderer.render_base(
+                                        device.as_ref(),
+                                        queue.as_ref(),
+                                        &present_bind_group,
+                                        &view,
+                                    );
+                                }
+                                frame.present();
+                            }
+                            Err(wgpu::SurfaceError::Outdated | wgpu::SurfaceError::Lost) => {
+                                debug::log(
+                                    LogLevel::Warn,
+                                    format_args!("present surface reconfigure required"),
+                                );
+                                surface.configure(device.as_ref());
+                            }
+                            Err(wgpu::SurfaceError::Timeout) => {
+                                debug::log(
+                                    LogLevel::Warn,
+                                    format_args!("present surface timeout"),
+                                );
+                            }
+                            Err(wgpu::SurfaceError::OutOfMemory) => {
+                                debug::log(
+                                    LogLevel::Warn,
+                                    format_args!("present surface out of memory"),
+                                );
+                                drop_present = true;
+                            }
+                        }
+                    }
+                }
+                if drop_present {
+                    present = None;
                 }
             } else {
                 pending_present = false;
@@ -2293,6 +2434,8 @@ fn render_thread_main(
 }
 
 fn handle_engine_command(
+    instance: &wgpu::Instance,
+    adapter: &wgpu::Adapter,
     device: &Arc<wgpu::Device>,
     queue: &Arc<wgpu::Queue>,
     present: &mut Option<PresentTarget>,
@@ -2308,15 +2451,17 @@ fn handle_engine_command(
     layer_blend_mode: &mut Vec<u32>,
     layer_uniform: &mut Vec<Option<u32>>,
     present_view_flags: &mut u32,
-    present_renderer: &PresentRenderer,
+    present_renderer: &mut PresentRenderer,
     present_config_buffer: &wgpu::Buffer,
     present_transform_buffer: &wgpu::Buffer,
     transform_matrix: &mut [f32; 16],
     transform_layer_index: &mut u32,
     transform_flags: &mut u32,
+    present_format: &mut wgpu::TextureFormat,
     present_params_buffer: &mut wgpu::Buffer,
     present_params_capacity: &mut usize,
     present_bind_group: &mut wgpu::BindGroup,
+    preview_renderer: &mut Option<PreviewRenderer>,
     transform_renderer: &mut Option<LayerTransformRenderer>,
     brush: &mut Option<BrushRenderer>,
     brush_settings: &mut EngineBrushSettings,
@@ -2446,6 +2591,21 @@ fn handle_engine_command(
             }
             *present =
                 attach_present_texture(device, mtl_texture_ptr, width, height, bytes_per_row);
+            if let Some(target) = present.as_ref() {
+                let format = target.format();
+                if format != *present_format {
+                    *present_format = format;
+                    *present_renderer = PresentRenderer::new(device.as_ref(), format);
+                    *present_bind_group = present_renderer.create_bind_group(
+                        device,
+                        layers.array_view(),
+                        present_config_buffer,
+                        present_params_buffer,
+                        present_transform_buffer,
+                    );
+                    *preview_renderer = None;
+                }
+            }
             if present.is_some() {
                 debug::log(
                     LogLevel::Info,
@@ -2478,6 +2638,91 @@ fn handle_engine_command(
                 };
             }
         }
+        #[cfg(target_os = "android")]
+        EngineCommand::AttachPresentSurface {
+            native_window_ptr,
+            width,
+            height,
+        } => {
+            if native_window_ptr == 0 || width == 0 || height == 0 {
+                debug::log(
+                    LogLevel::Warn,
+                    format_args!(
+                        "AttachPresentSurface ignored: ptr=0x{native_window_ptr:x} size={width}x{height}"
+                    ),
+                );
+                *present = None;
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+
+            match attach_present_surface(
+                instance,
+                adapter,
+                device.as_ref(),
+                native_window_ptr as *mut c_void,
+                width,
+                height,
+            ) {
+                Ok(target) => {
+                    let format = target.format();
+                    *present = Some(target);
+                    if format != *present_format {
+                        *present_format = format;
+                        *present_renderer = PresentRenderer::new(device.as_ref(), format);
+                        *present_bind_group = present_renderer.create_bind_group(
+                            device,
+                            layers.array_view(),
+                            present_config_buffer,
+                            present_params_buffer,
+                            present_transform_buffer,
+                        );
+                        *preview_renderer = None;
+                    }
+                    debug::log(
+                        LogLevel::Info,
+                        format_args!(
+                            "Present surface attached: ptr=0x{native_window_ptr:x} size={width}x{height} format={format:?}"
+                        ),
+                    );
+                    layer_uniform.resize(*layer_count, None);
+                    for idx in 0..*layer_count {
+                        let fill = if idx == 0 { 0xFFFFFFFF } else { 0x00000000 };
+                        fill_r32uint_texture(
+                            queue,
+                            layers.texture(),
+                            canvas_width,
+                            canvas_height,
+                            idx as u32,
+                            fill,
+                        );
+                        if let Some(entry) = layer_uniform.get_mut(idx) {
+                            *entry = Some(fill);
+                        }
+                    }
+                    return EngineCommandOutcome {
+                        stop: false,
+                        needs_render: true,
+                        new_canvas_size: None,
+                    };
+                }
+                Err(err) => {
+                    debug::log(
+                        LogLevel::Warn,
+                        format_args!("AttachPresentSurface failed: {err}"),
+                    );
+                    *present = None;
+                    return EngineCommandOutcome {
+                        stop: false,
+                        needs_render: false,
+                        new_canvas_size: None,
+                    };
+                }
+            }
+        }
         #[cfg(target_os = "windows")]
         EngineCommand::AttachPresentDxgi {
             width,
@@ -2493,7 +2738,7 @@ fn handle_engine_command(
                     new_canvas_size: None,
                 };
             }
-            if let Some(existing) = present.as_mut() {
+            if let Some(existing) = present.as_mut().and_then(|target| target.as_texture_mut()) {
                 if existing.width == width && existing.height == height {
                     if let Some(handle) = existing.take_dxgi_handle() {
                         debug::log(
@@ -2514,7 +2759,7 @@ fn handle_engine_command(
 
             match create_dxgi_shared_present_target(device.as_ref(), width, height) {
                 Ok(mut target) => {
-                    let handle = target.take_dxgi_handle();
+                    let handle = target.as_texture_mut().and_then(|tex| tex.take_dxgi_handle());
                     *present = Some(target);
                     if handle.is_some() {
                         if let Some(shared) = handle {
@@ -4391,7 +4636,7 @@ fn handle_engine_command(
                     new_canvas_size: None,
                 };
             };
-            if target.width == 0 || target.height == 0 {
+            if target.width() == 0 || target.height() == 0 {
                 let _ = reply.send(None);
                 return EngineCommandOutcome {
                     stop: false,
@@ -4399,20 +4644,24 @@ fn handle_engine_command(
                     new_canvas_size: None,
                 };
             }
-            match read_bgra_texture(
-                device,
-                queue,
-                target.texture(),
-                target.width,
-                target.height,
-            ) {
-                Ok(bytes) => {
-                    let _ = reply.send(Some(bytes));
+            if let Some(texture_target) = target.as_texture() {
+                match read_bgra_texture(
+                    device,
+                    queue,
+                    texture_target.render_texture(),
+                    target.width(),
+                    target.height(),
+                ) {
+                    Ok(bytes) => {
+                        let _ = reply.send(Some(bytes));
+                    }
+                    Err(err) => {
+                        debug::log(LogLevel::Warn, format_args!("present readback failed: {err}"));
+                        let _ = reply.send(None);
+                    }
                 }
-                Err(err) => {
-                    debug::log(LogLevel::Warn, format_args!("present readback failed: {err}"));
-                    let _ = reply.send(None);
-                }
+            } else {
+                let _ = reply.send(None);
             }
             return EngineCommandOutcome {
                 stop: false,
@@ -5755,6 +6004,8 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
     let frame_ready = Arc::new(AtomicBool::new(false));
     let frame_in_flight = Arc::new(AtomicBool::new(false));
     spawn_render_thread(
+        Arc::clone(&ctx.instance),
+        Arc::clone(&ctx.adapter),
         Arc::clone(&ctx.device),
         Arc::clone(&ctx.queue),
         layers,
