@@ -13,6 +13,7 @@ import '../psd/psd_importer.dart';
 import '../psd/psd_exporter.dart';
 import '../sai2/sai2_importer.dart';
 import '../sai2/sai2_exporter.dart';
+import '../utils/svg_rasterizer.dart';
 import 'project_binary_codec.dart';
 import 'project_document.dart';
 import 'recent_projects_index.dart';
@@ -66,10 +67,7 @@ class ProjectRepository {
     return directory;
   }
 
-  Future<void> _migrateLegacyAutoSaves(
-    Directory root,
-    Directory target,
-  ) async {
+  Future<void> _migrateLegacyAutoSaves(Directory root, Directory target) async {
     try {
       await for (final FileSystemEntity entity in root.list(
         recursive: false,
@@ -166,11 +164,7 @@ class ProjectRepository {
     final String fileName = _buildFileName(decoded);
     final String virtualPath = _buildVirtualPath(fileName);
     final ProjectDocument resolved = decoded.copyWith(path: virtualPath);
-    await _webStore!.write(
-      virtualPath,
-      resolved,
-      lastOpened: DateTime.now(),
-    );
+    await _webStore!.write(virtualPath, resolved, lastOpened: DateTime.now());
     return resolved;
   }
 
@@ -458,6 +452,7 @@ class ProjectRepository {
   Future<ProjectDocument> createDocumentFromImage(
     String path, {
     String? name,
+    int? svgRasterSizePx,
   }) async {
     if (kIsWeb) {
       throw UnsupportedError('Web 暂不支持从本地路径读取图像。');
@@ -468,7 +463,10 @@ class ProjectRepository {
       throw Exception('文件不存在：$path');
     }
     final Uint8List bytes = await file.readAsBytes();
-    final _DecodedImage decoded = await _decodeImageBytes(bytes);
+    final _DecodedImage decoded = await _decodeImageBytes(
+      bytes,
+      svgRasterSizePx: svgRasterSizePx,
+    );
     final String resolvedName = _resolveImageName(
       name ?? p.basenameWithoutExtension(path),
       fallback: '导入图像',
@@ -479,11 +477,15 @@ class ProjectRepository {
   Future<ProjectDocument> createDocumentFromImageBytes(
     Uint8List bytes, {
     String? name,
+    int? svgRasterSizePx,
   }) async {
     if (!kIsWeb) {
       await _ensureProjectDirectory();
     }
-    final _DecodedImage decoded = await _decodeImageBytes(bytes);
+    final _DecodedImage decoded = await _decodeImageBytes(
+      bytes,
+      svgRasterSizePx: svgRasterSizePx,
+    );
     final String resolvedName = _resolveImageName(name, fallback: '剪贴板图像');
     return _buildDocumentFromDecodedImage(decoded, resolvedName);
   }
@@ -496,14 +498,18 @@ class ProjectRepository {
     return trimmed;
   }
 
-  Future<_DecodedImage> _decodeImageBytes(Uint8List bytes) async {
-    final ui.Codec codec = await ui.instantiateImageCodec(bytes);
-    final ui.FrameInfo frame = await codec.getNextFrame();
-    final ui.Image image = frame.image;
+  Future<_DecodedImage> _decodeImageBytes(
+    Uint8List bytes, {
+    int? svgRasterSizePx,
+  }) async {
+    final DecodedUiImageFrame decodedFrame = await decodeBitmapOrSvgFrame(
+      bytes,
+      svgRasterSizePx: svgRasterSizePx,
+    );
+    final ui.Image image = decodedFrame.image;
     final ByteData? pixelData = await image.toByteData(
       format: ui.ImageByteFormat.rawRgba,
     );
-    codec.dispose();
     if (pixelData == null) {
       image.dispose();
       throw Exception('无法读取图像像素数据');

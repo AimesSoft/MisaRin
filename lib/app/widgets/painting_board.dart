@@ -18,7 +18,8 @@ import 'package:flutter/foundation.dart'
         defaultTargetPlatform,
         TargetPlatform,
         kIsWeb,
-        protected, kDebugMode;
+        protected,
+        kDebugMode;
 import 'package:misa_rin/utils/io_shim.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart'
@@ -147,6 +148,7 @@ import '../utils/web_file_dialog.dart';
 import '../utils/web_file_saver.dart';
 import '../utils/platform_target.dart';
 import '../utils/clipboard_image_reader.dart';
+import '../utils/svg_rasterizer.dart';
 import 'layer_visibility_button.dart';
 import 'app_notification.dart';
 import '../../mobile/mobile_menu_button.dart';
@@ -178,22 +180,22 @@ part 'painting_board_layer_transform_models.dart';
 part 'painting_board_layer_transform_panel.dart';
 part 'painting_board_shapes.dart';
 part 'painting_board_perspective.dart';
-	part 'painting_board_text.dart';
-	part 'painting_board_text_painter.dart';
-	part 'painting_board_clipboard.dart';
-	part 'painting_board_interactions.dart';
-	part 'painting_board_interactions_backend.dart';
-	part 'painting_board_interactions_pointer.dart';
-	part 'painting_board_interactions_preferences.dart';
-	part 'painting_board_interactions_stroke.dart';
-	part 'painting_board_interactions_spray_cursor.dart';
-	part 'painting_board_interactions_layer_curve.dart';
-	part 'painting_board_interactions_stabilizers.dart';
-	part 'painting_board_build.dart';
-	part 'painting_board_build_shortcuts.dart';
-	part 'painting_board_build_body.dart';
-	part 'painting_board_widgets.dart';
-	part 'painting_board_workspace_panel.dart';
+part 'painting_board_text.dart';
+part 'painting_board_text_painter.dart';
+part 'painting_board_clipboard.dart';
+part 'painting_board_interactions.dart';
+part 'painting_board_interactions_backend.dart';
+part 'painting_board_interactions_pointer.dart';
+part 'painting_board_interactions_preferences.dart';
+part 'painting_board_interactions_stroke.dart';
+part 'painting_board_interactions_spray_cursor.dart';
+part 'painting_board_interactions_layer_curve.dart';
+part 'painting_board_interactions_stabilizers.dart';
+part 'painting_board_build.dart';
+part 'painting_board_build_shortcuts.dart';
+part 'painting_board_build_body.dart';
+part 'painting_board_widgets.dart';
+part 'painting_board_workspace_panel.dart';
 part 'painting_board_filters.dart';
 part 'painting_board_filters_panel.dart';
 part 'painting_board_filters_preview.dart';
