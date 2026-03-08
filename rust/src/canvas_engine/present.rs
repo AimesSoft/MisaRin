@@ -9,6 +9,7 @@ use std::time::Instant;
 use std::{ffi::c_void, ptr::NonNull};
 
 use crate::gpu::debug::{self, LogLevel};
+use crate::gpu::wgpu_utils;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use metal::foreign_types::ForeignType;
@@ -246,6 +247,7 @@ pub(crate) struct PresentTransformConfig {
 }
 
 pub(crate) fn write_present_config(
+    device: &wgpu::Device,
     queue: &wgpu::Queue,
     header_buffer: &wgpu::Buffer,
     params_buffer: &wgpu::Buffer,
@@ -264,7 +266,13 @@ pub(crate) fn write_present_config(
         transform_layer,
         transform_flags,
     };
-    queue.write_buffer(header_buffer, 0, bytemuck::bytes_of(&header));
+    wgpu_utils::write_buffer(
+        device,
+        queue,
+        header_buffer,
+        0,
+        bytemuck::bytes_of(&header),
+    );
 
     if layer_count == 0 {
         return;
@@ -296,16 +304,29 @@ pub(crate) fn write_present_config(
             blend_mode,
         });
     }
-    queue.write_buffer(params_buffer, 0, bytemuck::cast_slice(&params));
+    wgpu_utils::write_buffer(
+        device,
+        queue,
+        params_buffer,
+        0,
+        bytemuck::cast_slice(&params),
+    );
 }
 
 pub(crate) fn write_present_transform(
+    device: &wgpu::Device,
     queue: &wgpu::Queue,
     buffer: &wgpu::Buffer,
     matrix: [f32; 16],
 ) {
     let config = PresentTransformConfig { matrix };
-    queue.write_buffer(buffer, 0, bytemuck::bytes_of(&config));
+    wgpu_utils::write_buffer(
+        device,
+        queue,
+        buffer,
+        0,
+        bytemuck::bytes_of(&config),
+    );
 }
 
 pub(crate) fn create_present_transform_buffer(device: &wgpu::Device) -> wgpu::Buffer {

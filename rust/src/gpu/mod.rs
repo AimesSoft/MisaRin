@@ -6,3 +6,4 @@ pub mod filter_renderer;
 pub(crate) mod debug;
 pub(crate) mod layer_format;
 pub mod layer_texture;
+pub(crate) mod wgpu_utils;

@@ -8,6 +8,8 @@ use super::engine::{create_engine, lookup_engine, remove_engine, EngineCommand, 
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
 use crate::gpu::debug::{self, LogLevel};
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+use log::LevelFilter;
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
 use std::ffi::CString;
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
 use std::collections::HashMap;
@@ -370,6 +372,12 @@ pub extern "C" fn engine_get_input_queue_len(handle: u64) -> u64 {
 #[no_mangle]
 pub extern "C" fn engine_set_log_level(level: u32) {
     debug::set_level_from_u32(level);
+    let filter = if level == 0 {
+        LevelFilter::Off
+    } else {
+        LevelFilter::Error
+    };
+    log::set_max_level(filter);
 }
 
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
@@ -1319,6 +1327,51 @@ pub extern "C" fn engine_write_layer(
 
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
 #[no_mangle]
+pub extern "C" fn engine_write_layer_async(
+    handle: u64,
+    layer_index: u32,
+    pixels_ptr: *const u32,
+    pixels_len: usize,
+    record_undo: u8,
+) -> u8 {
+    if pixels_ptr.is_null() || pixels_len == 0 {
+        return 0;
+    }
+    let Some(entry) = lookup_engine(handle) else {
+        return 0;
+    };
+    let pixels = unsafe { std::slice::from_raw_parts(pixels_ptr, pixels_len).to_vec() };
+    let (tx, rx) = mpsc::channel();
+    drop(rx);
+    if entry
+        .cmd_tx
+        .send(EngineCommand::WriteLayer {
+            layer_index,
+            pixels,
+            record_undo: record_undo != 0,
+            reply: tx,
+        })
+        .is_err()
+    {
+        return 0;
+    }
+    1
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[no_mangle]
+pub extern "C" fn engine_write_layer_async(
+    _handle: u64,
+    _layer_index: u32,
+    _pixels_ptr: *const u32,
+    _pixels_len: usize,
+    _record_undo: u8,
+) -> u8 {
+    0
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[no_mangle]
 pub extern "C" fn engine_translate_layer(
     handle: u64,
     layer_index: u32,
@@ -1588,6 +1641,15 @@ pub extern "C" fn engine_reset_canvas_with_layers(
     });
 }
 
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[no_mangle]
+pub extern "C" fn engine_request_present(handle: u64) {
+    let Some(entry) = lookup_engine(handle) else {
+        return;
+    };
+    let _ = entry.cmd_tx.send(EngineCommand::RequestPresent);
+}
+
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
 #[no_mangle]
 pub extern "C" fn engine_reset_canvas_with_layers(
@@ -1596,6 +1658,10 @@ pub extern "C" fn engine_reset_canvas_with_layers(
     _background_color_argb: u32,
 ) {
 }
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[no_mangle]
+pub extern "C" fn engine_request_present(_handle: u64) {}
 
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
 #[no_mangle]

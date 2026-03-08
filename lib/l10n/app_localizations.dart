@@ -1376,6 +1376,12 @@ abstract class AppLocalizations {
   /// **'Export Type'**
   String get exportTypeLabel;
 
+  /// No description provided for @exportTypeBitmap.
+  ///
+  /// In en, this message translates to:
+  /// **'Bitmap'**
+  String get exportTypeBitmap;
+
   /// No description provided for @exportTypePng.
   ///
   /// In en, this message translates to:
@@ -1387,6 +1393,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Vector SVG (Experimental)'**
   String get exportTypeSvg;
+
+  /// No description provided for @exportBitmapFormatLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Bitmap Format'**
+  String get exportBitmapFormatLabel;
+
+  /// No description provided for @exportBitmapFormatPng.
+  ///
+  /// In en, this message translates to:
+  /// **'PNG'**
+  String get exportBitmapFormatPng;
+
+  /// No description provided for @exportBitmapFormatWebp.
+  ///
+  /// In en, this message translates to:
+  /// **'WebP'**
+  String get exportBitmapFormatWebp;
+
+  /// No description provided for @webpCompressionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'WebP Compression'**
+  String get webpCompressionLabel;
+
+  /// No description provided for @webpLossless.
+  ///
+  /// In en, this message translates to:
+  /// **'Lossless'**
+  String get webpLossless;
+
+  /// No description provided for @webpLossy.
+  ///
+  /// In en, this message translates to:
+  /// **'Lossy'**
+  String get webpLossy;
+
+  /// No description provided for @webpQualityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality: {value}'**
+  String webpQualityLabel(Object value);
 
   /// No description provided for @exportScaleLabel.
   ///

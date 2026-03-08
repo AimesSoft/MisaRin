@@ -685,10 +685,36 @@ class AppLocalizationsKo extends AppLocalizations {
   String get exportTypeLabel => '내보내기 유형';
 
   @override
+  String get exportTypeBitmap => '비트맵';
+
+  @override
   String get exportTypePng => '비트맵 PNG';
 
   @override
   String get exportTypeSvg => '벡터 SVG (실험적)';
+
+  @override
+  String get exportBitmapFormatLabel => '비트맵 형식';
+
+  @override
+  String get exportBitmapFormatPng => 'PNG';
+
+  @override
+  String get exportBitmapFormatWebp => 'WebP';
+
+  @override
+  String get webpCompressionLabel => 'WebP 압축';
+
+  @override
+  String get webpLossless => '무손실';
+
+  @override
+  String get webpLossy => '손실';
+
+  @override
+  String webpQualityLabel(Object value) {
+    return '품질: $value';
+  }
 
   @override
   String get exportScaleLabel => '내보내기 배율';

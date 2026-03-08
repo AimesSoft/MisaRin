@@ -1143,6 +1143,7 @@ dependencies = [
  "d3d12",
  "flutter_rust_bridge",
  "jni-sys",
+ "log",
  "metal",
  "ndk-sys",
  "pollster",

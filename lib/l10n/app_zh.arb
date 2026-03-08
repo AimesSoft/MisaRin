@@ -289,8 +289,21 @@
   },
   "exportSettingsTitle": "导出设置",
   "exportTypeLabel": "导出类型",
+  "exportTypeBitmap": "位图",
   "exportTypePng": "位图 PNG",
   "exportTypeSvg": "矢量 SVG（实验）",
+  "exportBitmapFormatLabel": "位图格式",
+  "exportBitmapFormatPng": "PNG",
+  "exportBitmapFormatWebp": "WebP",
+  "webpCompressionLabel": "WebP 压缩",
+  "webpLossless": "无损",
+  "webpLossy": "有损",
+  "webpQualityLabel": "质量：{value}",
+  "@webpQualityLabel": {
+    "placeholders": {
+      "value": {}
+    }
+  },
   "exportScaleLabel": "导出倍率",
   "reset": "重置",
   "exportOutputSize": "输出尺寸：{width} x {height} 像素",

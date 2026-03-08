@@ -134,7 +134,7 @@ pub fn gpu_composite_layers(
     }
 
     debug::log(
-        LogLevel::Info,
+        LogLevel::Verbose,
         format_args!(
             "#{seq} gpu_composite_layers canvas={width}x{height} layers={} upload_layers={non_empty_layers} empty_layers={empty_layers} mismatched_layers={mismatched_layers} total_input_u32={total_input_u32}",
             layers.len()

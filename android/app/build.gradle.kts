@@ -41,6 +41,15 @@ android {
         versionName = flutter.versionName
     }
 
+    packaging {
+        jniLibs {
+            excludes += setOf(
+                "**/libVkLayer_khronos_validation.so",
+                "**/libVkLayer_api_dump.so",
+            )
+        }
+    }
+
     signingConfigs {
         if (hasKeystoreProperties) {
             create("release") {

@@ -109,6 +109,7 @@ pub(crate) enum EngineCommand {
         height: u32,
         reply: mpsc::Sender<Option<usize>>,
     },
+    RequestPresent,
     ResetCanvas {
         background_color_argb: u32,
     },
@@ -1279,6 +1280,7 @@ fn render_thread_main(
             }
         };
     write_present_config(
+        device.as_ref(),
         queue.as_ref(),
         &present_config_buffer,
         &present_params_buffer,
@@ -1291,7 +1293,12 @@ fn render_thread_main(
         &layer_clipping_mask,
         &layer_blend_mode,
     );
-    write_present_transform(queue.as_ref(), &present_transform_buffer, transform_matrix);
+    write_present_transform(
+        device.as_ref(),
+        queue.as_ref(),
+        &present_transform_buffer,
+        transform_matrix,
+    );
     let mut present_bind_group = present_renderer.create_bind_group(
         device.as_ref(),
         layers.array_view(),
@@ -1310,6 +1317,11 @@ fn render_thread_main(
     let mut spray_active_layer: Option<u32> = None;
     let mut pending_present = false;
     let mut pending_present_since: Option<Instant> = None;
+    let mut presented_once = false;
+    let mut logged_needs_render = false;
+    let mut logged_pending_present = false;
+    let mut logged_present_attempt = false;
+    let mut logged_present_missing = false;
     let mut deferred_reads: Vec<EngineCommand> = Vec::new();
 
     loop {
@@ -2194,6 +2206,17 @@ fn render_thread_main(
         }
 
         if needs_render {
+            if !logged_needs_render {
+                logged_needs_render = true;
+                debug::log(
+                    LogLevel::Info,
+                    format_args!(
+                        "needs_render set present={} pending_present={} size={canvas_width}x{canvas_height}",
+                        present.is_some(),
+                        pending_present
+                    ),
+                );
+            }
             if !pending_present {
                 pending_present_since = Some(Instant::now());
             }
@@ -2201,6 +2224,20 @@ fn render_thread_main(
         }
 
         if pending_present {
+            if !logged_pending_present {
+                logged_pending_present = true;
+                debug::log(
+                    LogLevel::Info,
+                    format_args!("pending_present begin present={}", present.is_some()),
+                );
+            }
+            if present.is_none() && !logged_present_missing {
+                logged_present_missing = true;
+                debug::log(
+                    LogLevel::Warn,
+                    format_args!("pending_present but present target missing"),
+                );
+            }
             if let Some(target) = present.as_mut() {
                 let mut drop_present = false;
                 match target {
@@ -2337,6 +2374,15 @@ fn render_thread_main(
                     PresentTarget::Surface(surface) => {
                         pending_present = false;
                         pending_present_since = None;
+                        if !logged_present_attempt {
+                            logged_present_attempt = true;
+                            debug::log(
+                                LogLevel::Info,
+                                format_args!(
+                                    "present surface get_current_texture size={canvas_width}x{canvas_height}"
+                                ),
+                            );
+                        }
                         let frame = surface.surface().get_current_texture();
                         match frame {
                             Ok(frame) => {
@@ -2408,6 +2454,15 @@ fn render_thread_main(
                                     );
                                 }
                                 frame.present();
+                                if !presented_once {
+                                    presented_once = true;
+                                    debug::log(
+                                        LogLevel::Info,
+                                        format_args!(
+                                            "present frame ok size={canvas_width}x{canvas_height}"
+                                        ),
+                                    );
+                                }
                             }
                             Err(wgpu::SurfaceError::Outdated | wgpu::SurfaceError::Lost) => {
                                 debug::log(
@@ -2545,6 +2600,7 @@ fn handle_engine_command(
 
         for layer in old_count..new_count {
             fill_r32uint_texture(
+                device.as_ref(),
                 queue,
                 layers.texture(),
                 canvas_width,
@@ -2557,6 +2613,7 @@ fn handle_engine_command(
 
         *layer_count = new_count;
         write_present_config(
+            device.as_ref(),
             queue,
             present_config_buffer,
             present_params_buffer,
@@ -2630,6 +2687,7 @@ fn handle_engine_command(
                 for idx in 0..*layer_count {
                     let fill = if idx == 0 { 0xFFFFFFFF } else { 0x00000000 };
                     fill_r32uint_texture(
+                        device.as_ref(),
                         queue,
                         layers.texture(),
                         canvas_width,
@@ -2703,6 +2761,7 @@ fn handle_engine_command(
                     for idx in 0..*layer_count {
                         let fill = if idx == 0 { 0xFFFFFFFF } else { 0x00000000 };
                         fill_r32uint_texture(
+                            device.as_ref(),
                             queue,
                             layers.texture(),
                             canvas_width,
@@ -2787,6 +2846,7 @@ fn handle_engine_command(
                         for idx in 0..*layer_count {
                             let fill = if idx == 0 { 0xFFFFFFFF } else { 0x00000000 };
                             fill_r32uint_texture(
+                                device.as_ref(),
                                 queue,
                                 layers.texture(),
                                 canvas_width,
@@ -2841,6 +2901,7 @@ fn handle_engine_command(
                     0x00000000
                 };
                 fill_r32uint_texture(
+                    device.as_ref(),
                     queue,
                     layers.texture(),
                     canvas_width,
@@ -2852,6 +2913,13 @@ fn handle_engine_command(
                     *entry = Some(fill);
                 }
             }
+            return EngineCommandOutcome {
+                stop: false,
+                needs_render: present.is_some(),
+                new_canvas_size: None,
+            };
+        }
+        EngineCommand::RequestPresent => {
             return EngineCommandOutcome {
                 stop: false,
                 needs_render: present.is_some(),
@@ -2887,6 +2955,7 @@ fn handle_engine_command(
                     0x00000000
                 };
                 fill_r32uint_texture(
+                    device.as_ref(),
                     queue,
                     layers.texture(),
                     canvas_width,
@@ -2903,6 +2972,7 @@ fn handle_engine_command(
             *transform_layer_index = 0;
             *transform_flags = 0;
             write_present_config(
+                device.as_ref(),
                 queue,
                 present_config_buffer,
                 present_params_buffer,
@@ -2980,6 +3050,7 @@ fn handle_engine_command(
                     0x00000000
                 };
                 fill_r32uint_texture(
+                    device.as_ref(),
                     queue,
                     new_layers.texture(),
                     new_width,
@@ -3012,8 +3083,14 @@ fn handle_engine_command(
                 0.0, 0.0, 1.0, 0.0, //
                 0.0, 0.0, 0.0, 1.0, //
             ];
-            write_present_transform(queue.as_ref(), present_transform_buffer, *transform_matrix);
+            write_present_transform(
+                device.as_ref(),
+                queue.as_ref(),
+                present_transform_buffer,
+                *transform_matrix,
+            );
             write_present_config(
+                device.as_ref(),
                 queue,
                 present_config_buffer,
                 present_params_buffer,
@@ -3045,6 +3122,7 @@ fn handle_engine_command(
             let idx = layer_index as usize;
             if ensure_layer_index(layer_count, idx, *transform_layer_index, *transform_flags) {
                 fill_r32uint_texture(
+                    device.as_ref(),
                     queue,
                     layers.texture(),
                     canvas_width,
@@ -3066,6 +3144,7 @@ fn handle_engine_command(
             let idx = layer_index as usize;
             if ensure_layer_index(layer_count, idx, *transform_layer_index, *transform_flags) {
                 fill_r32uint_texture(
+                    device.as_ref(),
                     queue,
                     layers.texture(),
                     canvas_width,
@@ -3101,6 +3180,7 @@ fn handle_engine_command(
                     0.0
                 };
                 write_present_config(
+                    device.as_ref(),
                     queue,
                     present_config_buffer,
                     present_params_buffer,
@@ -3128,6 +3208,7 @@ fn handle_engine_command(
             if ensure_layer_index(layer_count, idx, *transform_layer_index, *transform_flags) {
                 layer_visible[idx] = visible;
                 write_present_config(
+                    device.as_ref(),
                     queue,
                     present_config_buffer,
                     present_params_buffer,
@@ -3155,6 +3236,7 @@ fn handle_engine_command(
             if ensure_layer_index(layer_count, idx, *transform_layer_index, *transform_flags) {
                 layer_clipping_mask[idx] = clipping_mask;
                 write_present_config(
+                    device.as_ref(),
                     queue,
                     present_config_buffer,
                     present_params_buffer,
@@ -3182,6 +3264,7 @@ fn handle_engine_command(
             if ensure_layer_index(layer_count, idx, *transform_layer_index, *transform_flags) {
                 layer_blend_mode[idx] = map_canvas_blend_mode_index(blend_mode_index).as_u32();
                 write_present_config(
+                    device.as_ref(),
                     queue,
                     present_config_buffer,
                     present_params_buffer,
@@ -3265,6 +3348,7 @@ fn handle_engine_command(
             undo.reorder_layers(from as u32, target as u32);
 
             write_present_config(
+                device.as_ref(),
                 queue,
                 present_config_buffer,
                 present_params_buffer,
@@ -3288,6 +3372,7 @@ fn handle_engine_command(
             if *present_view_flags != sanitized {
                 *present_view_flags = sanitized;
                 write_present_config(
+                    device.as_ref(),
                     queue,
                     present_config_buffer,
                     present_params_buffer,
@@ -4089,6 +4174,7 @@ fn handle_engine_command(
                         (0, 0, canvas_width as i32, canvas_height as i32),
                     );
                     fill_r32uint_texture(
+                        device.as_ref(),
                         queue,
                         layers.texture(),
                         canvas_width,
@@ -4343,6 +4429,7 @@ fn handle_engine_command(
             );
 
             write_r32uint_region(
+                device.as_ref(),
                 queue,
                 layers.texture(),
                 left,
@@ -4580,8 +4667,14 @@ fn handle_engine_command(
             let preview_transform_layer = 0u32;
             let preview_transform_flags = 1u32;
 
-            write_present_transform(queue, present_transform_buffer, preview_matrix);
+            write_present_transform(
+                device.as_ref(),
+                queue,
+                present_transform_buffer,
+                preview_matrix,
+            );
             write_present_config(
+                device.as_ref(),
                 queue,
                 present_config_buffer,
                 present_params_buffer,
@@ -4616,8 +4709,14 @@ fn handle_engine_command(
                 }
             };
 
-            write_present_transform(queue, present_transform_buffer, *transform_matrix);
+            write_present_transform(
+                device.as_ref(),
+                queue,
+                present_transform_buffer,
+                *transform_matrix,
+            );
             write_present_config(
+                device.as_ref(),
                 queue,
                 present_config_buffer,
                 present_params_buffer,
@@ -4765,6 +4864,7 @@ fn handle_engine_command(
                 );
             }
             write_r32uint_region(
+                device.as_ref(),
                 queue,
                 layers.texture(),
                 0,
@@ -4970,6 +5070,7 @@ fn handle_engine_command(
                 (0, 0, canvas_width as i32, canvas_height as i32),
             );
             write_r32uint_region(
+                device.as_ref(),
                 queue,
                 layers.texture(),
                 0,
@@ -5001,11 +5102,17 @@ fn handle_engine_command(
                 *transform_layer_index = layer_index;
                 *transform_flags = 1 | if bilinear { 2 } else { 0 };
                 *transform_matrix = matrix;
-                write_present_transform(queue, present_transform_buffer, *transform_matrix);
+                write_present_transform(
+                    device.as_ref(),
+                    queue,
+                    present_transform_buffer,
+                    *transform_matrix,
+                );
             } else {
                 *transform_flags = 0;
             }
             write_present_config(
+                device.as_ref(),
                 queue,
                 present_config_buffer,
                 present_params_buffer,
@@ -5447,6 +5554,7 @@ fn translation_matrix(delta_x: i32, delta_y: i32) -> [f32; 16] {
 }
 
 fn fill_r32uint_texture(
+    device: &wgpu::Device,
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
     width: u32,
@@ -5461,6 +5569,9 @@ fn fill_r32uint_texture(
     const BYTES_PER_PIXEL: u32 = 4;
     const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
     // Keep temporary allocations bounded even for very large canvases.
+    #[cfg(target_os = "android")]
+    const MAX_CHUNK_BYTES: usize = 512 * 1024;
+    #[cfg(not(target_os = "android"))]
     const MAX_CHUNK_BYTES: usize = 4 * 1024 * 1024;
 
     let bytes_per_row_unpadded = width.saturating_mul(BYTES_PER_PIXEL);
@@ -5479,28 +5590,23 @@ fn fill_r32uint_texture(
         let texel_count = texels_per_row.saturating_mul(chunk_h as usize);
         let data: Vec<u32> = vec![value; texel_count];
 
-        queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d {
-                    x: 0,
-                    y,
-                    z: layer_index,
-                },
-                aspect: wgpu::TextureAspect::All,
-            },
-            bytemuck::cast_slice(&data),
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(bytes_per_row_padded),
-                rows_per_image: Some(chunk_h),
+        crate::gpu::wgpu_utils::write_texture(
+            device,
+            queue,
+            texture,
+            wgpu::Origin3d {
+                x: 0,
+                y,
+                z: layer_index,
             },
             wgpu::Extent3d {
                 width,
                 height: chunk_h,
                 depth_or_array_layers: 1,
             },
+            bytes_per_row_padded,
+            chunk_h,
+            bytemuck::cast_slice(&data),
         );
 
         y = y.saturating_add(chunk_h);
@@ -5710,6 +5816,7 @@ fn bgra_to_rgba(mut bytes: Vec<u8>) -> Vec<u8> {
 }
 
 fn write_r32uint_region(
+    device: &wgpu::Device,
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
     left: u32,
@@ -5723,29 +5830,46 @@ fn write_r32uint_region(
     if width == 0 || height == 0 {
         return;
     }
-    queue.write_texture(
-        wgpu::ImageCopyTexture {
+    #[cfg(target_os = "android")]
+    const MAX_CHUNK_BYTES: usize = 512 * 1024;
+    #[cfg(not(target_os = "android"))]
+    const MAX_CHUNK_BYTES: usize = 4 * 1024 * 1024;
+
+    let row_bytes = bytes_per_row_padded as usize;
+    if row_bytes == 0 {
+        return;
+    }
+    let rows_per_chunk = (MAX_CHUNK_BYTES / row_bytes).max(1) as u32;
+
+    let mut y: u32 = 0;
+    while y < height {
+        let chunk_h = (height - y).min(rows_per_chunk);
+        let offset = y as usize * row_bytes;
+        let len = chunk_h as usize * row_bytes;
+        if offset + len > data.len() {
+            break;
+        }
+        let chunk = &data[offset..offset + len];
+        crate::gpu::wgpu_utils::write_texture(
+            device,
+            queue,
             texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d {
+            wgpu::Origin3d {
                 x: left,
-                y: top,
+                y: top + y,
                 z: layer_index,
             },
-            aspect: wgpu::TextureAspect::All,
-        },
-        data,
-        wgpu::ImageDataLayout {
-            offset: 0,
-            bytes_per_row: Some(bytes_per_row_padded),
-            rows_per_image: Some(height),
-        },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-    );
+            wgpu::Extent3d {
+                width,
+                height: chunk_h,
+                depth_or_array_layers: 1,
+            },
+            bytes_per_row_padded,
+            chunk_h,
+            chunk,
+        );
+        y = y.saturating_add(chunk_h);
+    }
 }
 
 fn pack_u32_rows_with_padding(

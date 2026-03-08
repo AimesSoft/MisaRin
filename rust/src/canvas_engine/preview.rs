@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use wgpu::util::DeviceExt as _;
 
+use crate::gpu::wgpu_utils;
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct PreviewSegment {
@@ -193,12 +195,20 @@ impl PreviewRenderer {
             return;
         }
         self.ensure_segments_capacity(device, segments.len());
-        queue.write_buffer(
+        wgpu_utils::write_buffer(
+            device,
+            queue,
             &self.segments_buffer,
             0,
             bytemuck::cast_slice(segments),
         );
-        queue.write_buffer(&self.config_buffer, 0, bytemuck::bytes_of(&config));
+        wgpu_utils::write_buffer(
+            device,
+            queue,
+            &self.config_buffer,
+            0,
+            bytemuck::bytes_of(&config),
+        );
 
         let pipeline = if config.erase_mode != 0 {
             &self.pipeline_erase

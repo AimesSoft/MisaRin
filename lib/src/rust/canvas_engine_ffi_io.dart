@@ -55,6 +55,12 @@ typedef _EngineGetInputQueueLenDart = int Function(int handle);
 typedef _EngineIsValidNative = ffi.Uint8 Function(ffi.Uint64 handle);
 typedef _EngineIsValidDart = int Function(int handle);
 
+typedef _EngineSetLogLevelNative = ffi.Void Function(ffi.Uint32 level);
+typedef _EngineSetLogLevelDart = void Function(int level);
+
+typedef _EngineRequestPresentNative = ffi.Void Function(ffi.Uint64 handle);
+typedef _EngineRequestPresentDart = void Function(int handle);
+
 typedef _EngineSetActiveLayerNative =
     ffi.Void Function(ffi.Uint64 handle, ffi.Uint32 layerIndex);
 typedef _EngineSetActiveLayerDart = void Function(int handle, int layerIndex);
@@ -226,6 +232,22 @@ typedef _EngineWriteLayerNative =
       ffi.Uint8 recordUndo,
     );
 typedef _EngineWriteLayerDart =
+    int Function(
+      int handle,
+      int layerIndex,
+      ffi.Pointer<ffi.Uint32> pixels,
+      int pixelsLen,
+      int recordUndo,
+    );
+typedef _EngineWriteLayerAsyncNative =
+    ffi.Uint8 Function(
+      ffi.Uint64 handle,
+      ffi.Uint32 layerIndex,
+      ffi.Pointer<ffi.Uint32> pixels,
+      ffi.UintPtr pixelsLen,
+      ffi.Uint8 recordUndo,
+    );
+typedef _EngineWriteLayerAsyncDart =
     int Function(
       int handle,
       int layerIndex,
@@ -498,6 +520,22 @@ class CanvasEngineFfi {
             _EngineGetInputQueueLenDart
           >('engine_get_input_queue_len');
       try {
+        _setLogLevel = _lib
+            .lookupFunction<_EngineSetLogLevelNative, _EngineSetLogLevelDart>(
+              'engine_set_log_level',
+            );
+      } catch (_) {
+        _setLogLevel = null;
+      }
+      try {
+        _requestPresent = _lib
+            .lookupFunction<_EngineRequestPresentNative, _EngineRequestPresentDart>(
+              'engine_request_present',
+            );
+      } catch (_) {
+        _requestPresent = null;
+      }
+      try {
         _isValid = _lib
             .lookupFunction<_EngineIsValidNative, _EngineIsValidDart>(
               'engine_is_valid',
@@ -625,6 +663,15 @@ class CanvasEngineFfi {
             );
       } catch (_) {
         _writeLayer = null;
+      }
+      try {
+        _writeLayerAsync = _lib
+            .lookupFunction<
+              _EngineWriteLayerAsyncNative,
+              _EngineWriteLayerAsyncDart
+            >('engine_write_layer_async');
+      } catch (_) {
+        _writeLayerAsync = null;
       }
       try {
         _translateLayer = _lib
@@ -792,6 +839,8 @@ class CanvasEngineFfi {
   late final _EngineDisposeDart? _disposeEngine;
   late final _EnginePushPointsDart _pushPoints;
   late final _EngineGetInputQueueLenDart _getQueueLen;
+  late final _EngineSetLogLevelDart? _setLogLevel;
+  late final _EngineRequestPresentDart? _requestPresent;
   late final _EngineIsValidDart? _isValid;
   late final _EngineSetActiveLayerDart? _setActiveLayer;
   late final _EngineSetLayerOpacityDart? _setLayerOpacity;
@@ -807,6 +856,7 @@ class CanvasEngineFfi {
   late final _EngineReadLayerDart? _readLayer;
   late final _EngineReadLayerPreviewDart? _readLayerPreview;
   late final _EngineWriteLayerDart? _writeLayer;
+  late final _EngineWriteLayerAsyncDart? _writeLayerAsync;
   late final _EngineTranslateLayerDart? _translateLayer;
   late final _EngineSetLayerTransformPreviewDart? _setLayerTransformPreview;
   late final _EngineApplyLayerTransformDart? _applyLayerTransform;
@@ -873,6 +923,22 @@ class CanvasEngineFfi {
       return 0;
     }
     return _getQueueLen(handle);
+  }
+
+  void setLogLevel(int level) {
+    final fn = _setLogLevel;
+    if (!isSupported || fn == null) {
+      return;
+    }
+    fn(level);
+  }
+
+  void requestPresent({required int handle}) {
+    final fn = _requestPresent;
+    if (!isSupported || fn == null || handle == 0) {
+      return;
+    }
+    fn(handle);
   }
 
   String? popLogLine() {
@@ -1225,6 +1291,37 @@ class CanvasEngineFfi {
     bool recordUndo = true,
   }) {
     final fn = _writeLayer;
+    if (!isSupported || fn == null || handle == 0) {
+      return false;
+    }
+    if (pixels.isEmpty) {
+      return false;
+    }
+    final ffi.Pointer<ffi.Uint32> ptr = malloc.allocate<ffi.Uint32>(
+      pixels.length * ffi.sizeOf<ffi.Uint32>(),
+    );
+    ptr.asTypedList(pixels.length).setAll(0, pixels);
+    try {
+      final int result = fn(
+        handle,
+        layerIndex,
+        ptr,
+        pixels.length,
+        recordUndo ? 1 : 0,
+      );
+      return result != 0;
+    } finally {
+      malloc.free(ptr);
+    }
+  }
+
+  bool writeLayerAsync({
+    required int handle,
+    required int layerIndex,
+    required Uint32List pixels,
+    bool recordUndo = true,
+  }) {
+    final fn = _writeLayerAsync ?? _writeLayer;
     if (!isSupported || fn == null || handle == 0) {
       return false;
     }

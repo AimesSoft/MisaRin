@@ -847,6 +847,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  swipelab_webp:
+    dependency: "direct main"
+    description:
+      name: swipelab_webp
+      sha256: c5e9aa236bff713ef0d35a61c34bceb335c839ba83dfb39aed8e4dddd2540a08
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   system_fonts:
     dependency: "direct main"
     description:

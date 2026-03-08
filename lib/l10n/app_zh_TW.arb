@@ -565,5 +565,18 @@
     "placeholders": {
       "error": {}
     }
+  },
+  "exportTypeBitmap": "位圖",
+  "exportBitmapFormatLabel": "位圖格式",
+  "exportBitmapFormatPng": "PNG",
+  "exportBitmapFormatWebp": "WebP",
+  "webpCompressionLabel": "WebP 壓縮",
+  "webpLossless": "無損",
+  "webpLossy": "有損",
+  "webpQualityLabel": "品質：{value}",
+  "@webpQualityLabel": {
+    "placeholders": {
+      "value": {}
+    }
   }
 }

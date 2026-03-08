@@ -21,6 +21,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   int _backendLayerSnapshotHeight = 0;
   int? _backendLayerSnapshotHandle;
   int? _backendPixelsSyncedHandle;
+  bool _backendPixelsSyncInFlight = false;
 
   ValueListenable<int> get _mobileUiRebuildListenable => _mobileUiRevision;
 
@@ -1094,8 +1095,8 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
       final String prevSizeText = prevSize == null
           ? 'null'
           : '${prevSize.width.round()}x${prevSize.height.round()}';
-      debugPrint(
-        'paintingBoard: backend engine info surfaceKey=${widget.surfaceKey} '
+      BackendCanvasLog.info(
+        'engine info surfaceKey=${widget.surfaceKey} '
         'handle=$handle prevHandle=$prevHandle '
         'size=$sizeText prevSize=$prevSizeText newEngine=$isNewEngine',
       );
@@ -1103,12 +1104,13 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
           defaultTargetPlatform == TargetPlatform.iOS &&
           handle != null) {
         final bool valid = CanvasBackendFacade.instance.isHandleValid(handle);
-        debugPrint('paintingBoard: backend engine handle valid=$valid');
+        BackendCanvasLog.info('engine handle valid=$valid');
       }
     }
     if (engineReset) {
       _backendCanvasSyncedLayerCount = 0;
       _backendPixelsSyncedHandle = null;
+      _backendPixelsSyncInFlight = false;
       _purgeBackendHistoryActions();
       _backendLayerSnapshotDirty = false;
       if (_backendLayerSnapshots.isNotEmpty) {
@@ -1449,23 +1451,78 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     if (_backendPixelsSyncedHandle == handle) {
       return;
     }
-    debugPrint(
-      'paintingBoard: sync backend pixels start surfaceKey=${widget.surfaceKey} '
+    if (_backendPixelsSyncInFlight) {
+      return;
+    }
+    _backendPixelsSyncInFlight = true;
+    BackendCanvasLog.info(
+      'sync backend pixels start surfaceKey=${widget.surfaceKey} '
       'handle=$handle prevSynced=$_backendPixelsSyncedHandle '
       'layers=${_controller.layers.length}',
     );
-    if (_syncAllLayerPixelsToBackend()) {
-      _backendPixelsSyncedHandle = handle;
-      debugPrint(
-        'paintingBoard: sync backend pixels ok surfaceKey=${widget.surfaceKey} '
-        'handle=$handle',
-      );
-    } else {
-      debugPrint(
-        'paintingBoard: sync backend pixels failed surfaceKey=${widget.surfaceKey} '
-        'handle=$handle',
-      );
+    Future<void>(() async {
+      final bool ok = await _syncAllLayerPixelsToBackendAsync();
+      if (!mounted) {
+        return;
+      }
+      _backendPixelsSyncInFlight = false;
+      if (ok && _backendCanvasEngineHandle == handle) {
+        _backendPixelsSyncedHandle = handle;
+        BackendCanvasLog.info(
+          'sync backend pixels ok surfaceKey=${widget.surfaceKey} '
+          'handle=$handle',
+        );
+      } else {
+        BackendCanvasLog.warn(
+          'sync backend pixels failed surfaceKey=${widget.surfaceKey} '
+          'handle=$handle',
+        );
+      }
+    });
+  }
+
+  Future<bool> _syncAllLayerPixelsToBackendAsync({bool recordUndo = false}) async {
+    if (!_backend.isReady) {
+      return false;
     }
+    final Size engineSize = _backendCanvasEngineSize ?? _canvasSize;
+    final int width = engineSize.width.round();
+    final int height = engineSize.height.round();
+    if (width <= 0 || height <= 0) {
+      return false;
+    }
+    final List<CanvasLayerInfo> layers = _controller.layers;
+    bool allOk = true;
+    for (int i = 0; i < layers.length; i++) {
+      if (!mounted) {
+        return false;
+      }
+      final CanvasLayerInfo layer = layers[i];
+      final Size? surfaceSize = _controller.readLayerSurfaceSize(layer.id);
+      if (surfaceSize == null ||
+          surfaceSize.width.round() != width ||
+          surfaceSize.height.round() != height) {
+        allOk = false;
+        continue;
+      }
+      final Uint32List? pixels = _controller.readLayerPixels(layer.id);
+      if (pixels == null || pixels.length != width * height) {
+        allOk = false;
+        continue;
+      }
+      final bool queued = _backend.queueLayerPixelsToBackend(
+        layerId: layer.id,
+        pixels: pixels,
+        recordUndo: recordUndo,
+      );
+      if (!queued) {
+        allOk = false;
+        continue;
+      }
+      _bumpBackendLayerPreviewRevision(layer.id);
+      await Future<void>.delayed(Duration.zero);
+    }
+    return allOk;
   }
 
   Future<void> _captureBackendLayerSnapshotIfNeeded() async {
@@ -2433,6 +2490,27 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       _owner._markDirty();
     }
     return true;
+  }
+
+  bool queueLayerPixelsToBackend({
+    required String layerId,
+    required Uint32List pixels,
+    bool recordUndo = false,
+  }) {
+    if (!_backendReady) {
+      return false;
+    }
+    final int handle = _owner._backendCanvasEngineHandle!;
+    final int? layerIndex = _owner._backendCanvasLayerIndexForId(layerId);
+    if (layerIndex == null) {
+      return false;
+    }
+    return _ffi.writeLayerAsync(
+      handle: handle,
+      layerIndex: layerIndex,
+      pixels: pixels,
+      recordUndo: recordUndo,
+    );
   }
 
   bool setBackendLayerVisible({

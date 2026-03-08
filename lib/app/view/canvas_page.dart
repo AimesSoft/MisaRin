@@ -1077,7 +1077,13 @@ class CanvasPageState extends State<CanvasPage> {
       return false;
     }
     final bool exportVector = options.mode == CanvasExportMode.vector;
-    final String extension = exportVector ? 'svg' : 'png';
+    final bool exportWebp =
+        !exportVector && options.bitmapFormat == CanvasBitmapFormat.webp;
+    final String extension = exportVector
+        ? 'svg'
+        : exportWebp
+            ? 'webp'
+            : 'png';
     String? normalizedPath;
     String? downloadName;
     String? mobileFileName;
@@ -1145,21 +1151,38 @@ class CanvasPageState extends State<CanvasPage> {
               maxColors: options.vectorMaxColors ?? 8,
               simplifyEpsilon: options.vectorSimplifyEpsilon ?? 1.2,
             )
-          : await _exporter.exportToPng(
-              settings: _document.settings,
-              layers: layers,
-              applyEdgeSoftening: options.edgeSofteningEnabled,
-              edgeSofteningLevel: options.edgeSofteningLevel,
-              outputSize: ui.Size(
-                options.width.toDouble(),
-                options.height.toDouble(),
-              ),
-            );
+          : exportWebp
+              ? await _exporter.exportToWebp(
+                  settings: _document.settings,
+                  layers: layers,
+                  applyEdgeSoftening: options.edgeSofteningEnabled,
+                  edgeSofteningLevel: options.edgeSofteningLevel,
+                  outputSize: ui.Size(
+                    options.width.toDouble(),
+                    options.height.toDouble(),
+                  ),
+                  lossless: options.webpLossless,
+                  quality: options.webpQuality,
+                )
+              : await _exporter.exportToPng(
+                  settings: _document.settings,
+                  layers: layers,
+                  applyEdgeSoftening: options.edgeSofteningEnabled,
+                  edgeSofteningLevel: options.edgeSofteningLevel,
+                  outputSize: ui.Size(
+                    options.width.toDouble(),
+                    options.height.toDouble(),
+                  ),
+                );
       if (kIsWeb) {
         await WebFileSaver.saveBytes(
           fileName: downloadName!,
           bytes: bytes,
-          mimeType: exportVector ? 'image/svg+xml' : 'image/png',
+          mimeType: exportVector
+              ? 'image/svg+xml'
+              : exportWebp
+                  ? 'image/webp'
+                  : 'image/png',
         );
         _showInfoBar(
           l10n.fileDownloaded(extension.toUpperCase(), downloadName!),

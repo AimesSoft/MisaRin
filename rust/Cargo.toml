@@ -12,6 +12,7 @@ psd = { path = "../third_party/psd" }
 wgpu = "0.19"
 pollster = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
+log = "0.4"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 rayon = "1.10"

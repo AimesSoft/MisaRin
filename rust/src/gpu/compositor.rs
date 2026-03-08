@@ -5,6 +5,7 @@ use wgpu::{ComputePipeline, Device, Queue};
 
 use super::blend_modes::map_canvas_blend_mode_index;
 use super::debug::{self, LogLevel};
+use crate::gpu::wgpu_utils;
 
 const MAX_LAYERS: usize = 16;
 const WORKGROUP_SIZE: u32 = 16;
@@ -538,7 +539,9 @@ impl GpuCompositor {
                     let layer_offset: u64 = (layer_idx as u64)
                         .checked_mul(tile_pixel_bytes)
                         .ok_or_else(|| "tile layer buffer offset overflow".to_string())?;
-                    self.queue.write_buffer(
+                    wgpu_utils::write_buffer(
+                        &self.device,
+                        &self.queue,
                         input_buffer,
                         layer_offset,
                         bytemuck::cast_slice(&tile_layer),

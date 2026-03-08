@@ -699,10 +699,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportTypeLabel => 'Export Type';
 
   @override
+  String get exportTypeBitmap => 'Bitmap';
+
+  @override
   String get exportTypePng => 'Bitmap PNG';
 
   @override
   String get exportTypeSvg => 'Vector SVG (Experimental)';
+
+  @override
+  String get exportBitmapFormatLabel => 'Bitmap Format';
+
+  @override
+  String get exportBitmapFormatPng => 'PNG';
+
+  @override
+  String get exportBitmapFormatWebp => 'WebP';
+
+  @override
+  String get webpCompressionLabel => 'WebP Compression';
+
+  @override
+  String get webpLossless => 'Lossless';
+
+  @override
+  String get webpLossy => 'Lossy';
+
+  @override
+  String webpQualityLabel(Object value) {
+    return 'Quality: $value';
+  }
 
   @override
   String get exportScaleLabel => 'Export Scale';

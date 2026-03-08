@@ -58,6 +58,7 @@ import 'package:flutter/scheduler.dart'
         Ticker,
         TickerProvider,
         TickerProviderStateMixin;
+import '../debug/backend_canvas_log.dart';
 import 'package:flutter/widgets.dart'
     show
         CustomPaint,
