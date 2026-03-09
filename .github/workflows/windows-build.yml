@@ -21,13 +21,18 @@ jobs:
       TARGET_ARCH: ${{ inputs.arch }}
       CARGOKIT_VERBOSE: "1"
       RUST_BACKTRACE: "1"
-      SWIPELAB_WEBP_CACHE_DIR: ${{ runner.temp }}\swipelab_webp
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: 启用 Git 长路径支持
         shell: pwsh
         run: git config --global core.longpaths true
+      - name: 设置 swipelab_webp 缓存目录
+        shell: pwsh
+        run: |
+          $cacheDir = Join-Path $env:RUNNER_TEMP "swipelab_webp"
+          New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+          "SWIPELAB_WEBP_CACHE_DIR=$cacheDir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
