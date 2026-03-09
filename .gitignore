@@ -55,3 +55,4 @@ app.*.map.json
 /.sandbox_home
 /rust/target
 /linux/flutter/ephemeral/.plugin_symlinks
+*.jks
