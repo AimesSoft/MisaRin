@@ -61,17 +61,17 @@ pub(crate) fn select_compute_adapter(
         return Some(adapter);
     }
 
+    if let Some(adapter) = take(&is_gl_compute) {
+        log_selected(&adapter, "GL compute");
+        return Some(adapter);
+    }
+
     if let Some(adapter) = take(&is_vulkan_compute) {
         if is_software(&adapter) {
             log_selected(&adapter, "software Vulkan compute (fallback)");
         } else {
             log_selected(&adapter, "Vulkan compute");
         }
-        return Some(adapter);
-    }
-
-    if let Some(adapter) = take(&is_gl_compute) {
-        log_selected(&adapter, "GL compute");
         return Some(adapter);
     }
 

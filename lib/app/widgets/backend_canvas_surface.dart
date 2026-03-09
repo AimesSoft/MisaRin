@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -553,6 +554,10 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
   }
 
   static Future<void> _doPrewarm() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      BackendCanvasTimeline.mark('backendSurface: prewarm skipped on Android');
+      return;
+    }
     try {
       BackendCanvasTimeline.mark('backendSurface: prewarm start');
       const String warmSurfaceId = 'backend_canvas_prewarm';
