@@ -41,35 +41,14 @@ String _getCacheDir() {
   return '$home/.cache/swipelab_webp';
 }
 
-bool _isOptimizedArchSourceForWindows(String pathLower) {
-  return pathLower.contains('mips') ||
-      pathLower.contains('msa') ||
-      pathLower.contains('neon') ||
-      pathLower.contains('sse2') ||
-      pathLower.contains('sse41') ||
-      pathLower.contains('avx2');
-}
-
-bool _shouldIncludeSource({
-  required String path,
-  required OS targetOS,
-}) {
-  if (targetOS != OS.windows) {
-    return true;
-  }
-  return !_isOptimizedArchSourceForWindows(path.toLowerCase());
-}
-
 List<String> _collectSources(
-  String directoryPath, {
-  required OS targetOS,
-}) {
+  String directoryPath,
+) {
   return Directory(directoryPath)
       .listSync()
       .whereType<File>()
       .where((f) => f.path.endsWith('.c'))
       .map((f) => f.path)
-      .where((p) => _shouldIncludeSource(path: p, targetOS: targetOS))
       .toList();
 }
 
@@ -124,25 +103,13 @@ void main(List<String> args) async {
       // Our wrapper
       'src/swipelab_webp.c',
       // sharpyuv
-      ..._collectSources(
-        '$libwebpPath/sharpyuv',
-        targetOS: targetOS,
-      ),
+      ..._collectSources('$libwebpPath/sharpyuv'),
       // src/enc
-      ..._collectSources(
-        '$libwebpPath/src/enc',
-        targetOS: targetOS,
-      ),
+      ..._collectSources('$libwebpPath/src/enc'),
       // src/dsp
-      ..._collectSources(
-        '$libwebpPath/src/dsp',
-        targetOS: targetOS,
-      ),
+      ..._collectSources('$libwebpPath/src/dsp'),
       // src/utils
-      ..._collectSources(
-        '$libwebpPath/src/utils',
-        targetOS: targetOS,
-      ),
+      ..._collectSources('$libwebpPath/src/utils'),
     ];
 
     final builder = CBuilder.library(

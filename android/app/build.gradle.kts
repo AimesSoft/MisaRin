@@ -66,7 +66,14 @@ android {
                     throw GradleException("key.properties 缺少签名字段：storeFile/storePassword/keyAlias/keyPassword")
                 }
 
-                storeFile = file(storeFilePath)
+                val storeFileByKeyPropsDir = keystorePropertiesFile.parentFile.resolve(storeFilePath)
+                val storeFileByModuleDir = file(storeFilePath)
+                val resolvedStoreFile = when {
+                    storeFileByKeyPropsDir.exists() -> storeFileByKeyPropsDir
+                    storeFileByModuleDir.exists() -> storeFileByModuleDir
+                    else -> storeFileByKeyPropsDir
+                }
+                storeFile = resolvedStoreFile
                 storePassword = storePasswordValue
                 keyAlias = keyAliasValue
                 keyPassword = keyPasswordValue
