@@ -167,3 +167,5 @@ dependency_overrides:
     path: third_party/file_picker
   image_gallery_saver:
     path: third_party/image_gallery_saver
+  swipelab_webp:
+    path: third_party/swipelab_webp

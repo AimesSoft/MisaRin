@@ -19,13 +19,33 @@ jobs:
     env:
       APP_VERSION: ${{ inputs.version }}
       TARGET_ARCH: ${{ inputs.arch }}
+      CARGOKIT_VERBOSE: "1"
+      RUST_BACKTRACE: "1"
+      SWIPELAB_WEBP_CACHE_DIR: ${{ runner.temp }}\swipelab_webp
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: 启用 Git 长路径支持
+        shell: pwsh
+        run: git config --global core.longpaths true
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+      - name: 配置 Rust 目标
+        shell: pwsh
+        run: |
+          $rustTarget = switch ($env:TARGET_ARCH.ToLowerInvariant()) {
+            "x64" { "x86_64-pc-windows-msvc" }
+            "arm64" { "aarch64-pc-windows-msvc" }
+            "x86" { "i686-pc-windows-msvc" }
+            default { "x86_64-pc-windows-msvc" }
+          }
+          rustup target add $rustTarget
+          rustup show
+          cargo --version
       - name: 启用 Windows 桌面目标
         shell: pwsh
         run: flutter config --enable-windows-desktop

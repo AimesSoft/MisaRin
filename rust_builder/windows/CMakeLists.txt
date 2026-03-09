@@ -24,7 +24,26 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin dwmapi)
 
 include("../cargokit/cmake/cargokit.cmake")
-apply_cargokit(${PLUGIN_NAME} ../../../../../../rust rust_lib_misa_rin "engine_create")
+
+# CMake may expose CMAKE_CURRENT_SOURCE_DIR as a symlink path or a resolved
+# path depending on platform/version. Probe both common layouts and pass an
+# absolute manifest directory to avoid path-dependent CI failures.
+set(_RUST_MANIFEST_DIR "")
+set(_RUST_MANIFEST_CANDIDATES
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../rust"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../rust"
+)
+foreach(_candidate IN LISTS _RUST_MANIFEST_CANDIDATES)
+  if (EXISTS "${_candidate}/Cargo.toml")
+    get_filename_component(_RUST_MANIFEST_DIR "${_candidate}" ABSOLUTE)
+    break()
+  endif()
+endforeach()
+if (NOT _RUST_MANIFEST_DIR)
+  message(FATAL_ERROR "Failed to locate rust/Cargo.toml from ${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
+
+apply_cargokit(${PLUGIN_NAME} "${_RUST_MANIFEST_DIR}" rust_lib_misa_rin "engine_create")
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
