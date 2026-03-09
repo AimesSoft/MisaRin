@@ -1,0 +1,67 @@
+name: Build iOS Unsigned IPA
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Target version used for artifact naming
+        required: true
+        type: string
+      arch:
+        description: CPU architecture label used in artifact naming
+        required: false
+        default: arm64
+        type: string
+      runner:
+        description: macOS runner label
+        required: false
+        default: macos-latest
+        type: string
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runner }}
+    env:
+      APP_VERSION: ${{ inputs.version }}
+      TARGET_ARCH: ${{ inputs.arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: 启用 iOS 目标
+        run: flutter config --enable-ios
+      - name: 获取依赖
+        run: flutter pub get
+      - name: 构建 iOS 应用（无签名）
+        run: flutter build ios --release --no-codesign
+      - name: 打包无签名 IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTIFACT_DIR="build/artifacts"
+          STAGING_DIR="build/ipa-staging"
+          APP_PATH=$(find build/ios/iphoneos -maxdepth 1 -name '*.app' -print | head -n 1)
+          if [[ -z "${APP_PATH}" ]]; then
+            echo "未找到 iOS .app 产物" >&2
+            exit 1
+          fi
+
+          mkdir -p "${ARTIFACT_DIR}"
+          rm -rf "${STAGING_DIR}"
+          mkdir -p "${STAGING_DIR}/Payload"
+          rsync -a "${APP_PATH}" "${STAGING_DIR}/Payload/"
+
+          ARTIFACT_NAME="MisaRin-ios-${TARGET_ARCH}-${APP_VERSION}-unsigned.ipa"
+          (
+            cd "${STAGING_DIR}"
+            zip -qry "../artifacts/${ARTIFACT_NAME}" Payload
+          )
+      - name: 上传 iOS 构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: MisaRin-ios-${{ env.TARGET_ARCH }}-${{ env.APP_VERSION }}-unsigned.ipa
+          path: build/artifacts/MisaRin-ios-${{ env.TARGET_ARCH }}-${{ env.APP_VERSION }}-unsigned.ipa
+          if-no-files-found: error

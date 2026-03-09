@@ -90,6 +90,16 @@ jobs:
       arch: arm64
     secrets: inherit
 
+  ios:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.should_run == 'true' }}
+    uses: ./.github/workflows/ios-build.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      arch: arm64
+      runner: macos-latest
+    secrets: inherit
+
   publish_release:
     needs:
       - prepare
@@ -97,7 +107,8 @@ jobs:
       - windows
       - linux
       - android
-    if: ${{ needs.prepare.outputs.should_run == 'true' && needs.macos.result == 'success' && needs.windows.result == 'success' && needs.linux.result == 'success' && needs.android.result == 'success' }}
+      - ios
+    if: ${{ needs.prepare.outputs.should_run == 'true' && needs.macos.result == 'success' && needs.windows.result == 'success' && needs.linux.result == 'success' && needs.android.result == 'success' && needs.ios.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: 下载构建产物
@@ -120,6 +131,7 @@ jobs:
             - Windows x64 安装程序 EXE
             - Linux x64 TAR.GZ
             - Android arm64 APK
+            - iOS arm64 无签名 IPA
           files: dist/*
 
   version_bump:
@@ -129,6 +141,7 @@ jobs:
       - windows
       - linux
       - android
+      - ios
       - publish_release
     if: ${{ needs.prepare.outputs.should_run == 'true' && needs.publish_release.result == 'success' }}
     uses: ./.github/workflows/version-bump.yml
