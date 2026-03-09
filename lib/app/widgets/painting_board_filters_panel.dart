@@ -816,7 +816,6 @@ extension _PaintingBoardFilterPanelExtension on _PaintingBoardFilterMixin {
       onError: _handleFilterWorkerError,
     );
   }
-
   void _handleFilterPanelDrag(Offset delta) {
     _filterPanelOffset = Offset(
       _filterPanelOffset.dx + delta.dx,
