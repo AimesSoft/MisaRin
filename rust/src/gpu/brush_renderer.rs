@@ -7,6 +7,7 @@ use wgpu::{ComputePipeline, Device, Queue};
 
 use crate::gpu::debug::{self, LogLevel};
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::wgpu_utils;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Point2D {
@@ -607,6 +608,7 @@ impl BrushRenderer {
         }
         self.ensure_selection_mask()?;
         write_selection_mask(
+            self.device.as_ref(),
             self.queue.as_ref(),
             &self.selection_mask,
             self.canvas_width,
@@ -647,7 +649,14 @@ impl BrushRenderer {
             self.custom_mask_height = height;
         }
 
-        write_custom_mask(self.queue.as_ref(), &self.custom_mask, width, height, mask)?;
+        write_custom_mask(
+            self.device.as_ref(),
+            self.queue.as_ref(),
+            &self.custom_mask,
+            width,
+            height,
+            mask,
+        )?;
         self.custom_mask_enabled = true;
         Ok(())
     }
@@ -1433,6 +1442,7 @@ fn compute_dirty_rect(
 }
 
 fn write_selection_mask(
+    device: &wgpu::Device,
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
     width: u32,
@@ -1455,6 +1465,9 @@ fn write_selection_mask(
     }
 
     const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
+    #[cfg(target_os = "android")]
+    const MAX_CHUNK_BYTES: usize = 512 * 1024;
+    #[cfg(not(target_os = "android"))]
     const MAX_CHUNK_BYTES: usize = 4 * 1024 * 1024;
 
     let bytes_per_row_unpadded = width;
@@ -1479,24 +1492,19 @@ fn write_selection_mask(
             }
         }
 
-        queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d { x: 0, y, z: 0 },
-                aspect: wgpu::TextureAspect::All,
-            },
-            &data,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(bytes_per_row_padded),
-                rows_per_image: Some(chunk_h),
-            },
+        wgpu_utils::write_texture(
+            device,
+            queue,
+            texture,
+            wgpu::Origin3d { x: 0, y, z: 0 },
             wgpu::Extent3d {
                 width,
                 height: chunk_h,
                 depth_or_array_layers: 1,
             },
+            bytes_per_row_padded,
+            chunk_h,
+            &data,
         );
 
         y = y.saturating_add(chunk_h);
@@ -1506,6 +1514,7 @@ fn write_selection_mask(
 }
 
 fn write_custom_mask(
+    device: &wgpu::Device,
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
     width: u32,
@@ -1529,6 +1538,9 @@ fn write_custom_mask(
     }
 
     const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
+    #[cfg(target_os = "android")]
+    const MAX_CHUNK_BYTES: usize = 512 * 1024;
+    #[cfg(not(target_os = "android"))]
     const MAX_CHUNK_BYTES: usize = 4 * 1024 * 1024;
 
     let bytes_per_row_unpadded = width
@@ -1553,24 +1565,19 @@ fn write_custom_mask(
             data[dst_offset..dst_offset + src.len()].copy_from_slice(src);
         }
 
-        queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d { x: 0, y, z: 0 },
-                aspect: wgpu::TextureAspect::All,
-            },
-            &data,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(bytes_per_row_padded),
-                rows_per_image: Some(chunk_h),
-            },
+        wgpu_utils::write_texture(
+            device,
+            queue,
+            texture,
+            wgpu::Origin3d { x: 0, y, z: 0 },
             wgpu::Extent3d {
                 width,
                 height: chunk_h,
                 depth_or_array_layers: 1,
             },
+            bytes_per_row_padded,
+            chunk_h,
+            &data,
         );
 
         y = y.saturating_add(chunk_h);

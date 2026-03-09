@@ -12,6 +12,24 @@ on:
         required: false
         default: arm64
         type: string
+      build_number:
+        description: Android versionCode (optional, defaults to GitHub run number)
+        required: false
+        default: ""
+        type: string
+    secrets:
+      ANDROID_KEYSTORE_B64:
+        description: Base64 encoded keystore (.jks)
+        required: true
+      ANDROID_KEYSTORE_PASSWORD:
+        description: Keystore password
+        required: true
+      ANDROID_KEY_ALIAS:
+        description: Key alias
+        required: true
+      ANDROID_KEY_PASSWORD:
+        description: Key password
+        required: true
 
 jobs:
   build:
@@ -19,6 +37,7 @@ jobs:
     env:
       APP_VERSION: ${{ inputs.version }}
       TARGET_ARCH: ${{ inputs.arch }}
+      BUILD_NUMBER: ${{ inputs.build_number }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,10 +54,25 @@ jobs:
           channel: stable
       - name: 获取依赖
         run: flutter pub get
+      - name: 准备 Android 签名
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > android/keystore.jks
+          cat > android/key.properties << EOF
+          storeFile=keystore.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
       - name: 构建 Android APK
         shell: bash
         run: |
           set -euo pipefail
+          BUILD_NUMBER="${BUILD_NUMBER:-}"
+          if [[ -z "${BUILD_NUMBER}" ]]; then
+            BUILD_NUMBER="${GITHUB_RUN_NUMBER}"
+          fi
           case "${TARGET_ARCH}" in
             arm64)
               TARGET_PLATFORM="android-arm64"
@@ -58,7 +92,10 @@ jobs:
               ;;
           esac
 
-          flutter build apk --release --target-platform "${TARGET_PLATFORM}"
+          flutter build apk --release \
+            --target-platform "${TARGET_PLATFORM}" \
+            --build-name "${APP_VERSION}" \
+            --build-number "${BUILD_NUMBER}"
 
           OUTPUT_DIR="build/app/outputs/flutter-apk"
           if [[ ! -d "${OUTPUT_DIR}" ]]; then

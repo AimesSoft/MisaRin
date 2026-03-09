@@ -25,6 +25,7 @@ import '../dialogs/canvas_size_dialog.dart';
 import '../dialogs/export_dialog.dart';
 import '../dialogs/image_size_dialog.dart';
 import '../dialogs/misarin_dialog.dart';
+import '../dialogs/svg_rasterize_size_dialog.dart';
 import '../l10n/l10n.dart';
 import '../menu/custom_menu_bar.dart';
 import '../menu/menu_action_dispatcher.dart';
@@ -50,6 +51,7 @@ import '../utils/file_name_dialog.dart';
 import '../utils/ios_photo_saver.dart';
 import '../utils/mobile_export_paths.dart';
 import '../utils/platform_target.dart';
+import '../utils/svg_rasterizer.dart';
 import '../utils/web_file_dialog.dart';
 import '../utils/web_file_saver.dart';
 import '../../mobile/mobile_utils.dart';
@@ -109,6 +111,8 @@ class CanvasPageState extends State<CanvasPage> {
     'jpeg',
     'bmp',
     'gif',
+    'webp',
+    'svg',
   };
   static const Duration _kDropDuplicateDebounce = Duration(seconds: 1);
 
@@ -659,8 +663,7 @@ class CanvasPageState extends State<CanvasPage> {
         fileName: normalizedName,
       );
     }
-    final bool isMobile =
-        !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    final bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
     String? normalizedPath;
     if (isMobile) {
       final String? fileName = await showFileNameDialog(
@@ -689,10 +692,7 @@ class CanvasPageState extends State<CanvasPage> {
       if (selectedPath == null) {
         return false;
       }
-      normalizedPath = _normalizeExportPath(
-        selectedPath,
-        choice.extension,
-      );
+      normalizedPath = _normalizeExportPath(selectedPath, choice.extension);
     }
 
     setState(() => _isSaving = true);
@@ -866,7 +866,10 @@ class CanvasPageState extends State<CanvasPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -894,24 +897,24 @@ class CanvasPageState extends State<CanvasPage> {
                         l10n.saveAsPsd,
                         l10n.exportAsPsdTooltip,
                       ),
-                      onPressed: () => Navigator.of(context).pop(
-                        const _ExportChoice(_ExportType.psd, 'psd'),
-                      ),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).pop(const _ExportChoice(_ExportType.psd, 'psd')),
                     ),
                     ListTile(
                       title: buildOptionTitle(
                         l10n.saveAsSai2,
                         l10n.exportAsSai2Tooltip,
                       ),
-                      onPressed: () => Navigator.of(context).pop(
-                        const _ExportChoice(_ExportType.sai2, 'sai2'),
-                      ),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).pop(const _ExportChoice(_ExportType.sai2, 'sai2')),
                     ),
                     ListTile(
                       title: buildOptionTitle(l10n.saveAsRin),
-                      onPressed: () => Navigator.of(context).pop(
-                        const _ExportChoice(_ExportType.rin, 'rin'),
-                      ),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).pop(const _ExportChoice(_ExportType.rin, 'rin')),
                     ),
                     const Divider(),
                     ListTile(
@@ -969,7 +972,8 @@ class CanvasPageState extends State<CanvasPage> {
     );
   }
 
-  Future<_MobileImageExportDestination?> _showMobileImageExportDestinationDialog() {
+  Future<_MobileImageExportDestination?>
+  _showMobileImageExportDestinationDialog() {
     final l10n = context.l10n;
     if (isMobileOrPhone(context)) {
       return showMobileBottomSheet<_MobileImageExportDestination?>(
@@ -981,7 +985,10 @@ class CanvasPageState extends State<CanvasPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1006,13 +1013,15 @@ class CanvasPageState extends State<CanvasPage> {
                   children: [
                     ListTile(
                       title: Text(l10n.exportDestinationPhotos),
-                      onPressed: () => Navigator.of(context)
-                          .pop(_MobileImageExportDestination.photos),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).pop(_MobileImageExportDestination.photos),
                     ),
                     ListTile(
                       title: Text(l10n.exportDestinationFiles),
-                      onPressed: () => Navigator.of(context)
-                          .pop(_MobileImageExportDestination.files),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).pop(_MobileImageExportDestination.files),
                     ),
                     const Divider(),
                     ListTile(
@@ -1040,13 +1049,15 @@ class CanvasPageState extends State<CanvasPage> {
               child: Text(l10n.cancel),
             ),
             Button(
-              onPressed: () => Navigator.of(context)
-                  .pop(_MobileImageExportDestination.files),
+              onPressed: () => Navigator.of(
+                context,
+              ).pop(_MobileImageExportDestination.files),
               child: Text(l10n.exportDestinationFiles),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context)
-                  .pop(_MobileImageExportDestination.photos),
+              onPressed: () => Navigator.of(
+                context,
+              ).pop(_MobileImageExportDestination.photos),
               child: Text(l10n.exportDestinationPhotos),
             ),
           ],
@@ -1077,7 +1088,13 @@ class CanvasPageState extends State<CanvasPage> {
       return false;
     }
     final bool exportVector = options.mode == CanvasExportMode.vector;
-    final String extension = exportVector ? 'svg' : 'png';
+    final bool exportWebp =
+        !exportVector && options.bitmapFormat == CanvasBitmapFormat.webp;
+    final String extension = exportVector
+        ? 'svg'
+        : exportWebp
+        ? 'webp'
+        : 'png';
     String? normalizedPath;
     String? downloadName;
     String? mobileFileName;
@@ -1145,6 +1162,19 @@ class CanvasPageState extends State<CanvasPage> {
               maxColors: options.vectorMaxColors ?? 8,
               simplifyEpsilon: options.vectorSimplifyEpsilon ?? 1.2,
             )
+          : exportWebp
+          ? await _exporter.exportToWebp(
+              settings: _document.settings,
+              layers: layers,
+              applyEdgeSoftening: options.edgeSofteningEnabled,
+              edgeSofteningLevel: options.edgeSofteningLevel,
+              outputSize: ui.Size(
+                options.width.toDouble(),
+                options.height.toDouble(),
+              ),
+              lossless: options.webpLossless,
+              quality: options.webpQuality,
+            )
           : await _exporter.exportToPng(
               settings: _document.settings,
               layers: layers,
@@ -1159,7 +1189,11 @@ class CanvasPageState extends State<CanvasPage> {
         await WebFileSaver.saveBytes(
           fileName: downloadName!,
           bytes: bytes,
-          mimeType: exportVector ? 'image/svg+xml' : 'image/png',
+          mimeType: exportVector
+              ? 'image/svg+xml'
+              : exportWebp
+              ? 'image/webp'
+              : 'image/png',
         );
         _showInfoBar(
           l10n.fileDownloaded(extension.toUpperCase(), downloadName!),
@@ -1168,10 +1202,7 @@ class CanvasPageState extends State<CanvasPage> {
       } else if (Platform.isIOS &&
           mobileDestination == _MobileImageExportDestination.photos &&
           !exportVector) {
-        await IosPhotoSaver.saveImageToPhotos(
-          bytes,
-          fileName: mobileFileName,
-        );
+        await IosPhotoSaver.saveImageToPhotos(bytes, fileName: mobileFileName);
         _showInfoBar(
           l10n.imageSavedToPhotos,
           severity: InfoBarSeverity.success,
@@ -1686,14 +1717,31 @@ class CanvasPageState extends State<CanvasPage> {
     }
     _isHandlingTabBarDrop = true;
     int createdCount = 0;
+    int? svgRasterSizePx;
+    bool svgRasterSizeResolved = false;
     try {
       for (final DropItem item in candidates) {
         if (!mounted) {
           return;
         }
+        int? itemSvgRasterSizePx;
+        if (_isSvgDropItem(item)) {
+          if (!svgRasterSizeResolved) {
+            svgRasterSizePx = await showSvgRasterizeSizeDialog(
+              context,
+              fileName: _describeDropItem(item),
+            );
+            svgRasterSizeResolved = true;
+            if (svgRasterSizePx == null || !mounted) {
+              return;
+            }
+          }
+          itemSvgRasterSizePx = svgRasterSizePx;
+        }
         try {
           final ProjectDocument? document = await _createDocumentFromDropItem(
             item,
+            svgRasterSizePx: itemSvgRasterSizePx,
           );
           if (document == null) {
             continue;
@@ -1761,8 +1809,24 @@ class CanvasPageState extends State<CanvasPage> {
     }
     _isHandlingCanvasDrop = true;
     int insertedCount = 0;
+    int? svgRasterSizePx;
+    bool svgRasterSizeResolved = false;
     try {
       for (final DropItem item in candidates) {
+        int? itemSvgRasterSizePx;
+        if (_isSvgDropItem(item)) {
+          if (!svgRasterSizeResolved) {
+            svgRasterSizePx = await showSvgRasterizeSizeDialog(
+              context,
+              fileName: _describeDropItem(item),
+            );
+            svgRasterSizeResolved = true;
+            if (svgRasterSizePx == null || !mounted) {
+              return;
+            }
+          }
+          itemSvgRasterSizePx = svgRasterSizePx;
+        }
         final Uint8List? bytes = await _readDropItemBytes(item);
         if (bytes == null) {
           continue;
@@ -1770,6 +1834,7 @@ class CanvasPageState extends State<CanvasPage> {
         final bool inserted = await board.insertImageLayerFromBytes(
           bytes,
           name: _preferredLayerNameForDrop(item),
+          svgRasterSizePx: itemSvgRasterSizePx,
         );
         if (inserted) {
           insertedCount += 1;
@@ -1824,8 +1889,7 @@ class CanvasPageState extends State<CanvasPage> {
     }
     final List<String> keys = <String>{
       for (final DropItem item in items) _dropItemDedupKey(item),
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     return keys.join('|');
   }
 
@@ -1890,8 +1954,9 @@ class CanvasPageState extends State<CanvasPage> {
     );
     final Map<String, List<DropItem>> groups = <String, List<DropItem>>{};
     for (final DropItem item in items) {
-      final String normalizedPath =
-          _normalizeMacOSVarPath(_normalizeDropItemPath(item.path));
+      final String normalizedPath = _normalizeMacOSVarPath(
+        _normalizeDropItemPath(item.path),
+      );
       if (normalizedPath.isEmpty) {
         continue;
       }
@@ -1913,8 +1978,9 @@ class CanvasPageState extends State<CanvasPage> {
       bool hasNormal = false;
       final List<String> promiseCandidates = <String>[];
       for (final DropItem item in group) {
-        final String normalizedPath =
-            _normalizeMacOSVarPath(_normalizeDropItemPath(item.path));
+        final String normalizedPath = _normalizeMacOSVarPath(
+          _normalizeDropItemPath(item.path),
+        );
         final bool isPromise =
             p.isWithin(promiseDirectory, normalizedPath) ||
             p.equals(promiseDirectory, normalizedPath);
@@ -1958,7 +2024,7 @@ class CanvasPageState extends State<CanvasPage> {
   }
 
   String _dropItemExtension(DropItem item) {
-    final String name = (item.name ?? item.path).trim();
+    final String name = item.name.trim();
     final String target = name.isNotEmpty ? name : item.path.trim();
     if (target.isEmpty) {
       return '';
@@ -1971,7 +2037,14 @@ class CanvasPageState extends State<CanvasPage> {
     return lower.substring(dotIndex + 1);
   }
 
-  Future<ProjectDocument?> _createDocumentFromDropItem(DropItem item) async {
+  bool _isSvgDropItem(DropItem item) {
+    return hasSvgExtension(_dropItemExtension(item));
+  }
+
+  Future<ProjectDocument?> _createDocumentFromDropItem(
+    DropItem item, {
+    int? svgRasterSizePx,
+  }) async {
     if (!kIsWeb) {
       final String path = item.path.trim();
       if (path.isNotEmpty) {
@@ -1980,6 +2053,8 @@ class CanvasPageState extends State<CanvasPage> {
           () => _repository.createDocumentFromImage(
             path,
             name: _preferredDocumentNameForDrop(item),
+            svgRasterSizePx: svgRasterSizePx,
+            hideImportedImageLayer: true,
           ),
         );
       }
@@ -1991,6 +2066,8 @@ class CanvasPageState extends State<CanvasPage> {
     return _repository.createDocumentFromImageBytes(
       bytes,
       name: _preferredDocumentNameForDrop(item),
+      svgRasterSizePx: svgRasterSizePx,
+      hideImportedImageLayer: true,
     );
   }
 
@@ -2463,10 +2540,7 @@ class CanvasPageState extends State<CanvasPage> {
               for (final CanvasWorkspaceEntry entry in entries)
                 Align(
                   alignment: Alignment.center,
-                  child: _buildBoard(
-                    entry,
-                    isActive: entry.id == _document.id,
-                  ),
+                  child: _buildBoard(entry, isActive: entry.id == _document.id),
                 ),
             ],
           );
@@ -2517,10 +2591,7 @@ class CanvasPageState extends State<CanvasPage> {
     return MenuActionBinding(
       handler: handler,
       child: NavigationView(
-        content: ScaffoldPage(
-          padding: EdgeInsets.zero,
-          content: body,
-        ),
+        content: ScaffoldPage(padding: EdgeInsets.zero, content: body),
       ),
     );
   }

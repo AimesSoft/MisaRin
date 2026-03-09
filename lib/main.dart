@@ -21,6 +21,7 @@ import 'app/widgets/backend_canvas_surface.dart';
 import 'backend/canvas_raster_backend.dart';
 import 'canvas/canvas_backend.dart';
 import 'canvas/canvas_backend_state.dart';
+import 'canvas/canvas_engine_bridge.dart';
 import 'src/rust/rust_init.dart';
 
 Future<void> main() async {
@@ -31,6 +32,10 @@ Future<void> main() async {
   await _configureSystemUi();
   try {
     await ensureRustInitialized();
+    // Configure Rust logging level early so native startup logs are controlled.
+    if (!kIsWeb) {
+      CanvasBackendFacade.instance;
+    }
     if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       if (CanvasBackendState.backend == CanvasBackend.rustWgpu) {
         // Initialize the Rust WGPU compositor and pre-warm shaders/pipelines.

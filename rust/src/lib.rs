@@ -8,3 +8,7 @@ mod cpu_transform;
 mod frb_generated;
 #[cfg(not(target_family = "wasm"))]
 mod gpu;
+#[cfg(not(target_family = "wasm"))]
+mod wgpu_adapter;
+#[cfg(target_os = "android")]
+mod android_jni;

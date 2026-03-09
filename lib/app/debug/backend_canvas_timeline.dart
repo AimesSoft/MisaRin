@@ -3,19 +3,24 @@ import 'package:flutter/foundation.dart';
 class BackendCanvasTimeline {
   const BackendCanvasTimeline._();
 
+  static const String _envTimeline = String.fromEnvironment(
+    'MISA_RIN_DEBUG_BACKEND_CANVAS_TIMELINE',
+    defaultValue: '',
+  );
+  static const String _envInput = String.fromEnvironment(
+    'MISA_RIN_DEBUG_BACKEND_CANVAS_INPUT',
+    defaultValue: '',
+  );
+  static const String _envRustInput = String.fromEnvironment(
+    'MISA_RIN_DEBUG_RUST_CANVAS_INPUT',
+    defaultValue: '',
+  );
   static final bool _enabled =
-      bool.fromEnvironment(
-        'MISA_RIN_DEBUG_BACKEND_CANVAS_TIMELINE',
-        defaultValue: false,
-      ) ||
-      bool.fromEnvironment(
-        'MISA_RIN_DEBUG_BACKEND_CANVAS_INPUT',
-        defaultValue: false,
-      ) ||
-      bool.fromEnvironment(
-        'MISA_RIN_DEBUG_RUST_CANVAS_INPUT',
-        defaultValue: false,
-      );
+      _isTruthy(_envTimeline) ||
+      _isTruthy(_envInput) ||
+      _isTruthy(_envRustInput);
+
+  static bool _isTruthy(String value) => value == '1' || value == 'true';
 
   static DateTime? _start;
   static DateTime? _last;

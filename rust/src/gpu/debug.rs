@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
 use std::sync::{Mutex, OnceLock};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -10,17 +10,30 @@ pub enum LogLevel {
     Verbose,
 }
 
-static LOG_LEVEL: OnceLock<LogLevel> = OnceLock::new();
+const LOG_LEVEL_UNSET: u8 = 0xFF;
+static LOG_LEVEL: AtomicU8 = AtomicU8::new(LOG_LEVEL_UNSET);
 static SEQ: AtomicU64 = AtomicU64::new(1);
 static LOG_BUFFER: OnceLock<Mutex<VecDeque<String>>> = OnceLock::new();
 const LOG_BUFFER_CAPACITY: usize = 512;
 
 pub fn level() -> LogLevel {
-    *LOG_LEVEL.get_or_init(read_level_from_env)
+    let raw = LOG_LEVEL.load(Ordering::Relaxed);
+    if raw != LOG_LEVEL_UNSET {
+        return from_u8(raw);
+    }
+    let init = read_level_from_env();
+    let init_raw = to_u8(init);
+    let _ = LOG_LEVEL.compare_exchange(
+        LOG_LEVEL_UNSET,
+        init_raw,
+        Ordering::Relaxed,
+        Ordering::Relaxed,
+    );
+    from_u8(LOG_LEVEL.load(Ordering::Relaxed))
 }
 
 pub fn set_level(level: LogLevel) {
-    let _ = LOG_LEVEL.set(level);
+    LOG_LEVEL.store(to_u8(level), Ordering::Relaxed);
 }
 
 pub fn set_level_from_u32(raw: u32) {
@@ -81,6 +94,25 @@ fn parse_level(value: &str) -> LogLevel {
         "info" | "1" | "on" | "true" | "yes" => LogLevel::Info,
         "verbose" | "debug" | "2" => LogLevel::Verbose,
         _ => LogLevel::Info,
+    }
+}
+
+fn to_u8(level: LogLevel) -> u8 {
+    match level {
+        LogLevel::Off => 0,
+        LogLevel::Warn => 1,
+        LogLevel::Info => 2,
+        LogLevel::Verbose => 3,
+    }
+}
+
+fn from_u8(raw: u8) -> LogLevel {
+    match raw {
+        0 => LogLevel::Off,
+        1 => LogLevel::Warn,
+        2 => LogLevel::Info,
+        3 => LogLevel::Verbose,
+        _ => LogLevel::Off,
     }
 }
 

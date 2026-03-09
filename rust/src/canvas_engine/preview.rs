@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use wgpu::util::DeviceExt as _;
 
+use crate::gpu::wgpu_utils;
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct PreviewSegment {
@@ -37,6 +39,7 @@ enum PreviewPipelineKind {
 }
 
 pub(crate) struct PreviewRenderer {
+    format: wgpu::TextureFormat,
     pipeline_alpha: wgpu::RenderPipeline,
     pipeline_max: wgpu::RenderPipeline,
     pipeline_erase: wgpu::RenderPipeline,
@@ -48,7 +51,7 @@ pub(crate) struct PreviewRenderer {
 }
 
 impl PreviewRenderer {
-    pub(crate) fn new(device: &wgpu::Device) -> Self {
+    pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("misa-rin preview renderer shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("preview_stroke.wgsl"))),
@@ -88,24 +91,12 @@ impl PreviewRenderer {
             push_constant_ranges: &[],
         });
 
-        let pipeline_alpha = create_pipeline(
-            device,
-            &shader,
-            &pipeline_layout,
-            PreviewPipelineKind::Alpha,
-        );
-        let pipeline_max = create_pipeline(
-            device,
-            &shader,
-            &pipeline_layout,
-            PreviewPipelineKind::Max,
-        );
-        let pipeline_erase = create_pipeline(
-            device,
-            &shader,
-            &pipeline_layout,
-            PreviewPipelineKind::Erase,
-        );
+        let pipeline_alpha =
+            create_pipeline(device, &shader, &pipeline_layout, format, PreviewPipelineKind::Alpha);
+        let pipeline_max =
+            create_pipeline(device, &shader, &pipeline_layout, format, PreviewPipelineKind::Max);
+        let pipeline_erase =
+            create_pipeline(device, &shader, &pipeline_layout, format, PreviewPipelineKind::Erase);
 
         let config_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("misa-rin preview renderer config"),
@@ -147,6 +138,7 @@ impl PreviewRenderer {
         });
 
         Self {
+            format,
             pipeline_alpha,
             pipeline_max,
             pipeline_erase,
@@ -203,12 +195,20 @@ impl PreviewRenderer {
             return;
         }
         self.ensure_segments_capacity(device, segments.len());
-        queue.write_buffer(
+        wgpu_utils::write_buffer(
+            device,
+            queue,
             &self.segments_buffer,
             0,
             bytemuck::cast_slice(segments),
         );
-        queue.write_buffer(&self.config_buffer, 0, bytemuck::bytes_of(&config));
+        wgpu_utils::write_buffer(
+            device,
+            queue,
+            &self.config_buffer,
+            0,
+            bytemuck::bytes_of(&config),
+        );
 
         let pipeline = if config.erase_mode != 0 {
             &self.pipeline_erase
@@ -248,6 +248,7 @@ fn create_pipeline(
     device: &wgpu::Device,
     shader: &wgpu::ShaderModule,
     layout: &wgpu::PipelineLayout,
+    format: wgpu::TextureFormat,
     kind: PreviewPipelineKind,
 ) -> wgpu::RenderPipeline {
     let blend = match kind {
@@ -290,7 +291,7 @@ fn create_pipeline(
             module: shader,
             entry_point: "fs_main",
             targets: &[Some(wgpu::ColorTargetState {
-                format: wgpu::TextureFormat::Bgra8Unorm,
+                format,
                 blend,
                 write_mask: wgpu::ColorWrites::ALL,
             })],

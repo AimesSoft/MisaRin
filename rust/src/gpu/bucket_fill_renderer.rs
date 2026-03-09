@@ -3,6 +3,7 @@ use std::sync::Arc;
 use wgpu::{BindGroup, BindGroupLayout, ComputePipeline, Device, Queue};
 
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::wgpu_utils;
 
 const WORKGROUP_SIZE: u32 = 16;
 const QUEUE_GROUP_SIZE: u32 = WORKGROUP_SIZE * WORKGROUP_SIZE;
@@ -472,7 +473,7 @@ impl BucketFillRenderer {
             .is_some();
         if selection_enabled {
             if let Some(mask) = selection_mask {
-                write_mask_texture(self.queue.as_ref(), &self.mask_a, width, height, mask)?;
+                write_mask_texture(self.device.as_ref(), self.queue.as_ref(), &self.mask_a, width, height, mask)?;
             }
         }
 
@@ -903,8 +904,13 @@ impl BucketFillRenderer {
         dispatch_y: u32,
         dispatch_z: u32,
     ) -> Result<(), String> {
-        self.queue
-            .write_buffer(&self.config_buffer, 0, bytemuck::bytes_of(config));
+        wgpu_utils::write_buffer(
+            self.device.as_ref(),
+            self.queue.as_ref(),
+            &self.config_buffer,
+            0,
+            bytemuck::bytes_of(config),
+        );
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -985,15 +991,24 @@ impl BucketFillRenderer {
 
     fn reset_frontier_state(&self) {
         let counts = [0u32; 2];
-        self.queue
-            .write_buffer(&self.frontier_counts, 0, bytemuck::cast_slice(&counts));
+        wgpu_utils::write_buffer(
+            self.device.as_ref(),
+            self.queue.as_ref(),
+            &self.frontier_counts,
+            0,
+            bytemuck::cast_slice(&counts),
+        );
         let indirect = [0u32, 1u32, 1u32];
-        self.queue.write_buffer(
+        wgpu_utils::write_buffer(
+            self.device.as_ref(),
+            self.queue.as_ref(),
             &self.frontier_indirect_storage,
             0,
             bytemuck::cast_slice(&indirect),
         );
-        self.queue.write_buffer(
+        wgpu_utils::write_buffer(
+            self.device.as_ref(),
+            self.queue.as_ref(),
             &self.frontier_indirect_args,
             0,
             bytemuck::cast_slice(&indirect),
@@ -1272,6 +1287,7 @@ fn create_swallow_buffer(device: &wgpu::Device, capacity: usize) -> Result<wgpu:
 }
 
 fn write_mask_texture(
+    device: &wgpu::Device,
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
     width: u32,
@@ -1295,6 +1311,9 @@ fn write_mask_texture(
 
     const BYTES_PER_PIXEL: u32 = 4;
     const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
+    #[cfg(target_os = "android")]
+    const MAX_CHUNK_BYTES: usize = 512 * 1024;
+    #[cfg(not(target_os = "android"))]
     const MAX_CHUNK_BYTES: usize = 4 * 1024 * 1024;
 
     let bytes_per_row_unpadded = width.saturating_mul(BYTES_PER_PIXEL);
@@ -1320,24 +1339,19 @@ fn write_mask_texture(
             }
         }
 
-        queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d { x: 0, y, z: 0 },
-                aspect: wgpu::TextureAspect::All,
-            },
-            bytemuck::cast_slice(&data),
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(bytes_per_row_padded),
-                rows_per_image: Some(chunk_h),
-            },
+        wgpu_utils::write_texture(
+            device,
+            queue,
+            texture,
+            wgpu::Origin3d { x: 0, y, z: 0 },
             wgpu::Extent3d {
                 width,
                 height: chunk_h,
                 depth_or_array_layers: 1,
             },
+            bytes_per_row_padded,
+            chunk_h,
+            bytemuck::cast_slice(&data),
         );
 
         y = y.saturating_add(chunk_h);

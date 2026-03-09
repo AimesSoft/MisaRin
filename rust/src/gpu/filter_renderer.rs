@@ -4,6 +4,7 @@ use std::sync::Arc;
 use wgpu::{ComputePipeline, Device, Queue};
 
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::wgpu_utils;
 
 pub const FILTER_HUE_SATURATION: u32 = 0;
 pub const FILTER_BRIGHTNESS_CONTRAST: u32 = 1;
@@ -51,6 +52,16 @@ pub struct FilterRenderer {
 }
 
 impl FilterRenderer {
+    fn write_config(&self, config: &FilterConfig) {
+        wgpu_utils::write_buffer(
+            self.device.as_ref(),
+            self.queue.as_ref(),
+            &self.uniform_buffer,
+            0,
+            bytemuck::bytes_of(config),
+        );
+    }
+
     pub fn new(device: Arc<Device>, queue: Arc<Queue>) -> Result<Self, String> {
         device_push_scopes(device.as_ref());
 
@@ -209,8 +220,7 @@ impl FilterRenderer {
             params0,
             params1,
         };
-        self.queue
-            .write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&config));
+        self.write_config(&config);
 
         self.run_pass(&self.pipeline_color, layer_view, &self.scratch_a_view)?;
         copy_texture(
@@ -261,11 +271,7 @@ impl FilterRenderer {
             params0: [0.0; 4],
             params1: [0.0; 4],
         };
-        self.queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::bytes_of(&premul_config),
-        );
+        self.write_config(&premul_config);
         self.run_pass(&self.pipeline_color, layer_view, &self.scratch_a_view)?;
 
         let mut src_view = &self.scratch_a_view;
@@ -282,11 +288,7 @@ impl FilterRenderer {
                 params0: [0.0; 4],
                 params1: [0.0; 4],
             };
-            self.queue.write_buffer(
-                &self.uniform_buffer,
-                0,
-                bytemuck::bytes_of(&horizontal),
-            );
+            self.write_config(&horizontal);
             self.run_pass(&self.pipeline_blur, src_view, &self.scratch_b_view)?;
 
             let vertical = FilterConfig {
@@ -297,11 +299,7 @@ impl FilterRenderer {
                 params0: [0.0; 4],
                 params1: [0.0; 4],
             };
-            self.queue.write_buffer(
-                &self.uniform_buffer,
-                0,
-                bytemuck::bytes_of(&vertical),
-            );
+            self.write_config(&vertical);
             self.run_pass(&self.pipeline_blur, &self.scratch_b_view, &self.scratch_a_view)?;
             src_view = &self.scratch_a_view;
         }
@@ -314,11 +312,7 @@ impl FilterRenderer {
             params0: [0.0; 4],
             params1: [0.0; 4],
         };
-        self.queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::bytes_of(&unpremul_config),
-        );
+        self.write_config(&unpremul_config);
         self.run_pass(&self.pipeline_color, src_view, layer_view)?;
 
         if let Some(err) = device_pop_scope(self.device.as_ref()) {
@@ -355,11 +349,7 @@ impl FilterRenderer {
             params0: [0.0; 4],
             params1: [0.0; 4],
         };
-        self.queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::bytes_of(&morph_config),
-        );
+        self.write_config(&morph_config);
 
         if radius == 1 {
             self.run_pass(&self.pipeline_morph, layer_view, &self.scratch_a_view)?;
@@ -431,11 +421,7 @@ impl FilterRenderer {
                 params0: [blend as f32, 0.0, 0.0, 0.0],
                 params1: [0.0; 4],
             };
-            self.queue.write_buffer(
-                &self.uniform_buffer,
-                0,
-                bytemuck::bytes_of(&config),
-            );
+            self.write_config(&config);
             let dst_view = if use_a {
                 &self.scratch_a_view
             } else {
@@ -454,11 +440,7 @@ impl FilterRenderer {
             params0: [0.0; 4],
             params1: [0.0; 4],
         };
-        self.queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::bytes_of(&edge_config),
-        );
+        self.write_config(&edge_config);
         self.run_pass(&self.pipeline_antialias_edge, src_view, layer_view)?;
 
         if let Some(err) = device_pop_scope(self.device.as_ref()) {

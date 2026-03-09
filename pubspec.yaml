@@ -39,6 +39,7 @@ dependencies:
   path: ^1.9.0
   path_provider: ^2.1.4
   archive: ^3.6.1
+  swipelab_webp: ^1.0.0
   image_picker: ^1.1.2
   image_gallery_saver: ^2.0.3
   package_info_plus: ^8.0.0
@@ -164,3 +165,5 @@ flutter_launcher_icons:
 dependency_overrides:
   file_picker:
     path: third_party/file_picker
+  image_gallery_saver:
+    path: third_party/image_gallery_saver

@@ -1,12 +1,23 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 
 import '../src/rust/api/selection_path.dart' as rust_selection_path;
 import '../src/rust/canvas_engine_ffi.dart' as rust_wgpu_engine;
 import 'canvas_backend.dart';
 import 'canvas_backend_state.dart';
+
+const int _kRustLogLevel = int.fromEnvironment(
+  'MISA_RIN_RUST_LOG_LEVEL',
+  defaultValue: 0,
+);
+const String _kDebugRustLogsEnv = String.fromEnvironment(
+  'MISA_RIN_DEBUG_RUST_LOGS',
+  defaultValue: '',
+);
+final bool _kDebugRustLogs =
+    _kDebugRustLogsEnv == '1' || _kDebugRustLogsEnv == 'true';
 
 class CanvasEngineFfi {
   CanvasEngineFfi._();
@@ -46,6 +57,20 @@ class CanvasEngineFfi {
       return false;
     }
     return _rustWgpu.isHandleValid(handle);
+  }
+
+  void setLogLevel(int level) {
+    if (!isSupported) {
+      return;
+    }
+    _rustWgpu.setLogLevel(level);
+  }
+
+  void requestPresent({required int handle}) {
+    if (!isSupported) {
+      return;
+    }
+    _rustWgpu.requestPresent(handle: handle);
   }
 
   List<String> drainLogs({int maxLines = 200}) {
@@ -451,6 +476,23 @@ class CanvasEngineFfi {
     );
   }
 
+  bool writeLayerAsync({
+    required int handle,
+    required int layerIndex,
+    required Uint32List pixels,
+    bool recordUndo = true,
+  }) {
+    if (!isSupported) {
+      return false;
+    }
+    return _rustWgpu.writeLayerAsync(
+      handle: handle,
+      layerIndex: layerIndex,
+      pixels: pixels,
+      recordUndo: recordUndo,
+    );
+  }
+
   bool translateLayer({
     required int handle,
     required int layerIndex,
@@ -545,6 +587,7 @@ class CanvasEngineFfi {
 
 class CanvasBackendFacade {
   CanvasBackendFacade._() {
+    _configureRustLogs();
     _ensureLogPump();
   }
 
@@ -552,8 +595,15 @@ class CanvasBackendFacade {
   static final CanvasEngineFfi _ffi = CanvasEngineFfi.instance;
   static Timer? _logPump;
 
+  void _configureRustLogs() {
+    if (kIsWeb) {
+      return;
+    }
+    _ffi.setLogLevel(_kRustLogLevel.clamp(0, 3));
+  }
+
   void _ensureLogPump() {
-    if (_logPump != null || kIsWeb || !kDebugMode) {
+    if (_logPump != null || kIsWeb || !_kDebugRustLogs) {
       return;
     }
     _logPump = Timer.periodic(const Duration(milliseconds: 50), (_) {
@@ -562,7 +612,7 @@ class CanvasBackendFacade {
       }
       final List<String> lines = _ffi.drainLogs();
       for (final String line in lines) {
-        debugPrint(line);
+        print(line);
       }
     });
   }
@@ -574,6 +624,10 @@ class CanvasBackendFacade {
   int getInputQueueLen(int handle) => _ffi.getInputQueueLen(handle);
 
   bool isHandleValid(int handle) => _ffi.isHandleValid(handle);
+
+  void requestPresent({required int handle}) {
+    _ffi.requestPresent(handle: handle);
+  }
 
   void pushPointsPacked({
     required int handle,
@@ -872,6 +926,20 @@ class CanvasBackendFacade {
     bool recordUndo = true,
   }) {
     return _ffi.writeLayer(
+      handle: handle,
+      layerIndex: layerIndex,
+      pixels: pixels,
+      recordUndo: recordUndo,
+    );
+  }
+
+  bool writeLayerAsync({
+    required int handle,
+    required int layerIndex,
+    required Uint32List pixels,
+    bool recordUndo = true,
+  }) {
+    return _ffi.writeLayerAsync(
       handle: handle,
       layerIndex: layerIndex,
       pixels: pixels,

@@ -101,7 +101,11 @@ class AndroidEnvironment {
 
     final exe = Platform.isWindows ? '.exe' : '';
 
-    final arKey = 'AR_${target.rust}';
+    final targetKey = target.rust;
+    final targetKeySafe = target.rust.replaceAll('-', '_');
+
+    final arKey = 'AR_$targetKey';
+    final arKeySafe = 'AR_$targetKeySafe';
     final arValue = ['${target.rust}-ar', 'llvm-ar', 'llvm-ar.exe']
         .map((e) => path.join(toolchainPath, e))
         .firstWhereOrNull((element) => File(element).existsSync());
@@ -111,20 +115,25 @@ class AndroidEnvironment {
 
     final targetArg = '--target=${target.rust}$minSdkVersion';
 
-    final ccKey = 'CC_${target.rust}';
+    final ccKey = 'CC_$targetKey';
+    final ccKeySafe = 'CC_$targetKeySafe';
     final ccValue = path.join(toolchainPath, 'clang$exe');
-    final cfFlagsKey = 'CFLAGS_${target.rust}';
+    final cfFlagsKey = 'CFLAGS_$targetKey';
+    final cfFlagsKeySafe = 'CFLAGS_$targetKeySafe';
     final cFlagsValue = targetArg;
 
-    final cxxKey = 'CXX_${target.rust}';
+    final cxxKey = 'CXX_$targetKey';
+    final cxxKeySafe = 'CXX_$targetKeySafe';
     final cxxValue = path.join(toolchainPath, 'clang++$exe');
-    final cxxFlagsKey = 'CXXFLAGS_${target.rust}';
+    final cxxFlagsKey = 'CXXFLAGS_$targetKey';
+    final cxxFlagsKeySafe = 'CXXFLAGS_$targetKeySafe';
     final cxxFlagsValue = targetArg;
 
     final linkerKey =
         'cargo_target_${target.rust.replaceAll('-', '_')}_linker'.toUpperCase();
 
-    final ranlibKey = 'RANLIB_${target.rust}';
+    final ranlibKey = 'RANLIB_$targetKey';
+    final ranlibKeySafe = 'RANLIB_$targetKeySafe';
     final ranlibValue = path.join(toolchainPath, 'llvm-ranlib$exe');
 
     final ndkVersionParsed = Version.parse(ndkVersion);
@@ -152,11 +161,17 @@ class AndroidEnvironment {
 
     return {
       arKey: arValue,
+      arKeySafe: arValue,
       ccKey: ccValue,
+      ccKeySafe: ccValue,
       cfFlagsKey: cFlagsValue,
+      cfFlagsKeySafe: cFlagsValue,
       cxxKey: cxxValue,
+      cxxKeySafe: cxxValue,
       cxxFlagsKey: cxxFlagsValue,
+      cxxFlagsKeySafe: cxxFlagsValue,
       ranlibKey: ranlibValue,
+      ranlibKeySafe: ranlibValue,
       rustFlagsKey: rustFlagsValue,
       linkerKey: selfPath,
       // Recognized by main() so we know when we're acting as a wrapper

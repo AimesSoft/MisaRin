@@ -291,8 +291,21 @@
   },
   "exportSettingsTitle": "書き出し設定",
   "exportTypeLabel": "書き出し形式",
+  "exportTypeBitmap": "ビットマップ",
   "exportTypePng": "ビットマップ PNG",
   "exportTypeSvg": "ベクター SVG（実験的）",
+  "exportBitmapFormatLabel": "ビットマップ形式",
+  "exportBitmapFormatPng": "PNG",
+  "exportBitmapFormatWebp": "WebP",
+  "webpCompressionLabel": "WebP 圧縮",
+  "webpLossless": "可逆",
+  "webpLossy": "非可逆",
+  "webpQualityLabel": "画質: {value}",
+  "@webpQualityLabel": {
+    "placeholders": {
+      "value": {}
+    }
+  },
   "exportScaleLabel": "書き出し倍率",
   "reset": "リセット",
   "exportOutputSize": "出力サイズ: {width} x {height} px",

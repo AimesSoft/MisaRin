@@ -480,17 +480,33 @@ fn union_dirty_rect_i32(
 }
 
 fn create_wgpu_device() -> Result<(wgpu::Device, wgpu::Queue), String> {
+    let backends = if cfg!(target_os = "android") {
+        wgpu::Backends::VULKAN | wgpu::Backends::GL
+    } else {
+        wgpu::Backends::all()
+    };
+    let instance_flags = if cfg!(target_os = "android") {
+        wgpu::InstanceFlags::empty()
+    } else {
+        wgpu::InstanceFlags::default()
+    };
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        backends: wgpu::Backends::all(),
+        backends,
+        flags: instance_flags,
         ..Default::default()
     });
 
-    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-        power_preference: wgpu::PowerPreference::HighPerformance,
-        compatible_surface: None,
-        force_fallback_adapter: false,
-    }))
-    .ok_or_else(|| "wgpu: no compatible GPU adapter found".to_string())?;
+    let adapter = if cfg!(target_os = "android") {
+        crate::wgpu_adapter::select_compute_adapter(&instance, backends)
+            .ok_or_else(|| "wgpu: no compute-capable GPU adapter found".to_string())?
+    } else {
+        pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            compatible_surface: None,
+            force_fallback_adapter: false,
+        }))
+        .ok_or_else(|| "wgpu: no compatible GPU adapter found".to_string())?
+    };
 
     if debug::level() >= LogLevel::Info {
         let info = adapter.get_info();
@@ -511,11 +527,7 @@ fn create_wgpu_device() -> Result<(wgpu::Device, wgpu::Queue), String> {
 
     let adapter_limits = adapter.limits();
     let adapter_features = adapter.features();
-    let required_limits = wgpu::Limits {
-        max_buffer_size: adapter_limits.max_buffer_size,
-        max_storage_buffer_binding_size: adapter_limits.max_storage_buffer_binding_size,
-        ..wgpu::Limits::default()
-    };
+    let required_limits = adapter_limits;
 
     let required_features = wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
     if !adapter_features.contains(required_features) {
