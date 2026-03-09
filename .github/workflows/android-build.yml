@@ -68,6 +68,23 @@ jobs:
             exit 1
           fi
 
+          # 统一清理 Windows/复制粘贴常见的换行符，避免“看起来一样但实际不同”。
+          ANDROID_KEYSTORE_PASSWORD="$(printf '%s' "${ANDROID_KEYSTORE_PASSWORD}" | tr -d '\r\n')"
+          ANDROID_KEY_ALIAS="$(printf '%s' "${ANDROID_KEY_ALIAS}" | tr -d '\r\n')"
+          ANDROID_KEY_PASSWORD="$(printf '%s' "${ANDROID_KEY_PASSWORD}" | tr -d '\r\n')"
+
+          if [[ -z "${ANDROID_KEYSTORE_PASSWORD}" || -z "${ANDROID_KEY_ALIAS}" || -z "${ANDROID_KEY_PASSWORD}" ]]; then
+            echo "Android 签名参数在清理换行后为空，请检查 secrets 内容。" >&2
+            exit 1
+          fi
+
+          echo "signing input lengths: storepass=${#ANDROID_KEYSTORE_PASSWORD}, keypass=${#ANDROID_KEY_PASSWORD}, alias=${#ANDROID_KEY_ALIAS}"
+          if [[ "${ANDROID_KEYSTORE_PASSWORD}" == "${ANDROID_KEY_PASSWORD}" ]]; then
+            echo "signing input check: storepass==keypass"
+          else
+            echo "signing input check: storepass!=keypass"
+          fi
+
           printf '%s' "${ANDROID_KEYSTORE_B64}" | base64 --decode > android/keystore.jks
           chmod 600 android/keystore.jks
           echo "keystore sha256: $(sha256sum android/keystore.jks | awk '{print $1}')"
@@ -105,13 +122,16 @@ jobs:
             echo "无法解锁 keystore 私钥：请检查 ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD 是否与该 keystore 匹配。" >&2
             exit 1
           fi
+
+          # 后续构建步骤统一使用已规范化后的值。
+          {
+            echo "ANDROID_KEYSTORE_FILE=${GITHUB_WORKSPACE}/android/keystore.jks"
+            echo "ANDROID_KEYSTORE_PASSWORD=${ANDROID_KEYSTORE_PASSWORD}"
+            echo "ANDROID_KEY_ALIAS=${ANDROID_KEY_ALIAS}"
+            echo "ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}"
+          } >> "${GITHUB_ENV}"
       - name: 构建 Android APK
         shell: bash
-        env:
-          ANDROID_KEYSTORE_FILE: ${{ github.workspace }}/android/keystore.jks
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           BUILD_NUMBER="${BUILD_NUMBER:-}"
