@@ -453,6 +453,7 @@ class ProjectRepository {
     String path, {
     String? name,
     int? svgRasterSizePx,
+    bool hideImportedImageLayer = false,
   }) async {
     if (kIsWeb) {
       throw UnsupportedError('Web 暂不支持从本地路径读取图像。');
@@ -471,13 +472,18 @@ class ProjectRepository {
       name ?? p.basenameWithoutExtension(path),
       fallback: '导入图像',
     );
-    return _buildDocumentFromDecodedImage(decoded, resolvedName);
+    return _buildDocumentFromDecodedImage(
+      decoded,
+      resolvedName,
+      hideImportedImageLayer: hideImportedImageLayer,
+    );
   }
 
   Future<ProjectDocument> createDocumentFromImageBytes(
     Uint8List bytes, {
     String? name,
     int? svgRasterSizePx,
+    bool hideImportedImageLayer = false,
   }) async {
     if (!kIsWeb) {
       await _ensureProjectDirectory();
@@ -487,7 +493,11 @@ class ProjectRepository {
       svgRasterSizePx: svgRasterSizePx,
     );
     final String resolvedName = _resolveImageName(name, fallback: '剪贴板图像');
-    return _buildDocumentFromDecodedImage(decoded, resolvedName);
+    return _buildDocumentFromDecodedImage(
+      decoded,
+      resolvedName,
+      hideImportedImageLayer: hideImportedImageLayer,
+    );
   }
 
   String _resolveImageName(String? raw, {required String fallback}) {
@@ -532,8 +542,9 @@ class ProjectRepository {
 
   ProjectDocument _buildDocumentFromDecodedImage(
     _DecodedImage decoded,
-    String name,
-  ) {
+    String name, {
+    bool hideImportedImageLayer = false,
+  }) {
     final CanvasSettings settings = CanvasSettings(
       width: decoded.width.toDouble(),
       height: decoded.height.toDouble(),
@@ -551,6 +562,7 @@ class ProjectRepository {
       base.layers.length > 1
           ? base.layers[1].copyWith(
               name: name,
+              visible: !hideImportedImageLayer,
               bitmap: decoded.rgba,
               bitmapWidth: decoded.width,
               bitmapHeight: decoded.height,
@@ -559,6 +571,7 @@ class ProjectRepository {
           : CanvasLayerData(
               id: generateLayerId(),
               name: name,
+              visible: !hideImportedImageLayer,
               bitmap: decoded.rgba,
               bitmapWidth: decoded.width,
               bitmapHeight: decoded.height,
