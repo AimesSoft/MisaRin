@@ -16,6 +16,40 @@ if (hasKeystoreProperties) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+fun readSigningEnv(name: String): String? {
+    val value = System.getenv(name) ?: return null
+    return if (value.isBlank()) null else value
+}
+
+val envStoreFile = readSigningEnv("ANDROID_KEYSTORE_FILE")
+val envStorePassword = readSigningEnv("ANDROID_KEYSTORE_PASSWORD")
+val envKeyAlias = readSigningEnv("ANDROID_KEY_ALIAS")
+val envKeyPassword = readSigningEnv("ANDROID_KEY_PASSWORD")
+
+val hasAnySigningEnv = listOf(
+    envStoreFile,
+    envStorePassword,
+    envKeyAlias,
+    envKeyPassword,
+).any { it != null }
+
+val hasCompleteSigningEnv = listOf(
+    envStoreFile,
+    envStorePassword,
+    envKeyAlias,
+    envKeyPassword,
+).all { it != null }
+
+if (hasAnySigningEnv && !hasCompleteSigningEnv) {
+    throw GradleException(
+        "检测到部分 Android 签名环境变量。请同时设置 " +
+            "ANDROID_KEYSTORE_FILE / ANDROID_KEYSTORE_PASSWORD / " +
+            "ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD",
+    )
+}
+
+val hasSigningConfig = hasCompleteSigningEnv || hasKeystoreProperties
+
 android {
     namespace = "com.aimessoft.misa_rin"
     compileSdk = flutter.compileSdkVersion
@@ -51,26 +85,46 @@ android {
     }
 
     signingConfigs {
-        if (hasKeystoreProperties) {
+        if (hasSigningConfig) {
             create("release") {
-                val storeFilePath = keystoreProperties.getProperty("storeFile")
-                val storePasswordValue = keystoreProperties.getProperty("storePassword")
-                val keyAliasValue = keystoreProperties.getProperty("keyAlias")
-                val keyPasswordValue = keystoreProperties.getProperty("keyPassword")
+                val storeFilePath: String
+                val storePasswordValue: String
+                val keyAliasValue: String
+                val keyPasswordValue: String
 
-                if (storeFilePath.isNullOrBlank() ||
-                    storePasswordValue.isNullOrBlank() ||
-                    keyAliasValue.isNullOrBlank() ||
-                    keyPasswordValue.isNullOrBlank()
-                ) {
-                    throw GradleException("key.properties 缺少签名字段：storeFile/storePassword/keyAlias/keyPassword")
+                if (hasCompleteSigningEnv) {
+                    storeFilePath = envStoreFile!!
+                    storePasswordValue = envStorePassword!!
+                    keyAliasValue = envKeyAlias!!
+                    keyPasswordValue = envKeyPassword!!
+                } else {
+                    val fromPropsStoreFile = keystoreProperties.getProperty("storeFile")
+                    val fromPropsStorePassword = keystoreProperties.getProperty("storePassword")
+                    val fromPropsKeyAlias = keystoreProperties.getProperty("keyAlias")
+                    val fromPropsKeyPassword = keystoreProperties.getProperty("keyPassword")
+
+                    if (fromPropsStoreFile.isNullOrBlank() ||
+                        fromPropsStorePassword.isNullOrBlank() ||
+                        fromPropsKeyAlias.isNullOrBlank() ||
+                        fromPropsKeyPassword.isNullOrBlank()
+                    ) {
+                        throw GradleException("key.properties 缺少签名字段：storeFile/storePassword/keyAlias/keyPassword")
+                    }
+
+                    storeFilePath = fromPropsStoreFile
+                    storePasswordValue = fromPropsStorePassword
+                    keyAliasValue = fromPropsKeyAlias
+                    keyPasswordValue = fromPropsKeyPassword
                 }
 
                 val storeFileByKeyPropsDir = keystorePropertiesFile.parentFile.resolve(storeFilePath)
                 val storeFileByModuleDir = file(storeFilePath)
+                val storeFileByRootDir = rootProject.file(storeFilePath)
                 val resolvedStoreFile = when {
+                    File(storeFilePath).isAbsolute -> File(storeFilePath)
                     storeFileByKeyPropsDir.exists() -> storeFileByKeyPropsDir
                     storeFileByModuleDir.exists() -> storeFileByModuleDir
+                    storeFileByRootDir.exists() -> storeFileByRootDir
                     else -> storeFileByKeyPropsDir
                 }
                 storeFile = resolvedStoreFile
@@ -83,7 +137,7 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (hasKeystoreProperties) {
+            signingConfig = if (hasSigningConfig) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")

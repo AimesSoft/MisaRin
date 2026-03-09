@@ -71,21 +71,20 @@ jobs:
           printf '%s' "${ANDROID_KEYSTORE_B64}" | base64 --decode > android/keystore.jks
           chmod 600 android/keystore.jks
 
-          {
-            printf 'storeFile=%s\n' 'keystore.jks'
-            printf 'storePassword=%s\n' "${ANDROID_KEYSTORE_PASSWORD}"
-            printf 'keyAlias=%s\n' "${ANDROID_KEY_ALIAS}"
-            printf 'keyPassword=%s\n' "${ANDROID_KEY_PASSWORD}"
-          } > android/key.properties
-
-          # 预校验 keystore 与 alias，避免构建到最后才失败。
+          # 预校验 keystore、alias 与 key password，避免构建到最后才失败。
           keytool -list \
             -keystore android/keystore.jks \
             -storepass "${ANDROID_KEYSTORE_PASSWORD}" \
             -alias "${ANDROID_KEY_ALIAS}" \
+            -keypass "${ANDROID_KEY_PASSWORD}" \
             >/dev/null
       - name: 构建 Android APK
         shell: bash
+        env:
+          ANDROID_KEYSTORE_FILE: android/keystore.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           BUILD_NUMBER="${BUILD_NUMBER:-}"
