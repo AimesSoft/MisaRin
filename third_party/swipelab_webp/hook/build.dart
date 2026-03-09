@@ -42,14 +42,53 @@ String _getCacheDir() {
 }
 
 List<String> _collectSources(
-  String directoryPath,
-) {
-  return Directory(directoryPath)
+  String directoryPath, {
+  required OS targetOS,
+  required Architecture targetArchitecture,
+}) {
+  final sources = Directory(directoryPath)
       .listSync()
       .whereType<File>()
       .where((f) => f.path.endsWith('.c'))
       .map((f) => f.path)
+      .where(
+        (path) => _shouldIncludeSource(
+          path: path,
+          targetOS: targetOS,
+          targetArchitecture: targetArchitecture,
+        ),
+      )
       .toList();
+  // Keep source ordering deterministic so command lines stay stable in CI.
+  sources.sort();
+  return sources;
+}
+
+bool _shouldIncludeSource({
+  required String path,
+  required OS targetOS,
+  required Architecture targetArchitecture,
+}) {
+  if (targetOS != OS.windows) {
+    return true;
+  }
+
+  final name = path.toLowerCase();
+  final isMipsOrMsa = name.contains('mips') || name.contains('msa');
+  if (isMipsOrMsa) {
+    return false;
+  }
+
+  final isNeon = name.contains('neon');
+  final isX86Simd =
+      name.contains('sse2') || name.contains('sse41') || name.contains('avx2');
+
+  // x64/x86 requires SSE/AVX objects to satisfy runtime-dispatched symbols.
+  // arm64 should keep NEON and avoid x86-specific source files.
+  if (targetArchitecture == Architecture.arm64) {
+    return !isX86Simd;
+  }
+  return !isNeon;
 }
 
 Future<String> _ensureLibwebp(Logger logger) async {
@@ -68,11 +107,13 @@ Future<String> _ensureLibwebp(Logger logger) async {
   await Directory(cacheDir).create(recursive: true);
 
   // Clone libwebp
-  final result = await Process.run(
-    'git',
-    ['clone', '--depth', '1', _libwebpRepo, libwebpPath],
-    workingDirectory: cacheDir,
-  );
+  final result = await Process.run('git', [
+    'clone',
+    '--depth',
+    '1',
+    _libwebpRepo,
+    libwebpPath,
+  ], workingDirectory: cacheDir);
 
   if (result.exitCode != 0) {
     throw Exception(
@@ -94,6 +135,7 @@ void main(List<String> args) async {
 
     final packageName = input.packageName;
     final targetOS = input.config.code.targetOS;
+    final targetArchitecture = input.config.code.targetArchitecture;
 
     // Ensure libwebp is available (clone if needed)
     final libwebpPath = await _ensureLibwebp(logger);
@@ -103,35 +145,45 @@ void main(List<String> args) async {
       // Our wrapper
       'src/swipelab_webp.c',
       // sharpyuv
-      ..._collectSources('$libwebpPath/sharpyuv'),
+      ..._collectSources(
+        '$libwebpPath/sharpyuv',
+        targetOS: targetOS,
+        targetArchitecture: targetArchitecture,
+      ),
       // src/enc
-      ..._collectSources('$libwebpPath/src/enc'),
+      ..._collectSources(
+        '$libwebpPath/src/enc',
+        targetOS: targetOS,
+        targetArchitecture: targetArchitecture,
+      ),
       // src/dsp
-      ..._collectSources('$libwebpPath/src/dsp'),
+      ..._collectSources(
+        '$libwebpPath/src/dsp',
+        targetOS: targetOS,
+        targetArchitecture: targetArchitecture,
+      ),
       // src/utils
-      ..._collectSources('$libwebpPath/src/utils'),
+      ..._collectSources(
+        '$libwebpPath/src/utils',
+        targetOS: targetOS,
+        targetArchitecture: targetArchitecture,
+      ),
     ];
+    logger.info(
+      'swipelab_webp sources: ${webpSources.length} '
+      '(target: $targetOS/$targetArchitecture)',
+    );
 
     final builder = CBuilder.library(
       name: packageName,
       assetName: 'swipelab_webp.dart',
       sources: webpSources,
-      includes: [
-        libwebpPath,
-        '$libwebpPath/src',
-      ],
-      defines: const {
-        'WEBP_USE_THREAD': '1',
-        'WEBP_NEAR_LOSSLESS': '1',
-      },
+      includes: [libwebpPath, '$libwebpPath/src'],
+      defines: const {'WEBP_USE_THREAD': '1', 'WEBP_NEAR_LOSSLESS': '1'},
       // Link against libm for math functions (not needed on Windows)
       libraries: targetOS == OS.windows ? [] : ['m'],
     );
 
-    await builder.run(
-      input: input,
-      output: output,
-      logger: logger,
-    );
+    await builder.run(input: input, output: output, logger: logger);
   });
 }
