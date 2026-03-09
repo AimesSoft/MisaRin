@@ -81,7 +81,7 @@ jobs:
       - name: 构建 Android APK
         shell: bash
         env:
-          ANDROID_KEYSTORE_FILE: android/keystore.jks
+          ANDROID_KEYSTORE_FILE: ${{ github.workspace }}/android/keystore.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
