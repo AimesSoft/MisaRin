@@ -289,8 +289,21 @@
   },
   "exportSettingsTitle": "Export Settings",
   "exportTypeLabel": "Export Type",
+  "exportTypeBitmap": "Bitmap",
   "exportTypePng": "Bitmap PNG",
   "exportTypeSvg": "Vector SVG (Experimental)",
+  "exportBitmapFormatLabel": "Bitmap Format",
+  "exportBitmapFormatPng": "PNG",
+  "exportBitmapFormatWebp": "WebP",
+  "webpCompressionLabel": "WebP Compression",
+  "webpLossless": "Lossless",
+  "webpLossy": "Lossy",
+  "webpQualityLabel": "Quality: {value}",
+  "@webpQualityLabel": {
+    "placeholders": {
+      "value": {}
+    }
+  },
   "exportScaleLabel": "Export Scale",
   "reset": "Reset",
   "exportOutputSize": "Output Size: {width} x {height} px",

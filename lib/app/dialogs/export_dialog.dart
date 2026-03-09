@@ -10,11 +10,19 @@ enum CanvasExportMode {
   vector,
 }
 
+enum CanvasBitmapFormat {
+  png,
+  webp,
+}
+
 class CanvasExportOptions {
   const CanvasExportOptions({
     required this.mode,
     required this.width,
     required this.height,
+    this.bitmapFormat = CanvasBitmapFormat.png,
+    this.webpLossless = false,
+    this.webpQuality = 85,
     this.edgeSofteningEnabled = false,
     this.edgeSofteningLevel = 2,
     this.vectorMaxColors,
@@ -24,6 +32,9 @@ class CanvasExportOptions {
   final CanvasExportMode mode;
   final int width;
   final int height;
+  final CanvasBitmapFormat bitmapFormat;
+  final bool webpLossless;
+  final int webpQuality;
   final bool edgeSofteningEnabled;
   final int edgeSofteningLevel;
   final int? vectorMaxColors;
@@ -43,6 +54,9 @@ Future<CanvasExportOptions?> showCanvasExportDialog({
   int antialiasLevel = 2;
   bool antialiasEnabled = false;
   CanvasExportMode exportMode = CanvasExportMode.bitmap;
+  CanvasBitmapFormat bitmapFormat = CanvasBitmapFormat.png;
+  bool webpLossless = false;
+  int webpQuality = 85;
   int vectorMaxColors = 8;
   double vectorSimplifyEpsilon = 1.2;
   CanvasExportOptions? result;
@@ -87,7 +101,7 @@ Future<CanvasExportOptions?> showCanvasExportDialog({
                       exportMode = CanvasExportMode.bitmap;
                     });
                   },
-                  content: Text(l10n.exportTypePng),
+                  content: Text(l10n.exportTypeBitmap),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 32),
@@ -117,6 +131,78 @@ Future<CanvasExportOptions?> showCanvasExportDialog({
             ),
             const SizedBox(height: 16),
             if (exportMode == CanvasExportMode.bitmap) ...[
+              Text(l10n.exportBitmapFormatLabel,
+                  style: theme.typography.bodyStrong),
+              const SizedBox(height: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RadioButton(
+                    checked: bitmapFormat == CanvasBitmapFormat.png,
+                    onChanged: (value) {
+                      dialogSetState?.call(() {
+                        bitmapFormat = CanvasBitmapFormat.png;
+                      });
+                    },
+                    content: Text(l10n.exportBitmapFormatPng),
+                  ),
+                  RadioButton(
+                    checked: bitmapFormat == CanvasBitmapFormat.webp,
+                    onChanged: (value) {
+                      dialogSetState?.call(() {
+                        bitmapFormat = CanvasBitmapFormat.webp;
+                      });
+                    },
+                    content: Text(l10n.exportBitmapFormatWebp),
+                  ),
+                ],
+              ),
+              if (bitmapFormat == CanvasBitmapFormat.webp) ...[
+                const SizedBox(height: 12),
+                Text(l10n.webpCompressionLabel,
+                    style: theme.typography.bodyStrong),
+                const SizedBox(height: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RadioButton(
+                      checked: webpLossless,
+                      onChanged: (value) {
+                        dialogSetState?.call(() {
+                          webpLossless = true;
+                        });
+                      },
+                      content: Text(l10n.webpLossless),
+                    ),
+                    RadioButton(
+                      checked: !webpLossless,
+                      onChanged: (value) {
+                        dialogSetState?.call(() {
+                          webpLossless = false;
+                        });
+                      },
+                      content: Text(l10n.webpLossy),
+                    ),
+                  ],
+                ),
+                if (!webpLossless) ...[
+                  const SizedBox(height: 12),
+                  Text(l10n.webpQualityLabel(webpQuality)),
+                  Slider(
+                    min: 1,
+                    max: 100,
+                    divisions: 99,
+                    value: webpQuality.toDouble(),
+                    label: l10n.webpQualityLabel(webpQuality),
+                    onChanged: (value) {
+                      dialogSetState?.call(() {
+                        webpQuality = value.round();
+                      });
+                    },
+                  ),
+                ],
+              ],
+              const SizedBox(height: 16),
               Text(l10n.exportScaleLabel),
               const SizedBox(height: 8),
               Row(
@@ -308,6 +394,9 @@ Future<CanvasExportOptions?> showCanvasExportDialog({
                     : settings.height)
                 .round()
                 .clamp(1, 100000),
+            bitmapFormat: bitmapFormat,
+            webpLossless: webpLossless,
+            webpQuality: webpQuality.clamp(1, 100),
             edgeSofteningEnabled:
                 exportMode == CanvasExportMode.bitmap && antialiasEnabled,
             edgeSofteningLevel:

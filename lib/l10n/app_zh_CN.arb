@@ -559,5 +559,18 @@
     "placeholders": {
       "error": {}
     }
+  },
+  "exportTypeBitmap": "位图",
+  "exportBitmapFormatLabel": "位图格式",
+  "exportBitmapFormatPng": "PNG",
+  "exportBitmapFormatWebp": "WebP",
+  "webpCompressionLabel": "WebP 压缩",
+  "webpLossless": "无损",
+  "webpLossy": "有损",
+  "webpQualityLabel": "质量：{value}",
+  "@webpQualityLabel": {
+    "placeholders": {
+      "value": {}
+    }
   }
 }

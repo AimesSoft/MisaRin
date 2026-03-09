@@ -4,8 +4,7 @@ enum _HistoryActionKind { dart, backend }
 
 abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   late CanvasFacade _controller;
-  _CanvasBackendFacade get _backend =>
-      (this as _PaintingBoardBase)._backend;
+  _CanvasBackendFacade get _backend => (this as _PaintingBoardBase)._backend;
   final ValueNotifier<int> _mobileUiRevision = ValueNotifier<int>(0);
   final FocusNode _focusNode = FocusNode();
   bool _boardReadyNotified = false;
@@ -21,6 +20,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   int _backendLayerSnapshotHeight = 0;
   int? _backendLayerSnapshotHandle;
   int? _backendPixelsSyncedHandle;
+  bool _backendPixelsSyncInFlight = false;
 
   ValueListenable<int> get _mobileUiRebuildListenable => _mobileUiRevision;
 
@@ -72,7 +72,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   bool _simulatePenPressure = false;
   bool _touchDrawingEnabled = AppPreferences.defaultTouchDrawingEnabled;
   int _penAntialiasLevel = AppPreferences.defaultPenAntialiasLevel;
-    CanvasTool _applePencilLastNonEraserTool = CanvasTool.pen;
+  CanvasTool _applePencilLastNonEraserTool = CanvasTool.pen;
   int _bucketAntialiasLevel = AppPreferences.defaultBucketAntialiasLevel;
   bool _stylusPressureEnabled = AppPreferences.defaultStylusPressureEnabled;
   double _stylusCurve = AppPreferences.defaultStylusCurve;
@@ -267,6 +267,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     prefs.brushToolsEraserMode = value;
     unawaited(AppPreferences.save());
   }
+
   @protected
   void _notifyBoardReadyIfNeeded();
   final List<Color> _recentColors = <Color>[];
@@ -290,7 +291,11 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   double _sai2ToolSectionRatio = AppPreferences.defaultSai2ToolPanelSplit;
   double _sai2LayerPanelWidthRatio = AppPreferences.defaultSai2LayerPanelSplit;
 
-  Future<bool> insertImageLayerFromBytes(Uint8List bytes, {String? name});
+  Future<bool> insertImageLayerFromBytes(
+    Uint8List bytes, {
+    String? name,
+    int? svgRasterSizePx,
+  });
 
   bool get _includeHistoryOnToolbar => false;
 
@@ -414,8 +419,9 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     if (!_backend.isReady) {
       return false;
     }
-    final _LayerPixels? sourceLayer =
-        _backend.readLayerPixelsFromBackend(layer.id);
+    final _LayerPixels? sourceLayer = _backend.readLayerPixelsFromBackend(
+      layer.id,
+    );
     if (sourceLayer == null) {
       return false;
     }
@@ -594,7 +600,8 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
       _SyntheticStrokeSample sample,
       double timestamp,
       double deltaTime,
-    ) onSample,
+    )
+    onSample,
   }) {
     if (samples.isEmpty) {
       return;
@@ -1033,7 +1040,8 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     }
     final SchedulerPhase phase = SchedulerBinding.instance.schedulerPhase;
     final bool safeToUpdateNow =
-        phase == SchedulerPhase.idle || phase == SchedulerPhase.postFrameCallbacks;
+        phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks;
     if (safeToUpdateNow) {
       _viewInfoNotifier.value = next;
       _pendingViewInfo = null;
@@ -1094,8 +1102,8 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
       final String prevSizeText = prevSize == null
           ? 'null'
           : '${prevSize.width.round()}x${prevSize.height.round()}';
-      debugPrint(
-        'paintingBoard: backend engine info surfaceKey=${widget.surfaceKey} '
+      BackendCanvasLog.info(
+        'engine info surfaceKey=${widget.surfaceKey} '
         'handle=$handle prevHandle=$prevHandle '
         'size=$sizeText prevSize=$prevSizeText newEngine=$isNewEngine',
       );
@@ -1103,12 +1111,13 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
           defaultTargetPlatform == TargetPlatform.iOS &&
           handle != null) {
         final bool valid = CanvasBackendFacade.instance.isHandleValid(handle);
-        debugPrint('paintingBoard: backend engine handle valid=$valid');
+        BackendCanvasLog.info('engine handle valid=$valid');
       }
     }
     if (engineReset) {
       _backendCanvasSyncedLayerCount = 0;
       _backendPixelsSyncedHandle = null;
+      _backendPixelsSyncInFlight = false;
       _purgeBackendHistoryActions();
       _backendLayerSnapshotDirty = false;
       if (_backendLayerSnapshots.isNotEmpty) {
@@ -1181,10 +1190,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
       }
       _backendVectorPreviewHiddenLayerId = layerId;
       _backendVectorPreviewHiddenLayerVisible = layer.visible;
-      _backend.setBackendLayerVisibleByIndex(
-        layerIndex: index,
-        visible: false,
-      );
+      _backend.setBackendLayerVisibleByIndex(layerIndex: index, visible: false);
     });
   }
 
@@ -1280,7 +1286,9 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
         continue;
       }
       await Future.delayed(const Duration(milliseconds: 16));
-      final List<String> pending = _backendLayerPreviewPending.toList(growable: false);
+      final List<String> pending = _backendLayerPreviewPending.toList(
+        growable: false,
+      );
       _backendLayerPreviewPending.clear();
       for (final String layerId in pending) {
         _bumpBackendLayerPreviewRevision(layerId);
@@ -1449,23 +1457,80 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     if (_backendPixelsSyncedHandle == handle) {
       return;
     }
-    debugPrint(
-      'paintingBoard: sync backend pixels start surfaceKey=${widget.surfaceKey} '
+    if (_backendPixelsSyncInFlight) {
+      return;
+    }
+    _backendPixelsSyncInFlight = true;
+    BackendCanvasLog.info(
+      'sync backend pixels start surfaceKey=${widget.surfaceKey} '
       'handle=$handle prevSynced=$_backendPixelsSyncedHandle '
       'layers=${_controller.layers.length}',
     );
-    if (_syncAllLayerPixelsToBackend()) {
-      _backendPixelsSyncedHandle = handle;
-      debugPrint(
-        'paintingBoard: sync backend pixels ok surfaceKey=${widget.surfaceKey} '
-        'handle=$handle',
-      );
-    } else {
-      debugPrint(
-        'paintingBoard: sync backend pixels failed surfaceKey=${widget.surfaceKey} '
-        'handle=$handle',
-      );
+    Future<void>(() async {
+      final bool ok = await _syncAllLayerPixelsToBackendAsync();
+      if (!mounted) {
+        return;
+      }
+      _backendPixelsSyncInFlight = false;
+      if (ok && _backendCanvasEngineHandle == handle) {
+        _backendPixelsSyncedHandle = handle;
+        BackendCanvasLog.info(
+          'sync backend pixels ok surfaceKey=${widget.surfaceKey} '
+          'handle=$handle',
+        );
+      } else {
+        BackendCanvasLog.warn(
+          'sync backend pixels failed surfaceKey=${widget.surfaceKey} '
+          'handle=$handle',
+        );
+      }
+    });
+  }
+
+  Future<bool> _syncAllLayerPixelsToBackendAsync({
+    bool recordUndo = false,
+  }) async {
+    if (!_backend.isReady) {
+      return false;
     }
+    final Size engineSize = _backendCanvasEngineSize ?? _canvasSize;
+    final int width = engineSize.width.round();
+    final int height = engineSize.height.round();
+    if (width <= 0 || height <= 0) {
+      return false;
+    }
+    final List<CanvasLayerInfo> layers = _controller.layers;
+    bool allOk = true;
+    for (int i = 0; i < layers.length; i++) {
+      if (!mounted) {
+        return false;
+      }
+      final CanvasLayerInfo layer = layers[i];
+      final Size? surfaceSize = _controller.readLayerSurfaceSize(layer.id);
+      if (surfaceSize == null ||
+          surfaceSize.width.round() != width ||
+          surfaceSize.height.round() != height) {
+        allOk = false;
+        continue;
+      }
+      final Uint32List? pixels = _controller.readLayerPixels(layer.id);
+      if (pixels == null || pixels.length != width * height) {
+        allOk = false;
+        continue;
+      }
+      final bool queued = _backend.queueLayerPixelsToBackend(
+        layerId: layer.id,
+        pixels: pixels,
+        recordUndo: recordUndo,
+      );
+      if (!queued) {
+        allOk = false;
+        continue;
+      }
+      _bumpBackendLayerPreviewRevision(layer.id);
+      await Future<void>.delayed(Duration.zero);
+    }
+    return allOk;
   }
 
   Future<void> _captureBackendLayerSnapshotIfNeeded() async {
@@ -1486,8 +1551,9 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     final Map<String, Uint32List> next = <String, Uint32List>{};
     final List<CanvasLayerInfo> layers = _controller.layers;
     for (int i = 0; i < layers.length; i++) {
-      final _LayerPixels? layerPixels =
-          _backend.readLayerPixelsFromBackend(layers[i].id);
+      final _LayerPixels? layerPixels = _backend.readLayerPixelsFromBackend(
+        layers[i].id,
+      );
       if (layerPixels == null) {
         allOk = false;
         continue;
@@ -1530,7 +1596,8 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     final Size engineSize = _backendCanvasEngineSize ?? _canvasSize;
     final int width = engineSize.width.round();
     final int height = engineSize.height.round();
-    if (width != _backendLayerSnapshotWidth || height != _backendLayerSnapshotHeight) {
+    if (width != _backendLayerSnapshotWidth ||
+        height != _backendLayerSnapshotHeight) {
       _backendLayerSnapshots.clear();
       _backendLayerSnapshotPendingRestore = false;
       _backendLayerSnapshotDirty = false;
@@ -1604,14 +1671,8 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
       );
     }
     for (int i = currentCount; i < _backendCanvasSyncedLayerCount; i++) {
-      _backend.setBackendLayerVisibleByIndex(
-        layerIndex: i,
-        visible: false,
-      );
-      _backend.setBackendLayerOpacityByIndex(
-        layerIndex: i,
-        opacity: 1.0,
-      );
+      _backend.setBackendLayerVisibleByIndex(layerIndex: i, visible: false);
+      _backend.setBackendLayerOpacityByIndex(layerIndex: i, opacity: 1.0);
       _backend.setBackendLayerClippingByIndex(
         layerIndex: i,
         clippingMask: false,
@@ -1625,8 +1686,9 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     _backendCanvasSyncedLayerCount = currentCount;
 
     final String? activeLayerId = _controller.activeLayerId;
-    int? activeIndex =
-        activeLayerId != null ? _backendCanvasLayerIndexForId(activeLayerId) : null;
+    int? activeIndex = activeLayerId != null
+        ? _backendCanvasLayerIndexForId(activeLayerId)
+        : null;
     if (activeIndex == null && layers.isNotEmpty) {
       activeIndex = layers.length - 1;
       final String fallbackLayerId = layers[activeIndex].id;
@@ -1779,8 +1841,9 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
   CanvasBackendCapabilities get capabilities => CanvasBackendCapabilities(
     isSupported: _backendSupported,
     isReady: _backendReady,
-    supportedFilters:
-        _backendSupported ? _backendFilters : const <CanvasFilterType>{},
+    supportedFilters: _backendSupported
+        ? _backendFilters
+        : const <CanvasFilterType>{},
     supportsLayerTransformPreview: _backendSupported,
     supportsLayerTranslate: _backendSupported,
     supportsAntialias: _backendSupported,
@@ -1820,30 +1883,18 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
           skipIfUnavailable: false,
           warnIfFailed: warnIfFailed,
         );
-        return _CanvasRasterEditSession._(
-          this,
-          useBackend: false,
-          ok: false,
-        );
+        return _CanvasRasterEditSession._(this, useBackend: false, ok: false);
       }
       if (captureUndoOnFallback) {
         await _owner._pushUndoSnapshot();
       }
-      return _CanvasRasterEditSession._(
-        this,
-        useBackend: false,
-        ok: true,
-      );
+      return _CanvasRasterEditSession._(this, useBackend: false, ok: true);
     }
     final bool ok = await syncActiveLayerFromBackend(
       warnIfFailed: warnIfFailed,
       skipIfUnavailable: false,
     );
-    return _CanvasRasterEditSession._(
-      this,
-      useBackend: true,
-      ok: ok,
-    );
+    return _CanvasRasterEditSession._(this, useBackend: true, ok: ok);
   }
 
   Future<bool> syncActiveLayerFromBackend({
@@ -2138,10 +2189,7 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
     return true;
   }
 
-  bool applyAntialiasByIndex({
-    required int layerIndex,
-    required int level,
-  }) {
+  bool applyAntialiasByIndex({required int layerIndex, required int level}) {
     if (!_backendReady) {
       return false;
     }
@@ -2152,10 +2200,7 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
     );
   }
 
-  bool applyAntialiasById({
-    required String layerId,
-    required int level,
-  }) {
+  bool applyAntialiasById({required String layerId, required int level}) {
     if (!_backendReady) {
       return false;
     }
@@ -2182,10 +2227,7 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
     return true;
   }
 
-  bool pushPointsPacked({
-    required Uint8List bytes,
-    required int pointCount,
-  }) {
+  bool pushPointsPacked({required Uint8List bytes, required int pointCount}) {
     if (!_backendReady) {
       return false;
     }
@@ -2300,7 +2342,8 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       }
       return false;
     }
-    final Size engineSize = _owner._backendCanvasEngineSize ?? _owner._canvasSize;
+    final Size engineSize =
+        _owner._backendCanvasEngineSize ?? _owner._canvasSize;
     final int engineWidth = engineSize.width.round();
     final int engineHeight = engineSize.height.round();
     if (engineWidth <= 0 || engineHeight <= 0) {
@@ -2327,11 +2370,8 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       }
       return false;
     }
-    final Uint8List? selectionMaskForBackend =
-        _owner._resolveSelectionMaskForBackend(
-      engineWidth,
-      engineHeight,
-    );
+    final Uint8List? selectionMaskForBackend = _owner
+        ._resolveSelectionMaskForBackend(engineWidth, engineHeight);
     final Uint32List? swallowColorsArgb =
         swallowColors != null && swallowColors.isNotEmpty
         ? Uint32List.fromList(
@@ -2381,7 +2421,8 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
     if (layerIndex == null) {
       return null;
     }
-    final Size engineSize = _owner._backendCanvasEngineSize ?? _owner._canvasSize;
+    final Size engineSize =
+        _owner._backendCanvasEngineSize ?? _owner._canvasSize;
     final int width = engineSize.width.round();
     final int height = engineSize.height.round();
     if (width <= 0 || height <= 0) {
@@ -2433,6 +2474,27 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       _owner._markDirty();
     }
     return true;
+  }
+
+  bool queueLayerPixelsToBackend({
+    required String layerId,
+    required Uint32List pixels,
+    bool recordUndo = false,
+  }) {
+    if (!_backendReady) {
+      return false;
+    }
+    final int handle = _owner._backendCanvasEngineHandle!;
+    final int? layerIndex = _owner._backendCanvasLayerIndexForId(layerId);
+    if (layerIndex == null) {
+      return false;
+    }
+    return _ffi.writeLayerAsync(
+      handle: handle,
+      layerIndex: layerIndex,
+      pixels: pixels,
+      recordUndo: recordUndo,
+    );
   }
 
   bool setBackendLayerVisible({
@@ -2693,7 +2755,8 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
     if (layerIndex == null) {
       return null;
     }
-    final Size engineSize = _owner._backendCanvasEngineSize ?? _owner._canvasSize;
+    final Size engineSize =
+        _owner._backendCanvasEngineSize ?? _owner._canvasSize;
     final int width = engineSize.width.round();
     final int height = engineSize.height.round();
     if (width <= 0 || height <= 0) {
@@ -2744,7 +2807,8 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
     if (layerIndex == null) {
       return null;
     }
-    final Size engineSize = _owner._backendCanvasEngineSize ?? _owner._canvasSize;
+    final Size engineSize =
+        _owner._backendCanvasEngineSize ?? _owner._canvasSize;
     final int engineWidth = engineSize.width.round();
     final int engineHeight = engineSize.height.round();
     if (engineWidth <= 0 || engineHeight <= 0) {
@@ -2760,11 +2824,8 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       return null;
     }
     final int maskLength = engineWidth * engineHeight;
-    final Uint8List? selectionMaskForBackend =
-        _owner._resolveSelectionMaskForBackend(
-      engineWidth,
-      engineHeight,
-    );
+    final Uint8List? selectionMaskForBackend = _owner
+        ._resolveSelectionMaskForBackend(engineWidth, engineHeight);
     final Uint8List? mask = _ffi.magicWandMask(
       handle: handle,
       layerIndex: layerIndex,
@@ -2800,7 +2861,8 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       return;
     }
     final int handle = _owner._backendCanvasEngineHandle!;
-    final Size engineSize = _owner._backendCanvasEngineSize ?? _owner._canvasSize;
+    final Size engineSize =
+        _owner._backendCanvasEngineSize ?? _owner._canvasSize;
     final int width = engineSize.width.round();
     final int height = engineSize.height.round();
     if (width <= 0 || height <= 0) {
@@ -2811,10 +2873,7 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       width,
       height,
     );
-    _ffi.setSelectionMask(
-      handle: handle,
-      selectionMask: selectionMask,
-    );
+    _ffi.setSelectionMask(handle: handle, selectionMask: selectionMask);
   }
 
   Uint8List _scaleSelectionMask(

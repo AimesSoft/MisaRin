@@ -44,6 +44,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/key.properties
+/android/keystore.jks
+/android/app/keystore.jks
 /.dart-tool
 /.dartServer
 /windows/flutter/ephemeral
@@ -55,3 +58,4 @@ app.*.map.json
 /.sandbox_home
 /rust/target
 /linux/flutter/ephemeral/.plugin_symlinks
+*.jks

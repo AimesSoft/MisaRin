@@ -5,7 +5,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
-import 'package:flutter/widgets.dart' show StatefulElement, State, StatefulWidget;
+import 'package:flutter/widgets.dart'
+    show StatefulElement, State, StatefulWidget;
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:misa_rin/canvas/canvas_engine_bridge.dart';
@@ -16,11 +17,13 @@ import '../../mobile/mobile_bottom_sheet.dart';
 import '../../mobile/mobile_utils.dart';
 import '../dialogs/canvas_settings_dialog.dart';
 import '../dialogs/settings_dialog.dart';
+import '../dialogs/svg_rasterize_size_dialog.dart';
 import '../l10n/l10n.dart';
 import '../preferences/app_preferences.dart';
 import '../project/project_document.dart';
 import '../project/project_repository.dart';
 import '../utils/clipboard_image_reader.dart';
+import '../utils/svg_rasterizer.dart';
 import '../view/canvas_page.dart';
 import '../widgets/app_notification.dart';
 import '../widgets/backend_canvas_surface.dart';
@@ -216,10 +219,7 @@ class AppMenuActions {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      l10n.imageSourceDesc,
-                      style: theme.typography.caption,
-                    ),
+                    Text(l10n.imageSourceDesc, style: theme.typography.caption),
                   ],
                 ),
               ),
@@ -230,13 +230,13 @@ class AppMenuActions {
                   children: [
                     ListTile(
                       title: Text(l10n.exportDestinationPhotos),
-                      onPressed: () => Navigator.of(context)
-                          .pop(_ImageSourceChoice.photos),
+                      onPressed: () =>
+                          Navigator.of(context).pop(_ImageSourceChoice.photos),
                     ),
                     ListTile(
                       title: Text(l10n.exportDestinationFiles),
-                      onPressed: () => Navigator.of(context)
-                          .pop(_ImageSourceChoice.files),
+                      onPressed: () =>
+                          Navigator.of(context).pop(_ImageSourceChoice.files),
                     ),
                     const Divider(),
                     ListTile(
@@ -288,8 +288,9 @@ class AppMenuActions {
     if (file == null || !context.mounted) {
       return null;
     }
-    final String name =
-        file.name.isNotEmpty ? file.name : p.basename(file.path);
+    final String name = file.name.isNotEmpty
+        ? file.name
+        : p.basename(file.path);
     return (path: file.path, name: name);
   }
 
@@ -297,7 +298,9 @@ class AppMenuActions {
     final l10n = context.l10n;
     _ImageSourceChoice source = _ImageSourceChoice.files;
     if (_shouldPromptImageSource()) {
-      final _ImageSourceChoice? selected = await _showImageSourceDialog(context);
+      final _ImageSourceChoice? selected = await _showImageSourceDialog(
+        context,
+      );
       if (selected == null || !context.mounted) {
         return;
       }
@@ -305,10 +308,21 @@ class AppMenuActions {
     }
 
     if (source == _ImageSourceChoice.photos) {
-      final ({String path, String name})? picked =
-          await _pickImageFromGallery(context);
+      final ({String path, String name})? picked = await _pickImageFromGallery(
+        context,
+      );
       if (picked == null || !context.mounted) {
         return;
+      }
+      int? svgRasterSizePx;
+      if (hasSvgExtension(p.extension(picked.name))) {
+        svgRasterSizePx = await showSvgRasterizeSizeDialog(
+          context,
+          fileName: picked.name,
+        );
+        if (svgRasterSizePx == null || !context.mounted) {
+          return;
+        }
       }
       try {
         final ProjectDocument document =
@@ -321,6 +335,7 @@ class AppMenuActions {
                 return ProjectRepository.instance.createDocumentFromImage(
                   picked.path,
                   name: name,
+                  svgRasterSizePx: svgRasterSizePx,
                 );
               },
             );
@@ -360,6 +375,7 @@ class AppMenuActions {
         'jpg',
         'jpeg',
         'webp',
+        'svg',
         'avif',
       ],
       withData: kIsWeb,
@@ -373,6 +389,17 @@ class AppMenuActions {
     if (path == null && bytes == null) {
       return;
     }
+    final String extension = p.extension(file.name).toLowerCase();
+    int? svgRasterSizePx;
+    if (hasSvgExtension(extension)) {
+      svgRasterSizePx = await showSvgRasterizeSizeDialog(
+        context,
+        fileName: file.name,
+      );
+      if (svgRasterSizePx == null || !context.mounted) {
+        return;
+      }
+    }
     try {
       final ProjectDocument document =
           await _runWithWebProgress<ProjectDocument>(
@@ -380,7 +407,6 @@ class AppMenuActions {
             title: l10n.openingProjectTitle,
             message: l10n.openingProjectMessage(file.name),
             action: () async {
-              final String extension = p.extension(file.name).toLowerCase();
               if (extension == '.psd') {
                 if (path != null && !kIsWeb) {
                   return ProjectRepository.instance.importPsd(path);
@@ -407,19 +433,23 @@ class AppMenuActions {
                   extension == '.jpg' ||
                   extension == '.jpeg' ||
                   extension == '.webp' ||
+                  extension == '.svg' ||
                   extension == '.avif') {
                 final String name = p.basenameWithoutExtension(file.name);
                 if (path != null && !kIsWeb) {
                   return ProjectRepository.instance.createDocumentFromImage(
                     path,
                     name: name,
+                    svgRasterSizePx: svgRasterSizePx,
                   );
                 }
                 if (bytes != null) {
-                  return ProjectRepository.instance.createDocumentFromImageBytes(
-                    bytes,
-                    name: name,
-                  );
+                  return ProjectRepository.instance
+                      .createDocumentFromImageBytes(
+                        bytes,
+                        name: name,
+                        svgRasterSizePx: svgRasterSizePx,
+                      );
                 }
                 throw Exception(l10n.cannotReadProjectFileContent);
               }
@@ -468,7 +498,9 @@ class AppMenuActions {
     final l10n = context.l10n;
     _ImageSourceChoice source = _ImageSourceChoice.files;
     if (_shouldPromptImageSource()) {
-      final _ImageSourceChoice? selected = await _showImageSourceDialog(context);
+      final _ImageSourceChoice? selected = await _showImageSourceDialog(
+        context,
+      );
       if (selected == null || !context.mounted) {
         return;
       }
@@ -476,14 +508,29 @@ class AppMenuActions {
     }
 
     if (source == _ImageSourceChoice.photos) {
-      final ({String path, String name})? picked =
-          await _pickImageFromGallery(context);
+      final ({String path, String name})? picked = await _pickImageFromGallery(
+        context,
+      );
       if (picked == null || !context.mounted) {
         return;
       }
+      int? svgRasterSizePx;
+      if (hasSvgExtension(p.extension(picked.name))) {
+        svgRasterSizePx = await showSvgRasterizeSizeDialog(
+          context,
+          fileName: picked.name,
+        );
+        if (svgRasterSizePx == null || !context.mounted) {
+          return;
+        }
+      }
       try {
         final ProjectDocument document = await ProjectRepository.instance
-            .createDocumentFromImage(picked.path, name: picked.name);
+            .createDocumentFromImage(
+              picked.path,
+              name: picked.name,
+              svgRasterSizePx: svgRasterSizePx,
+            );
         if (!context.mounted) {
           return;
         }
@@ -512,16 +559,49 @@ class AppMenuActions {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       dialogTitle: l10n.importImageDialogTitle,
       type: FileType.custom,
-      allowedExtensions: const ['png', 'jpg', 'jpeg', 'bmp', 'gif'],
+      allowedExtensions: const [
+        'png',
+        'jpg',
+        'jpeg',
+        'bmp',
+        'gif',
+        'webp',
+        'svg',
+      ],
+      withData: kIsWeb,
     );
     final PlatformFile? file = result?.files.singleOrNull;
-    final String? path = file?.path;
-    if (path == null || !context.mounted) {
+    if (file == null || !context.mounted) {
+      return;
+    }
+    final String extension = p.extension(file.name).toLowerCase();
+    int? svgRasterSizePx;
+    if (hasSvgExtension(extension)) {
+      svgRasterSizePx = await showSvgRasterizeSizeDialog(
+        context,
+        fileName: file.name,
+      );
+      if (svgRasterSizePx == null || !context.mounted) {
+        return;
+      }
+    }
+    final String? path = kIsWeb ? null : file.path;
+    final Uint8List? bytes = file.bytes;
+    if (path == null && bytes == null) {
       return;
     }
     try {
-      final ProjectDocument document = await ProjectRepository.instance
-          .createDocumentFromImage(path, name: file!.name);
+      final ProjectDocument document = path != null && !kIsWeb
+          ? await ProjectRepository.instance.createDocumentFromImage(
+              path,
+              name: file.name,
+              svgRasterSizePx: svgRasterSizePx,
+            )
+          : await ProjectRepository.instance.createDocumentFromImageBytes(
+              bytes!,
+              name: file.name,
+              svgRasterSizePx: svgRasterSizePx,
+            );
       if (!context.mounted) {
         return;
       }
@@ -614,8 +694,8 @@ class AppMenuActions {
       loadingOverlay = _showWebCanvasLoadingOverlay(context);
     }
     final CanvasPageState? canvasState = () {
-      final CanvasPageState? ancestor =
-          context.findAncestorStateOfType<CanvasPageState>();
+      final CanvasPageState? ancestor = context
+          .findAncestorStateOfType<CanvasPageState>();
       if (ancestor != null) {
         return ancestor;
       }

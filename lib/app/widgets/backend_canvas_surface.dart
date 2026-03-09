@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:misa_rin/canvas/canvas_engine_bridge.dart';
 
+import '../debug/backend_canvas_log.dart';
 import '../debug/backend_canvas_timeline.dart';
 import '../../canvas/canvas_tools.dart';
 import '../../painting/stroke_stabilizer_curve.dart';
@@ -17,15 +19,19 @@ const MethodChannel _backendCanvasChannel = MethodChannel(
   'misarin/rust_canvas_texture',
 );
 
+const String _kDebugBackendCanvasInputEnv = String.fromEnvironment(
+  'MISA_RIN_DEBUG_BACKEND_CANVAS_INPUT',
+  defaultValue: '',
+);
+const String _kDebugRustCanvasInputEnv = String.fromEnvironment(
+  'MISA_RIN_DEBUG_RUST_CANVAS_INPUT',
+  defaultValue: '',
+);
 final bool _kDebugBackendCanvasInput =
-    bool.fromEnvironment(
-      'MISA_RIN_DEBUG_BACKEND_CANVAS_INPUT',
-      defaultValue: false,
-    ) ||
-    bool.fromEnvironment(
-      'MISA_RIN_DEBUG_RUST_CANVAS_INPUT',
-      defaultValue: false,
-    );
+    _kDebugBackendCanvasInputEnv == '1' ||
+    _kDebugBackendCanvasInputEnv == 'true' ||
+    _kDebugRustCanvasInputEnv == '1' ||
+    _kDebugRustCanvasInputEnv == 'true';
 
 String _surfaceIdForKey(String surfaceKey) {
   final String normalized = surfaceKey.trim();
@@ -416,6 +422,20 @@ class BackendCanvasSurface extends StatefulWidget {
 
 class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
   static Future<void>? _prewarmFuture;
+  static bool _debugFlagSent = false;
+
+  static Future<void> _ensureBackendDebugFlag() async {
+    if (_debugFlagSent || !BackendCanvasLog.enabled) {
+      return;
+    }
+    _debugFlagSent = true;
+    try {
+      await _backendCanvasChannel.invokeMethod<void>(
+        'setDebug',
+        <String, Object?>{'enabled': true},
+      );
+    } catch (_) {}
+  }
 
   int? _textureId;
   int? _engineHandle;
@@ -431,13 +451,15 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
   int? _lastNotifiedEngineHandle;
   Size? _lastNotifiedEngineSize;
   int? _lastNotifiedTextureId;
+  int? _lastRequestedPresentHandle;
 
   @override
   void initState() {
     super.initState();
     _surfaceId = _surfaceIdForKey(widget.surfaceKey);
-    debugPrint(
-      'backendSurface: initState surface=$_surfaceId key=${widget.surfaceKey} '
+    unawaited(_ensureBackendDebugFlag());
+    BackendCanvasLog.info(
+      'initState surface=$_surfaceId key=${widget.surfaceKey} '
       'size=${widget.canvasSize.width.round()}x${widget.canvasSize.height.round()} '
       'layers=${widget.layerCount}',
     );
@@ -454,16 +476,16 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
   void didUpdateWidget(covariant BackendCanvasSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.canvasSize != widget.canvasSize) {
-      debugPrint(
-        'backendSurface: size changed surface=$_surfaceId '
+      BackendCanvasLog.info(
+        'size changed surface=$_surfaceId '
         'old=${oldWidget.canvasSize.width.round()}x${oldWidget.canvasSize.height.round()} '
         'new=${widget.canvasSize.width.round()}x${widget.canvasSize.height.round()}',
       );
       unawaited(_loadTextureInfo());
     }
     if (oldWidget.layerCount != widget.layerCount) {
-      debugPrint(
-        'backendSurface: layerCount changed surface=$_surfaceId '
+      BackendCanvasLog.info(
+        'layerCount changed surface=$_surfaceId '
         'old=${oldWidget.layerCount} new=${widget.layerCount}',
       );
     }
@@ -532,6 +554,10 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
   }
 
   static Future<void> _doPrewarm() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      BackendCanvasTimeline.mark('backendSurface: prewarm skipped on Android');
+      return;
+    }
     try {
       BackendCanvasTimeline.mark('backendSurface: prewarm start');
       const String warmSurfaceId = 'backend_canvas_prewarm';
@@ -564,8 +590,8 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
       final int? prevTextureId = _textureId;
       final int? prevHandle = _engineHandle;
       final Size? prevEngineSize = _engineSize;
-      debugPrint(
-        'backendSurface: request req=$requestId size=${width}x$height '
+      BackendCanvasLog.info(
+        'request req=$requestId size=${width}x$height '
         'layers=${widget.layerCount} id=$_surfaceId '
         'prevTexture=$prevTextureId prevHandle=$prevHandle '
         'prevEngine=${prevEngineSize?.width.round()}x${prevEngineSize?.height.round()}',
@@ -584,18 +610,26 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
       final int? engineHeight = info.engineHeight;
       final bool backgroundNeedsUpdate =
           info.backgroundColorArgb != widget.backgroundColorArgb;
+      if (engineWidth != null &&
+          engineHeight != null &&
+          (engineWidth != width || engineHeight != height)) {
+        BackendCanvasLog.warn(
+          'engine size mismatch req=${width}x$height '
+          'got=${engineWidth}x${engineHeight} surface=$_surfaceId',
+        );
+      }
       if (!mounted) {
-        debugPrint(
-          'backendSurface: request abandoned req=$requestId surface=$_surfaceId '
-          'mounted=false',
+        BackendCanvasLog.warn(
+          'request abandoned req=$requestId surface=$_surfaceId mounted=false',
         );
         return;
       }
       if (_activeRequest != requestId) {
-        debugPrint(
-          'backendSurface: stale response req=$requestId surface=$_surfaceId '
+        BackendCanvasLog.warn(
+          'stale response req=$requestId surface=$_surfaceId '
           'active=$_activeRequest',
         );
+        return;
       }
       setState(() {
         _textureId = textureId;
@@ -610,8 +644,8 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
       final bool textureChanged = prevTextureId != textureId;
       final bool handleChanged = prevHandle != engineHandle;
       final Size? nextSize = _engineSize;
-      debugPrint(
-        'backendSurface: response req=$requestId surface=$_surfaceId '
+      BackendCanvasLog.info(
+        'response req=$requestId surface=$_surfaceId '
         'textureId=$textureId handle=$engineHandle '
         'engine=${engineWidth}x${engineHeight} '
         'newEngine=${info.isNewEngine} warmup=${info.fromWarmup} '
@@ -619,8 +653,8 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
         'prevEngine=${prevEngineSize?.width.round()}x${prevEngineSize?.height.round()} '
         'nextEngine=${nextSize?.width.round()}x${nextSize?.height.round()}',
       );
-      debugPrint(
-        'backendSurface: ready textureId=$textureId handle=$engineHandle '
+      BackendCanvasLog.info(
+        'ready textureId=$textureId handle=$engineHandle '
         'engine=${engineWidth}x${engineHeight} '
         'newEngine=${info.isNewEngine} id=$_surfaceId',
       );
@@ -634,18 +668,30 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
 
       final int? handle = _engineHandle;
       if (handle != null) {
+        final bool valid = CanvasBackendFacade.instance.isHandleValid(handle);
+        BackendCanvasLog.info('engine handle valid=$valid handle=$handle');
         _applyBrushSettings(handle);
         if (backgroundNeedsUpdate) {
           _applyBackground(handle);
         }
+        if (_lastRequestedPresentHandle != handle) {
+          CanvasBackendFacade.instance.requestPresent(handle: handle);
+          _lastRequestedPresentHandle = handle;
+          BackendCanvasLog.info('requestPresent handle=$handle');
+        }
+      } else {
+        BackendCanvasLog.warn(
+          'engine handle is null after response surface=$_surfaceId '
+          'textureId=$textureId',
+        );
       }
       _notifyEngineInfoChanged(isNewEngine: info.isNewEngine);
     } catch (error) {
       if (!mounted) {
         return;
       }
-      debugPrint(
-        'backendSurface: request failed surface=$_surfaceId error=$error',
+      BackendCanvasLog.warn(
+        'request failed surface=$_surfaceId error=$error',
       );
       setState(() {
         _textureId = null;
@@ -678,8 +724,8 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
 
   @override
   void dispose() {
-    debugPrint(
-      'backendSurface: dispose surface=$_surfaceId '
+    BackendCanvasLog.info(
+      'dispose surface=$_surfaceId '
       'textureId=$_textureId handle=$_engineHandle '
       'engine=${_engineSize?.width.round()}x${_engineSize?.height.round()}',
     );
@@ -693,21 +739,25 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
 
   Future<void> _disposeSurface() async {
     try {
-      debugPrint(
-        'backendSurface: disposeTexture surface=$_surfaceId '
+      BackendCanvasLog.info(
+        'disposeTexture surface=$_surfaceId '
         'textureId=$_textureId handle=$_engineHandle',
       );
       await _backendCanvasChannel.invokeMethod<void>('disposeTexture', <String, Object?>{
         'surfaceId': _surfaceId,
       });
-      debugPrint('backendSurface: disposeTexture done surface=$_surfaceId');
+      BackendCanvasLog.info('disposeTexture done surface=$_surfaceId');
     } catch (_) {}
   }
 
   void _applyBackground(int handle) {
     if (!CanvasBackendFacade.instance.isSupported) {
+      BackendCanvasLog.warn('applyBackground skipped: backend not supported');
       return;
     }
+    BackendCanvasLog.info(
+      'applyBackground handle=$handle color=0x${widget.backgroundColorArgb.toRadixString(16)}',
+    );
     // Background is represented by layer 0 in the backend compositor.
     CanvasBackendFacade.instance.fillLayer(
       handle: handle,
