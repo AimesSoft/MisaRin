@@ -1,11 +1,9 @@
 part of 'painting_board.dart';
 
-final bool _kDebugPointerInput =
-    kDebugMode ||
-    bool.fromEnvironment(
-      'MISA_RIN_DEBUG_POINTER_INPUT',
-      defaultValue: false,
-    );
+final bool _kDebugPointerInput = bool.fromEnvironment(
+  'MISA_RIN_DEBUG_POINTER_INPUT',
+  defaultValue: false,
+);
 
 int _pointerLogLastEpochMs = 0;
 int _pointerLogLastPointer = -1;

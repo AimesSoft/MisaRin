@@ -23,6 +23,8 @@ flutter:
   plugin:
     platforms:
       android:
+        package: com.flutter_rust_bridge.rust_lib_misa_rin
+        pluginClass: RustLibMisaRinPlugin
         ffiPlugin: true
       ios:
         pluginClass: RustLibMisaRinPlugin

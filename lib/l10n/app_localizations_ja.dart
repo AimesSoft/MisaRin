@@ -684,10 +684,36 @@ class AppLocalizationsJa extends AppLocalizations {
   String get exportTypeLabel => '書き出し形式';
 
   @override
+  String get exportTypeBitmap => 'ビットマップ';
+
+  @override
   String get exportTypePng => 'ビットマップ PNG';
 
   @override
   String get exportTypeSvg => 'ベクター SVG（実験的）';
+
+  @override
+  String get exportBitmapFormatLabel => 'ビットマップ形式';
+
+  @override
+  String get exportBitmapFormatPng => 'PNG';
+
+  @override
+  String get exportBitmapFormatWebp => 'WebP';
+
+  @override
+  String get webpCompressionLabel => 'WebP 圧縮';
+
+  @override
+  String get webpLossless => '可逆';
+
+  @override
+  String get webpLossy => '非可逆';
+
+  @override
+  String webpQualityLabel(Object value) {
+    return '画質: $value';
+  }
 
   @override
   String get exportScaleLabel => '書き出し倍率';

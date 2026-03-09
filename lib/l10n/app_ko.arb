@@ -291,8 +291,21 @@
   },
   "exportSettingsTitle": "내보내기 설정",
   "exportTypeLabel": "내보내기 유형",
+  "exportTypeBitmap": "비트맵",
   "exportTypePng": "비트맵 PNG",
   "exportTypeSvg": "벡터 SVG (실험적)",
+  "exportBitmapFormatLabel": "비트맵 형식",
+  "exportBitmapFormatPng": "PNG",
+  "exportBitmapFormatWebp": "WebP",
+  "webpCompressionLabel": "WebP 압축",
+  "webpLossless": "무손실",
+  "webpLossy": "손실",
+  "webpQualityLabel": "품질: {value}",
+  "@webpQualityLabel": {
+    "placeholders": {
+      "value": {}
+    }
+  },
   "exportScaleLabel": "내보내기 배율",
   "reset": "초기화",
   "exportOutputSize": "출력 크기: {width} x {height} px",

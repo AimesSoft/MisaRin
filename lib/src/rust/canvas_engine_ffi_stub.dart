@@ -20,6 +20,10 @@ class CanvasEngineFfi {
 
   int getInputQueueLen(int handle) => 0;
 
+  void setLogLevel(int level) {}
+
+  void requestPresent({required int handle}) {}
+
   String? popLogLine() => null;
 
   List<String> drainLogs({int maxLines = 200}) => const <String>[];
@@ -197,6 +201,15 @@ class CanvasEngineFfi {
   }
 
   bool writeLayer({
+    required int handle,
+    required int layerIndex,
+    required Uint32List pixels,
+    bool recordUndo = true,
+  }) {
+    return false;
+  }
+
+  bool writeLayerAsync({
     required int handle,
     required int layerIndex,
     required Uint32List pixels,

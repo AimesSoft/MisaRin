@@ -683,10 +683,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportTypeLabel => '导出类型';
 
   @override
+  String get exportTypeBitmap => '位图';
+
+  @override
   String get exportTypePng => '位图 PNG';
 
   @override
   String get exportTypeSvg => '矢量 SVG（实验）';
+
+  @override
+  String get exportBitmapFormatLabel => '位图格式';
+
+  @override
+  String get exportBitmapFormatPng => 'PNG';
+
+  @override
+  String get exportBitmapFormatWebp => 'WebP';
+
+  @override
+  String get webpCompressionLabel => 'WebP 压缩';
+
+  @override
+  String get webpLossless => '无损';
+
+  @override
+  String get webpLossy => '有损';
+
+  @override
+  String webpQualityLabel(Object value) {
+    return '质量：$value';
+  }
 
   @override
   String get exportScaleLabel => '导出倍率';
@@ -2872,6 +2898,32 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get colorTransparent => '透明';
 
   @override
+  String get exportTypeBitmap => '位图';
+
+  @override
+  String get exportBitmapFormatLabel => '位图格式';
+
+  @override
+  String get exportBitmapFormatPng => 'PNG';
+
+  @override
+  String get exportBitmapFormatWebp => 'WebP';
+
+  @override
+  String get webpCompressionLabel => 'WebP 压缩';
+
+  @override
+  String get webpLossless => '无损';
+
+  @override
+  String get webpLossy => '有损';
+
+  @override
+  String webpQualityLabel(Object value) {
+    return '质量：$value';
+  }
+
+  @override
   String get swapDimensions => '交换宽高';
 
   @override
@@ -3940,6 +3992,32 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get colorTransparent => '透明';
+
+  @override
+  String get exportTypeBitmap => '位圖';
+
+  @override
+  String get exportBitmapFormatLabel => '位圖格式';
+
+  @override
+  String get exportBitmapFormatPng => 'PNG';
+
+  @override
+  String get exportBitmapFormatWebp => 'WebP';
+
+  @override
+  String get webpCompressionLabel => 'WebP 壓縮';
+
+  @override
+  String get webpLossless => '無損';
+
+  @override
+  String get webpLossy => '有損';
+
+  @override
+  String webpQualityLabel(Object value) {
+    return '品質：$value';
+  }
 
   @override
   String get swapDimensions => '交換寬高';

@@ -7,6 +7,7 @@ import '../bitmap_canvas/bitmap_canvas.dart';
 import 'blend_mode_math.dart';
 import 'canvas_layer.dart';
 import 'canvas_settings.dart';
+import '../utils/webp_encoder.dart';
 
 class CanvasExporter {
   Future<Uint8List> exportToRgba({
@@ -40,6 +41,70 @@ class CanvasExporter {
   }
 
   Future<Uint8List> exportToPng({
+    required CanvasSettings settings,
+    required List<CanvasLayerData> layers,
+    int? maxDimension,
+    ui.Size? outputSize,
+    bool applyEdgeSoftening = false,
+    int edgeSofteningLevel = 2,
+  }) async {
+    final _RenderedImage rendered = await _renderCompositeImage(
+      settings: settings,
+      layers: layers,
+      maxDimension: maxDimension,
+      outputSize: outputSize,
+      applyEdgeSoftening: applyEdgeSoftening,
+      edgeSofteningLevel: edgeSofteningLevel,
+    );
+    final ByteData? byteData = await rendered.image.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+    rendered.image.dispose();
+    if (byteData == null) {
+      throw StateError('导出 PNG 时发生未知错误');
+    }
+    return byteData.buffer.asUint8List();
+  }
+
+  Future<Uint8List> exportToWebp({
+    required CanvasSettings settings,
+    required List<CanvasLayerData> layers,
+    int? maxDimension,
+    ui.Size? outputSize,
+    bool applyEdgeSoftening = false,
+    int edgeSofteningLevel = 2,
+    bool lossless = false,
+    int quality = 85,
+  }) async {
+    final _RenderedImage rendered = await _renderCompositeImage(
+      settings: settings,
+      layers: layers,
+      maxDimension: maxDimension,
+      outputSize: outputSize,
+      applyEdgeSoftening: applyEdgeSoftening,
+      edgeSofteningLevel: edgeSofteningLevel,
+    );
+    ByteData? byteData = await rendered.image.toByteData(
+      format: ui.ImageByteFormat.rawStraightRgba,
+    );
+    byteData ??= await rendered.image.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    );
+    rendered.image.dispose();
+    if (byteData == null) {
+      throw StateError('导出 WebP 时发生未知错误');
+    }
+    final Uint8List rgba = byteData.buffer.asUint8List();
+    return encodeWebpRgba(
+      rgba: rgba,
+      width: rendered.width,
+      height: rendered.height,
+      lossless: lossless,
+      quality: quality,
+    );
+  }
+
+  Future<_RenderedImage> _renderCompositeImage({
     required CanvasSettings settings,
     required List<CanvasLayerData> layers,
     int? maxDimension,
@@ -130,14 +195,11 @@ class CanvasExporter {
       image = scaled;
     }
 
-    final ByteData? byteData = await image.toByteData(
-      format: ui.ImageByteFormat.png,
+    return _RenderedImage(
+      image: image,
+      width: outputWidth,
+      height: outputHeight,
     );
-    image.dispose();
-    if (byteData == null) {
-      throw StateError('导出 PNG 时发生未知错误');
-    }
-    return byteData.buffer.asUint8List();
   }
 
   BitmapSurface _compositeLayers({
@@ -315,6 +377,18 @@ class CanvasExporter {
     buffer.write('</svg>');
     return Uint8List.fromList(utf8.encode(buffer.toString()));
   }
+}
+
+class _RenderedImage {
+  const _RenderedImage({
+    required this.image,
+    required this.width,
+    required this.height,
+  });
+
+  final ui.Image image;
+  final int width;
+  final int height;
 }
 
 class _PreparedLayer {

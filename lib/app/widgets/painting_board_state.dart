@@ -105,10 +105,10 @@ class PaintingBoardState extends _PaintingBoardBase
     _sprayStrokeSliderRange = prefs.sprayStrokeSliderRange;
     _eraserStrokeSliderRange = prefs.eraserStrokeSliderRange;
     _penStrokeWidth = _penStrokeSliderRange.clamp(prefs.penStrokeWidth);
-    _sprayStrokeWidth =
-        _sprayStrokeSliderRange.clamp(prefs.sprayStrokeWidth);
-    _eraserStrokeWidth =
-        _eraserStrokeSliderRange.clamp(prefs.eraserStrokeWidth);
+    _sprayStrokeWidth = _sprayStrokeSliderRange.clamp(prefs.sprayStrokeWidth);
+    _eraserStrokeWidth = _eraserStrokeSliderRange.clamp(
+      prefs.eraserStrokeWidth,
+    );
     _sprayMode = prefs.sprayMode;
     _strokeStabilizerStrength = prefs.strokeStabilizerStrength;
     _streamlineStrength = prefs.streamlineStrength;
@@ -142,8 +142,9 @@ class PaintingBoardState extends _PaintingBoardBase
     final List<CanvasLayerData> layers = _buildInitialLayers();
     final bool useBackendCanvas = _backend.isSupported;
     final bool enableRasterOutput = true;
-    final CanvasBackend rasterBackend =
-        CanvasBackendState.resolveRasterBackend(useBackendCanvas: useBackendCanvas);
+    final CanvasBackend rasterBackend = CanvasBackendState.resolveRasterBackend(
+      useBackendCanvas: useBackendCanvas,
+    );
     if (kDebugMode) {
       debugPrint(
         '[canvas-backend] pref=${AppPreferences.instance.canvasBackend} '
@@ -177,14 +178,17 @@ class PaintingBoardState extends _PaintingBoardBase
     _syncMenuAvailability();
     _notifyViewInfoChanged();
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-      _pencilDoubleTapSubscription =
-          TabletInputBridge.instance.pencilDoubleTapEvents.listen((_) {
+      _pencilDoubleTapSubscription = TabletInputBridge
+          .instance
+          .pencilDoubleTapEvents
+          .listen((_) {
             _handleApplePencilDoubleTap();
           });
     }
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-      _tabletHoverSubscription =
-          TabletInputBridge.instance.hoverEvents.listen(_handleTabletHover);
+      _tabletHoverSubscription = TabletInputBridge.instance.hoverEvents.listen(
+        _handleTabletHover,
+      );
     }
     BackendCanvasTimeline.mark(
       'paintingBoard: initState '
@@ -428,7 +432,8 @@ class PaintingBoardState extends _PaintingBoardBase
           backlog = 0.0;
         }
 
-        final int layerIndex = (elapsed.inMilliseconds ~/ 750) % editableLayers.length;
+        final int layerIndex =
+            (elapsed.inMilliseconds ~/ 750) % editableLayers.length;
         final String targetLayerId = editableLayers[layerIndex];
         if (_controller.activeLayerId != targetLayerId) {
           _controller.setActiveLayer(targetLayerId);
@@ -441,10 +446,12 @@ class PaintingBoardState extends _PaintingBoardBase
         final double perPointDt = dtSeconds / pointsThisFrame;
         for (int i = 0; i < pointsThisFrame; i++) {
           final double t = elapsedSeconds + (i * perPointDt);
-          double x = cx +
+          double x =
+              cx +
               ampX * math.sin(t * math.pi * 2.0 * 0.97) +
               ampX * 0.08 * math.sin(t * math.pi * 2.0 * 7.3);
-          double y = cy +
+          double y =
+              cy +
               ampY * math.sin(t * math.pi * 2.0 * 1.31 + 1.0) +
               ampY * 0.08 * math.sin(t * math.pi * 2.0 * 6.1);
           x = x.clamp(0.0, w);
@@ -512,6 +519,7 @@ class PaintingBoardState extends _PaintingBoardBase
   Future<bool> insertImageLayerFromBytes(
     Uint8List bytes, {
     String? name,
+    int? svgRasterSizePx,
   }) async {
     if (!isBoardReady) {
       return false;
@@ -524,7 +532,10 @@ class PaintingBoardState extends _PaintingBoardBase
       )) {
         return false;
       }
-      final _ImportedImageData decoded = await _decodeExternalImage(bytes);
+      final _ImportedImageData decoded = await _decodeExternalImage(
+        bytes,
+        svgRasterSizePx: svgRasterSizePx,
+      );
       final int canvasWidth = widget.settings.width.round();
       final int canvasHeight = widget.settings.height.round();
       final int offsetX = ((canvasWidth - decoded.width) / 2).floor();
@@ -564,14 +575,18 @@ class PaintingBoardState extends _PaintingBoardBase
     return trimmed;
   }
 
-  Future<_ImportedImageData> _decodeExternalImage(Uint8List bytes) async {
-    final ui.Codec codec = await ui.instantiateImageCodec(bytes);
-    final ui.FrameInfo frame = await codec.getNextFrame();
-    final ui.Image image = frame.image;
+  Future<_ImportedImageData> _decodeExternalImage(
+    Uint8List bytes, {
+    int? svgRasterSizePx,
+  }) async {
+    final DecodedUiImageFrame decodedFrame = await decodeBitmapOrSvgFrame(
+      bytes,
+      svgRasterSizePx: svgRasterSizePx,
+    );
+    final ui.Image image = decodedFrame.image;
     final ByteData? pixelData = await image.toByteData(
       format: ui.ImageByteFormat.rawRgba,
     );
-    codec.dispose();
     if (pixelData == null) {
       image.dispose();
       throw StateError('无法读取位图像素数据');
@@ -908,7 +923,8 @@ class PaintingBoardState extends _PaintingBoardBase
     );
     final int oldLayersSig = _layersSignature(oldWidget.initialLayers);
     final int newLayersSig = _layersSignature(widget.initialLayers);
-    final bool shouldRecreate = sizeChanged || backgroundChanged || logicChanged;
+    final bool shouldRecreate =
+        sizeChanged || backgroundChanged || logicChanged;
     if (shouldRecreate) {
       debugPrint(
         'paintingBoard: recreate controller surfaceKey=${widget.surfaceKey} '
@@ -933,7 +949,9 @@ class PaintingBoardState extends _PaintingBoardBase
       final bool useBackendCanvas = _backend.isSupported;
       final bool enableRasterOutput = !useBackendCanvas;
       final CanvasBackend rasterBackend =
-          CanvasBackendState.resolveRasterBackend(useBackendCanvas: useBackendCanvas);
+          CanvasBackendState.resolveRasterBackend(
+            useBackendCanvas: useBackendCanvas,
+          );
       _controller = createCanvasFacade(
         width: widget.settings.width.round(),
         height: widget.settings.height.round(),
@@ -988,7 +1006,8 @@ class PaintingBoardState extends _PaintingBoardBase
     }
     final SchedulerPhase phase = SchedulerBinding.instance.schedulerPhase;
     final bool safeToRequest =
-        phase == SchedulerPhase.idle || phase == SchedulerPhase.postFrameCallbacks;
+        phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks;
     if (safeToRequest) {
       _focusNode.requestFocus();
       return;
@@ -1230,8 +1249,7 @@ class PaintingBoardState extends _PaintingBoardBase
     if (library == null) {
       return;
     }
-    final String selectedId =
-        _activeBrushPreset?.id ?? library.selectedId;
+    final String selectedId = _activeBrushPreset?.id ?? library.selectedId;
     final String? nextId = await showBrushPresetPickerDialog(
       context,
       library: library,
@@ -1248,7 +1266,8 @@ class PaintingBoardState extends _PaintingBoardBase
     final bool presetChanged = _activeBrushPreset?.id != sanitized.id;
     final bool randomRotationChanged =
         _brushRandomRotationEnabled != sanitized.randomRotation;
-    final bool autoSharpChanged = _autoSharpPeakEnabled != sanitized.autoSharpTaper;
+    final bool autoSharpChanged =
+        _autoSharpPeakEnabled != sanitized.autoSharpTaper;
     final void Function() update = () {
       _activeBrushPreset = sanitized;
       _brushShape = sanitized.shape;
@@ -1340,7 +1359,6 @@ class PaintingBoardState extends _PaintingBoardBase
   bool zoomOut() {
     return _PaintingBoardInteractionPointerImpl(this).zoomOut();
   }
-
 }
 
 class _CanvasHistoryEntry {

@@ -7,6 +7,7 @@ use wgpu::{Device, Queue};
 
 use crate::gpu::debug::{self, LogLevel};
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::wgpu_utils;
 
 const BYTES_PER_PIXEL: u32 = 4;
 const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
@@ -87,27 +88,46 @@ impl LayerTextureManager {
             align_up(bytes_per_row_unpadded, COPY_BYTES_PER_ROW_ALIGNMENT)
                 .ok_or_else(|| "upload_layer: bytes_per_row padded overflow".to_string())?;
 
-        let data = pack_u32_rows_with_padding(pixels, width, height, bytes_per_row_padded)?;
+        #[cfg(target_os = "android")]
+        const MAX_CHUNK_BYTES: usize = 512 * 1024;
+        #[cfg(not(target_os = "android"))]
+        const MAX_CHUNK_BYTES: usize = 4 * 1024 * 1024;
 
-        self.queue.write_texture(
-            wgpu::ImageCopyTexture {
+        let row_texels = (bytes_per_row_padded / BYTES_PER_PIXEL) as usize;
+        let row_bytes = bytes_per_row_padded as usize;
+        let rows_per_chunk = (MAX_CHUNK_BYTES / row_bytes).max(1) as u32;
+
+        let mut y: u32 = 0;
+        while y < height {
+            let chunk_h = (height - y).min(rows_per_chunk);
+            let mut data: Vec<u32> = vec![0; row_texels * chunk_h as usize];
+            for row in 0..chunk_h {
+                let src_offset = ((y + row) * width) as usize;
+                let dst_offset = row as usize * row_texels;
+                let src = &pixels[src_offset..src_offset + width as usize];
+                let dst = &mut data[dst_offset..dst_offset + width as usize];
+                dst.copy_from_slice(src);
+            }
+            wgpu_utils::write_texture(
+                self.device.as_ref(),
+                self.queue.as_ref(),
                 texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &data,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(bytes_per_row_padded),
-                rows_per_image: Some(height),
-            },
-            wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-        );
+                wgpu::Origin3d {
+                    x: 0,
+                    y,
+                    z: 0,
+                },
+                wgpu::Extent3d {
+                    width,
+                    height: chunk_h,
+                    depth_or_array_layers: 1,
+                },
+                bytes_per_row_padded,
+                chunk_h,
+                bytemuck::cast_slice(&data),
+            );
+            y = y.saturating_add(chunk_h);
+        }
 
         Ok(())
     }
