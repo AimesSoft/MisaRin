@@ -234,6 +234,11 @@ extension _PaintingBoardInteractionPointerImpl
         'strokeStream=${_backend.supportsStrokeStream}',
       );
     }
+    if (_layerTransformModeActive) {
+      _handleLayerTransformPointerDown(boardLocal);
+      _debugPointerInput('down handled: layer transform mode');
+      return;
+    }
     final bool toolCanStartOutsideCanvas =
         tool == CanvasTool.curvePen ||
         tool == CanvasTool.selection ||
@@ -255,13 +260,6 @@ extension _PaintingBoardInteractionPointerImpl
     }
     if (_isTextEditingActive) {
       _debugPointerInput('down ignored: text editing active');
-      return;
-    }
-    if (_layerTransformModeActive) {
-      if (pointerInsideBoard) {
-        _handleLayerTransformPointerDown(boardLocal);
-      }
-      _debugPointerInput('down handled: layer transform mode');
       return;
     }
     if (isTouch && _shouldDeferTouchBrushStroke(tool)) {

@@ -1031,6 +1031,11 @@
 /Library/Afolder/FlutterProject/misa-rin/third_party/file_picker/lib/src/windows/file_picker_windows_ffi_types.dart
 /Library/Afolder/FlutterProject/misa-rin/third_party/image_gallery_saver/LICENSE
 /Library/Afolder/FlutterProject/misa-rin/third_party/image_gallery_saver/lib/image_gallery_saver.dart
+/Library/Afolder/FlutterProject/misa-rin/third_party/swipelab_webp/LICENSE
+/Library/Afolder/FlutterProject/misa-rin/third_party/swipelab_webp/hook/build.dart
+/Library/Afolder/FlutterProject/misa-rin/third_party/swipelab_webp/lib/src/webp_encoder.dart
+/Library/Afolder/FlutterProject/misa-rin/third_party/swipelab_webp/lib/swipelab_webp.dart
+/Library/Afolder/FlutterProject/misa-rin/third_party/swipelab_webp/src/swipelab_webp.c
 /Users/dfsteve/.cache/swipelab_webp/libwebp/.clang-format
 /Users/dfsteve/.cache/swipelab_webp/libwebp/.cmake-format.py
 /Users/dfsteve/.cache/swipelab_webp/libwebp/.git/HEAD
@@ -2453,10 +2458,6 @@
 /Users/dfsteve/.pub-cache/hosted/pub.dev/string_scanner-1.4.1/lib/src/string_scanner.dart
 /Users/dfsteve/.pub-cache/hosted/pub.dev/string_scanner-1.4.1/lib/src/utils.dart
 /Users/dfsteve/.pub-cache/hosted/pub.dev/string_scanner-1.4.1/lib/string_scanner.dart
-/Users/dfsteve/.pub-cache/hosted/pub.dev/swipelab_webp-1.0.0/LICENSE
-/Users/dfsteve/.pub-cache/hosted/pub.dev/swipelab_webp-1.0.0/lib/src/webp_encoder.dart
-/Users/dfsteve/.pub-cache/hosted/pub.dev/swipelab_webp-1.0.0/lib/swipelab_webp.dart
-/Users/dfsteve/.pub-cache/hosted/pub.dev/swipelab_webp-1.0.0/src/swipelab_webp.c
 /Users/dfsteve/.pub-cache/hosted/pub.dev/system_fonts-1.0.1/LICENSE
 /Users/dfsteve/.pub-cache/hosted/pub.dev/term_glyph-1.2.2/LICENSE
 /Users/dfsteve/.pub-cache/hosted/pub.dev/term_glyph-1.2.2/lib/src/generated/ascii_glyph_set.dart
