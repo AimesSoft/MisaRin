@@ -1,7 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/widgets.dart' show Localizations;
 import 'package:flutter/services.dart';
@@ -154,7 +155,7 @@ class ToolSettingsCard extends StatefulWidget {
   final ValueChanged<bool> onBucketContiguousChanged;
   final ValueChanged<bool> onBucketSwallowColorLineChanged;
   final ValueChanged<BucketSwallowColorLineMode>
-      onBucketSwallowColorLineModeChanged;
+  onBucketSwallowColorLineModeChanged;
   final ValueChanged<int> onBucketAntialiasChanged;
   final int bucketTolerance;
   final ValueChanged<int> onBucketToleranceChanged;
@@ -225,16 +226,15 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
   PenStrokeSliderRange get _activeStrokeSliderRange => _isSprayTool
       ? widget.sprayStrokeSliderRange
       : _isEraserTool
-          ? widget.eraserStrokeSliderRange
-          : widget.penStrokeSliderRange;
+      ? widget.eraserStrokeSliderRange
+      : widget.penStrokeSliderRange;
   double get _activeSliderMin => _activeStrokeSliderRange.min;
   double get _activeSliderMax => _activeStrokeSliderRange.max;
   bool get _sliderUsesIntegers =>
       _isSprayTool ||
       _isEraserTool ||
       _activeStrokeSliderRange == PenStrokeSliderRange.compact;
-  double get _activeBrushValue =>
-      _resolveBrushValue(widget.activeTool, widget);
+  double get _activeBrushValue => _resolveBrushValue(widget.activeTool, widget);
 
   double _resolveBrushValue(CanvasTool tool, ToolSettingsCard widget) {
     if (tool == CanvasTool.spray) {
@@ -363,7 +363,8 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
               _BucketOptionTile(
                 title: l10n.swallowBlueColorLine,
                 detail: l10n.swallowBlueColorLineDesc,
-                value: widget.bucketSwallowColorLineMode ==
+                value:
+                    widget.bucketSwallowColorLineMode ==
                     BucketSwallowColorLineMode.blue,
                 onChanged: (value) {
                   if (!value) {
@@ -378,7 +379,8 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
               _BucketOptionTile(
                 title: l10n.swallowGreenColorLine,
                 detail: l10n.swallowGreenColorLineDesc,
-                value: widget.bucketSwallowColorLineMode ==
+                value:
+                    widget.bucketSwallowColorLineMode ==
                     BucketSwallowColorLineMode.green,
                 onChanged: (value) {
                   if (!value) {
@@ -393,7 +395,8 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
               _BucketOptionTile(
                 title: l10n.swallowRedColorLine,
                 detail: l10n.swallowRedColorLineDesc,
-                value: widget.bucketSwallowColorLineMode ==
+                value:
+                    widget.bucketSwallowColorLineMode ==
                     BucketSwallowColorLineMode.red,
                 onChanged: (value) {
                   if (!value) {
@@ -408,7 +411,8 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
               _BucketOptionTile(
                 title: l10n.swallowAllColorLine,
                 detail: l10n.swallowAllColorLineDesc,
-                value: widget.bucketSwallowColorLineMode ==
+                value:
+                    widget.bucketSwallowColorLineMode ==
                     BucketSwallowColorLineMode.all,
                 onChanged: (value) {
                   if (!value) {
@@ -541,7 +545,8 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
 
   Widget _buildBrushControls(FluentThemeData theme) {
     final l10n = context.l10n;
-    final bool isPenTool = widget.activeTool == CanvasTool.pen ||
+    final bool isPenTool =
+        widget.activeTool == CanvasTool.pen ||
         widget.activeTool == CanvasTool.perspectivePen;
     final bool isEraserTool = widget.activeTool == CanvasTool.eraser;
     final bool isCurvePenTool = widget.activeTool == CanvasTool.curvePen;
@@ -671,9 +676,9 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     final l10n = context.l10n;
     final List<BrushPreset> presets = widget.brushPresets;
     final BrushPreset? selected = presets.cast<BrushPreset?>().firstWhere(
-          (preset) => preset?.id == widget.activeBrushPresetId,
-          orElse: () => presets.isNotEmpty ? presets.first : null,
-        );
+      (preset) => preset?.id == widget.activeBrushPresetId,
+      orElse: () => presets.isNotEmpty ? presets.first : null,
+    );
     final String selectedName = selected == null
         ? '--'
         : BrushLibrary.instance.displayNameFor(
@@ -731,6 +736,33 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
       ),
     );
 
+    if (widget.compactLayout) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(l10n.brushPreset, style: titleStyle),
+              const SizedBox(width: 8),
+              clickablePreview,
+            ],
+          ),
+          const SizedBox(height: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 220),
+            child: Text(
+              selectedName,
+              maxLines: 3,
+              softWrap: true,
+              overflow: TextOverflow.ellipsis,
+              style: theme.typography.caption,
+            ),
+          ),
+        ],
+      );
+    }
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -742,12 +774,11 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
         Flexible(
           fit: FlexFit.loose,
           child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: widget.compactLayout ? 140 : 220,
-            ),
+            constraints: const BoxConstraints(maxWidth: 220),
             child: Text(
               selectedName,
-              maxLines: 1,
+              maxLines: 2,
+              softWrap: true,
               overflow: TextOverflow.ellipsis,
               style: theme.typography.body,
             ),
@@ -831,18 +862,16 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
 
   Widget _buildSelectionControls(FluentThemeData theme) {
     final l10n = context.l10n;
-    return _buildControlsGroup(
-      [
-        _buildSelectionShapeRow(theme),
-        _buildToggleSwitchRow(
-          theme,
-          label: l10n.selectionAdditive,
-          detail: l10n.selectionAdditiveDesc,
-          value: widget.selectionAdditiveEnabled,
-          onChanged: widget.onSelectionAdditiveChanged,
-        ),
-      ],
-    );
+    return _buildControlsGroup([
+      _buildSelectionShapeRow(theme),
+      _buildToggleSwitchRow(
+        theme,
+        label: l10n.selectionAdditive,
+        detail: l10n.selectionAdditiveDesc,
+        value: widget.selectionAdditiveEnabled,
+        onChanged: widget.onSelectionAdditiveChanged,
+      ),
+    ]);
   }
 
   Widget _buildTextControls(FluentThemeData theme) {
@@ -854,7 +883,9 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     final bool fontAvailable =
         widget.textFontFamily.isNotEmpty &&
         widget.availableFontFamilies.contains(widget.textFontFamily);
-    final String selectedFont = fontAvailable ? widget.textFontFamily : 'System Default';
+    final String selectedFont = fontAvailable
+        ? widget.textFontFamily
+        : 'System Default';
     final List<Widget> children = <Widget>[
       _buildFontSelectorRow(
         theme,
@@ -1149,10 +1180,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
   Widget _buildTextToolHint(FluentThemeData theme) {
     return SizedBox(
       width: widget.compactLayout ? double.infinity : 320,
-      child: Text(
-        context.l10n.textToolHint,
-        style: theme.typography.caption,
-      ),
+      child: Text(context.l10n.textToolHint, style: theme.typography.caption),
     );
   }
 
@@ -1601,7 +1629,9 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
         ? brushSize.round().toString()
         : _formatValue(brushSize);
     final String labelText = _isSprayTool ? l10n.spraySize : l10n.brushSize;
-    final String detailText = _isSprayTool ? l10n.spraySizeDesc : l10n.brushSizeDesc;
+    final String detailText = _isSprayTool
+        ? l10n.spraySizeDesc
+        : l10n.brushSizeDesc;
     final Widget slider = _buildPointerFriendlySlider(
       value: sliderValue,
       min: _activeSliderMin,
@@ -1710,6 +1740,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
       );
     }
 
+    final Widget rangeButton = _buildStrokeRangeToggleButton(theme);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1722,12 +1753,27 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
           detail: detailText,
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: buildCompactAdjustRow()),
-            const SizedBox(width: 8),
-            _buildStrokeRangeToggleButton(theme),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final double maxWidth = constraints.maxWidth;
+            if (!maxWidth.isFinite || maxWidth >= 230) {
+              return Row(
+                children: [
+                  Expanded(child: buildCompactAdjustRow()),
+                  const SizedBox(width: 8),
+                  rangeButton,
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                buildCompactAdjustRow(),
+                const SizedBox(height: 6),
+                rangeButton,
+              ],
+            );
+          },
         ),
       ],
     );
@@ -1859,10 +1905,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
       0.0,
       widget.streamlineMaxLevel.toDouble(),
     );
-    final int level = projected.round().clamp(
-      0,
-      widget.streamlineMaxLevel,
-    );
+    final int level = projected.round().clamp(0, widget.streamlineMaxLevel);
     final double sliderValue = level.toDouble();
     final String label = level == 0 ? l10n.off : l10n.levelLabel(level);
     final Widget slider = _buildPointerFriendlySlider(
@@ -1996,11 +2039,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     String? messageOverride,
   }) {
     final String message = messageOverride ?? '$label: $valueText';
-    return HoverDetailTooltip(
-      message: message,
-      detail: detail,
-      child: child,
-    );
+    return HoverDetailTooltip(message: message, detail: detail, child: child);
   }
 
   Widget _wrapButtonTooltip({
@@ -2008,11 +2047,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     required String? detail,
     required Widget child,
   }) {
-    return HoverDetailTooltip(
-      message: label,
-      detail: detail,
-      child: child,
-    );
+    return HoverDetailTooltip(message: label, detail: detail, child: child);
   }
 
   Widget _wrapToggleTooltip({
@@ -2020,11 +2055,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     required String detail,
     required Widget child,
   }) {
-    return HoverDetailTooltip(
-      message: label,
-      detail: detail,
-      child: child,
-    );
+    return HoverDetailTooltip(message: label, detail: detail, child: child);
   }
 
   Widget _wrapComboTooltip({
@@ -2032,11 +2063,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     required String detail,
     required Widget child,
   }) {
-    return HoverDetailTooltip(
-      message: label,
-      detail: detail,
-      child: child,
-    );
+    return HoverDetailTooltip(message: label, detail: detail, child: child);
   }
 
   List<Widget> _separateChildren(List<Widget> children, double spacing) {
@@ -2210,6 +2237,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     return trimmed.isEmpty ? '0' : trimmed;
   }
 }
+
 class _BucketOptionTile extends StatelessWidget {
   const _BucketOptionTile({
     required this.title,

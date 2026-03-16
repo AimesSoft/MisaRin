@@ -244,6 +244,7 @@
   "menuPerspective3Point": "3 点透視",
   "menuWorkspaceDefault": "デフォルト",
   "menuWorkspaceSai2": "SAI2",
+  "menuWorkspaceCsp": "CSP",
   "menuSwitchWorkspace": "ワークスペースを切り替え",
   "menuResetWorkspace": "ワークスペースをリセット",
   "menuEdgeSofteningEllipsis": "エッジの柔化…",

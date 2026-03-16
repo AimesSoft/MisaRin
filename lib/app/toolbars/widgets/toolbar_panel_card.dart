@@ -9,6 +9,7 @@ class ToolbarPanelCard extends StatelessWidget {
     required this.child,
     this.expand = false,
     this.trailing,
+    this.showHeader = true,
   });
 
   final double? width;
@@ -16,6 +17,7 @@ class ToolbarPanelCard extends StatelessWidget {
   final Widget child;
   final bool expand;
   final Widget? trailing;
+  final bool showHeader;
 
   @override
   Widget build(BuildContext context) {
@@ -45,14 +47,21 @@ class ToolbarPanelCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(child: Text(title, style: theme.typography.subtitle)),
-                if (trailing != null) ...[const SizedBox(width: 12), trailing!],
-              ],
-            ),
-            const SizedBox(height: 14),
+            if (showHeader) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(title, style: theme.typography.subtitle),
+                  ),
+                  if (trailing != null) ...[
+                    const SizedBox(width: 12),
+                    trailing!,
+                  ],
+                ],
+              ),
+              const SizedBox(height: 14),
+            ],
             if (expand) Expanded(child: child) else child,
           ],
         ),

@@ -605,9 +605,14 @@ class CanvasPageState extends State<CanvasPage> {
   }
 
   PaintingToolbarLayoutStyle get _toolbarLayoutStyle {
-    return _workspaceLayoutPreference == WorkspaceLayoutPreference.sai2
-        ? PaintingToolbarLayoutStyle.sai2
-        : PaintingToolbarLayoutStyle.floating;
+    switch (_workspaceLayoutPreference) {
+      case WorkspaceLayoutPreference.sai2:
+        return PaintingToolbarLayoutStyle.sai2;
+      case WorkspaceLayoutPreference.csp:
+        return PaintingToolbarLayoutStyle.csp;
+      case WorkspaceLayoutPreference.floating:
+        return PaintingToolbarLayoutStyle.floating;
+    }
   }
 
   Future<void> _setWorkspaceLayoutPreference(

@@ -570,6 +570,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get menuWorkspaceSai2 => 'SAI2';
 
   @override
+  String get menuWorkspaceCsp => 'CSP';
+
+  @override
   String get menuSwitchWorkspace => '작업 공간 전환';
 
   @override

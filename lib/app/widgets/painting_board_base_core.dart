@@ -950,34 +950,49 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     CanvasToolbarLayout base, {
     required bool includeHistoryButtons,
   }) {
-    if (style != PaintingToolbarLayoutStyle.sai2) {
-      return base;
+    switch (style) {
+      case PaintingToolbarLayoutStyle.floating:
+        return base;
+      case PaintingToolbarLayoutStyle.sai2:
+        const int targetColumns = 4;
+        final double availableWidth = math.max(0, _sidePanelWidth - 32);
+        final double totalSpacing = CanvasToolbar.spacing * (targetColumns - 1);
+        final double maxExtent = targetColumns > 0
+            ? (availableWidth - totalSpacing) / targetColumns
+            : CanvasToolbar.buttonSize;
+        final double buttonExtent = maxExtent.isFinite && maxExtent > 0
+            ? maxExtent.clamp(36.0, CanvasToolbar.buttonSize)
+            : CanvasToolbar.buttonSize;
+        final int toolCount =
+            CanvasToolbar.buttonCount +
+            (includeHistoryButtons ? CanvasToolbar.historyButtonCount : 0);
+        final int rows = math.max(1, (toolCount / targetColumns).ceil());
+        final double width = targetColumns * buttonExtent + totalSpacing;
+        final double height =
+            rows * buttonExtent + (rows - 1) * CanvasToolbar.spacing;
+        return CanvasToolbarLayout(
+          columns: targetColumns,
+          rows: rows,
+          width: width,
+          height: height,
+          buttonExtent: buttonExtent,
+          horizontalFlow: true,
+          flowDirection: Axis.horizontal,
+        );
+      case PaintingToolbarLayoutStyle.csp:
+        final int toolCount =
+            CanvasToolbar.buttonCount +
+            (includeHistoryButtons ? CanvasToolbar.historyButtonCount : 0);
+        return CanvasToolbarLayout(
+          columns: 1,
+          rows: math.max(1, toolCount),
+          width: CanvasToolbar.buttonSize,
+          // CSP toolbar scrolls in the left strip container; avoid nested
+          // internal scrolling by not constraining CanvasToolbar height here.
+          height: double.infinity,
+          buttonExtent: CanvasToolbar.buttonSize,
+        );
     }
-    const int targetColumns = 4;
-    final double availableWidth = math.max(0, _sidePanelWidth - 32);
-    final double totalSpacing = CanvasToolbar.spacing * (targetColumns - 1);
-    final double maxExtent = targetColumns > 0
-        ? (availableWidth - totalSpacing) / targetColumns
-        : CanvasToolbar.buttonSize;
-    final double buttonExtent = maxExtent.isFinite && maxExtent > 0
-        ? maxExtent.clamp(36.0, CanvasToolbar.buttonSize)
-        : CanvasToolbar.buttonSize;
-    final int toolCount =
-        CanvasToolbar.buttonCount +
-        (includeHistoryButtons ? CanvasToolbar.historyButtonCount : 0);
-    final int rows = math.max(1, (toolCount / targetColumns).ceil());
-    final double width = targetColumns * buttonExtent + totalSpacing;
-    final double height =
-        rows * buttonExtent + (rows - 1) * CanvasToolbar.spacing;
-    return CanvasToolbarLayout(
-      columns: targetColumns,
-      rows: rows,
-      width: width,
-      height: height,
-      buttonExtent: buttonExtent,
-      horizontalFlow: true,
-      flowDirection: Axis.horizontal,
-    );
   }
 
   Rect get _boardRect {

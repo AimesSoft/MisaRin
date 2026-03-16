@@ -88,6 +88,8 @@ int _encodeColorLineColor(Color color) {
 
 WorkspaceLayoutPreference _decodeWorkspaceLayoutPreference(int value) {
   switch (value) {
+    case 2:
+      return WorkspaceLayoutPreference.csp;
     case 1:
       return WorkspaceLayoutPreference.sai2;
     case 0:
@@ -98,6 +100,8 @@ WorkspaceLayoutPreference _decodeWorkspaceLayoutPreference(int value) {
 
 int _encodeWorkspaceLayoutPreference(WorkspaceLayoutPreference value) {
   switch (value) {
+    case WorkspaceLayoutPreference.csp:
+      return 2;
     case WorkspaceLayoutPreference.sai2:
       return 1;
     case WorkspaceLayoutPreference.floating:
@@ -146,18 +150,14 @@ int _encodeLocaleOverride(Locale? locale) {
   return 0;
 }
 
-BucketSwallowColorLineMode _decodeBucketSwallowColorLineMode(
-  int value,
-) {
+BucketSwallowColorLineMode _decodeBucketSwallowColorLineMode(int value) {
   if (value < 0 || value >= BucketSwallowColorLineMode.values.length) {
     return _defaultBucketSwallowColorLineMode;
   }
   return BucketSwallowColorLineMode.values[value];
 }
 
-int _encodeBucketSwallowColorLineMode(
-  BucketSwallowColorLineMode mode,
-) {
+int _encodeBucketSwallowColorLineMode(BucketSwallowColorLineMode mode) {
   final int index = mode.index;
   if (index < 0 || index > 0xff) {
     return _defaultBucketSwallowColorLineMode.index;
@@ -239,9 +239,7 @@ int _encodePenStrokeWidth(double value) {
   }
   final double numerator = math.log(clamped / kPenStrokeMin);
   final double denominator = math.log(kPenStrokeMax / kPenStrokeMin);
-  final double normalized = denominator == 0
-      ? 0.0
-      : (numerator / denominator);
+  final double normalized = denominator == 0 ? 0.0 : (numerator / denominator);
   return (normalized * 65535.0).round().clamp(0, 0xffff);
 }
 
@@ -470,18 +468,12 @@ double _clampStrokeStabilizerStrength(double value) {
   if (!value.isFinite) {
     return _defaultStrokeStabilizerStrength;
   }
-  return value.clamp(
-    _strokeStabilizerLowerBound,
-    _strokeStabilizerUpperBound,
-  );
+  return value.clamp(_strokeStabilizerLowerBound, _strokeStabilizerUpperBound);
 }
 
 double _clampStreamlineStrength(double value) {
   if (!value.isFinite) {
     return _defaultStreamlineStrength;
   }
-  return value.clamp(
-    _strokeStabilizerLowerBound,
-    _strokeStabilizerUpperBound,
-  );
+  return value.clamp(_strokeStabilizerLowerBound, _strokeStabilizerUpperBound);
 }

@@ -568,6 +568,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get menuWorkspaceSai2 => 'SAI2';
 
   @override
+  String get menuWorkspaceCsp => 'CSP';
+
+  @override
   String get menuSwitchWorkspace => '切换工作区';
 
   @override
@@ -2856,6 +2859,9 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get menuWorkspaceSai2 => 'SAI2';
 
   @override
+  String get menuWorkspaceCsp => 'CSP';
+
+  @override
   String get menuSwitchWorkspace => '切换工作区';
 
   @override
@@ -3944,6 +3950,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get menuWorkspaceSai2 => 'SAI2';
+
+  @override
+  String get menuWorkspaceCsp => 'CSP';
 
   @override
   String get menuSwitchWorkspace => '切換工作區';

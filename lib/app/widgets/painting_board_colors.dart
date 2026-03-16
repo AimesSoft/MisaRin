@@ -864,6 +864,8 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
     final Color background = isDark ? const Color(0xFF1B1B1F) : Colors.white;
     final l10n = context.l10n;
     final bool eraserActive = _brushToolsEraserMode;
+    final bool cspLayout =
+        widget.toolbarLayoutStyle == PaintingToolbarLayoutStyle.csp;
     return AppNotificationAnchor(
       child: HoverDetailTooltip(
         message: '${l10n.currentColor} ${_hexStringForColor(_primaryColor)}',
@@ -874,6 +876,7 @@ mixin _PaintingBoardColorMixin on _PaintingBoardBase {
           backgroundColor: background,
           isDark: isDark,
           eraserActive: eraserActive,
+          framed: !cspLayout,
           onColorTap: () {
             if (eraserActive) {
               _updateBrushToolsEraserMode(false);

@@ -569,6 +569,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get menuWorkspaceSai2 => 'SAI2';
 
   @override
+  String get menuWorkspaceCsp => 'CSP';
+
+  @override
   String get menuSwitchWorkspace => 'ワークスペースを切り替え';
 
   @override

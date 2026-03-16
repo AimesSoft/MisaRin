@@ -1154,6 +1154,12 @@ abstract class AppLocalizations {
   /// **'SAI2'**
   String get menuWorkspaceSai2;
 
+  /// No description provided for @menuWorkspaceCsp.
+  ///
+  /// In en, this message translates to:
+  /// **'CSP'**
+  String get menuWorkspaceCsp;
+
   /// No description provided for @menuSwitchWorkspace.
   ///
   /// In en, this message translates to:

@@ -4,7 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:misa_rin/app/toolbars/widgets/canvas_toolbar.dart';
 
-enum PaintingToolbarLayoutStyle { floating, sai2 }
+enum PaintingToolbarLayoutStyle { floating, sai2, csp }
 
 class ToolbarPanelData {
   const ToolbarPanelData({
@@ -19,10 +19,8 @@ class ToolbarPanelData {
   final Widget? trailing;
   final bool expand;
 
-  static ToolbarPanelData empty() => const ToolbarPanelData(
-        title: '',
-        child: SizedBox.shrink(),
-      );
+  static ToolbarPanelData empty() =>
+      const ToolbarPanelData(title: '', child: SizedBox.shrink());
 }
 
 class PaintingToolbarElements {

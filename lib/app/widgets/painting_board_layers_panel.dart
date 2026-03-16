@@ -573,8 +573,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
     final double controlSize = isMobile ? 28 : 24;
     final double controlIconSize = isMobile ? 16 : 14;
     final double actionIconSize = isMobile ? 18 : 14;
-    final EdgeInsets actionButtonPadding =
-        EdgeInsets.all(isMobile ? 6 : 4);
+    final EdgeInsets actionButtonPadding = EdgeInsets.all(isMobile ? 6 : 4);
     final double sidebarWidth = isMobile ? 32 : 28;
     final double sidebarSpacing = isMobile ? 8 : 6;
     final double buttonSpacing = isMobile ? 6 : 4;
@@ -624,8 +623,9 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
           proxyDecorator: (child, index, animation) => child,
           itemCount: orderedLayers.length,
           onReorder: _handleLayerReorder,
-          physics:
-              hasBoundedHeight ? null : const NeverScrollableScrollPhysics(),
+          physics: hasBoundedHeight
+              ? null
+              : const NeverScrollableScrollPhysics(),
           shrinkWrap: !hasBoundedHeight,
           itemBuilder: (context, index) {
             final CanvasLayerInfo layer = orderedLayers[index];
@@ -652,11 +652,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
               0.6,
             )!;
             final Color tileBorder = isActive
-                ? Color.lerp(
-                        baseTileBorder,
-                        accent,
-                        isDark ? 0.45 : 0.75,
-                      ) ??
+                ? Color.lerp(baseTileBorder, accent, isDark ? 0.45 : 0.75) ??
                       baseTileBorder
                 : baseTileBorder;
 
@@ -667,10 +663,12 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
             final l10n = context.l10n;
             _ensureLayerPreview(layer);
             final ui.Image? layerPreview = _layerPreviewImage(layer.id);
-            final String lockTooltip =
-                layerLocked ? l10n.unlockLayer : l10n.lockLayer;
-            final String lockDetail =
-                layerLocked ? l10n.unlockLayerDesc : l10n.lockLayerDesc;
+            final String lockTooltip = layerLocked
+                ? l10n.unlockLayer
+                : l10n.lockLayer;
+            final String lockDetail = layerLocked
+                ? l10n.unlockLayerDesc
+                : l10n.lockLayerDesc;
             final String clippingTooltip = layerClipping
                 ? l10n.releaseClippingMask
                 : l10n.createClippingMask;
@@ -730,10 +728,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                 message: clippingTooltip,
                 detail: clippingDetail,
                 child: IconButton(
-                  icon: Icon(
-                    FluentIcons.subtract_shape,
-                    size: actionIconSize,
-                  ),
+                  icon: Icon(FluentIcons.subtract_shape, size: actionIconSize),
                   style: ButtonStyle(
                     padding: WidgetStateProperty.all<EdgeInsets>(
                       actionButtonPadding,
@@ -748,8 +743,9 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                       return null;
                     }),
                   ),
-                  onPressed:
-                      layerLocked ? null : () => _handleLayerClippingToggle(layer),
+                  onPressed: layerLocked
+                      ? null
+                      : () => _handleLayerClippingToggle(layer),
                 ),
               );
             }
@@ -759,16 +755,15 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
               message: l10n.deleteLayerTitle,
               detail: l10n.deleteLayerDesc,
               child: IconButton(
-                icon: Icon(
-                  FluentIcons.delete,
-                  size: actionIconSize,
-                ),
+                icon: Icon(FluentIcons.delete, size: actionIconSize),
                 style: ButtonStyle(
                   padding: WidgetStateProperty.all<EdgeInsets>(
                     actionButtonPadding,
                   ),
                 ),
-                onPressed: canDelete ? () => _handleRemoveLayer(layer.id) : null,
+                onPressed: canDelete
+                    ? () => _handleRemoveLayer(layer.id)
+                    : null,
               ),
             );
             Widget? trailingWidget;
@@ -830,27 +825,22 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                 tooltip: l10n.mergeDown,
                 detail: l10n.mergeDownDesc,
                 child: IconButton(
-                  icon: Icon(
-                    FluentIcons.download,
-                    size: actionIconSize,
-                  ),
+                  icon: Icon(FluentIcons.download, size: actionIconSize),
                   style: ButtonStyle(
                     padding: WidgetStateProperty.all<EdgeInsets>(
                       actionButtonPadding,
                     ),
                   ),
-                  onPressed:
-                      canMergeDown ? () => _handleMergeLayerDown(layer) : null,
+                  onPressed: canMergeDown
+                      ? () => _handleMergeLayerDown(layer)
+                      : null,
                 ),
               );
               final Widget duplicateButton = wrapIconButton(
                 tooltip: l10n.duplicateLayer,
                 detail: l10n.duplicateLayerDesc,
                 child: IconButton(
-                  icon: Icon(
-                    FluentIcons.copy,
-                    size: actionIconSize,
-                  ),
+                  icon: Icon(FluentIcons.copy, size: actionIconSize),
                   style: ButtonStyle(
                     padding: WidgetStateProperty.all<EdgeInsets>(
                       actionButtonPadding,
@@ -865,10 +855,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                 child: Builder(
                   builder: (context) {
                     return IconButton(
-                      icon: Icon(
-                        FluentIcons.more,
-                        size: actionIconSize,
-                      ),
+                      icon: Icon(FluentIcons.more, size: actionIconSize),
                       style: ButtonStyle(
                         padding: WidgetStateProperty.all<EdgeInsets>(
                           actionButtonPadding,
@@ -895,10 +882,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: topRowButtons,
-                  ),
+                  Row(mainAxisSize: MainAxisSize.min, children: topRowButtons),
                   SizedBox(height: rowSpacing),
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -927,9 +911,9 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                     onTapDown: (_) => _handleLayerSelected(layer.id),
                     onSecondaryTapDown: backendLayerSupported
                         ? (details) => _showLayerContextMenu(
-                              layer,
-                              details.globalPosition,
-                            )
+                            layer,
+                            details.globalPosition,
+                          )
                         : null,
                     backgroundColor: background,
                     borderColor: tileBorder,
@@ -951,7 +935,8 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
                                       theme: theme,
                                       layer: layer,
                                       isActive: isActive,
-                                      isRenaming: !layerLocked &&
+                                      isRenaming:
+                                          !layerLocked &&
                                           _renamingLayerId == layer.id,
                                       isLocked: layerLocked,
                                       isTextLayer: isTextLayer,
@@ -998,10 +983,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
           child: listView,
         );
         final Widget listHost = hasBoundedHeight
-            ? Scrollbar(
-                controller: _layerScrollController,
-                child: listContent,
-              )
+            ? Scrollbar(controller: _layerScrollController, child: listContent)
             : listContent;
 
         final Widget listContainer = FlyoutTarget(

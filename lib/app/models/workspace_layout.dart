@@ -1,1 +1,1 @@
-enum WorkspaceLayoutPreference { floating, sai2 }
+enum WorkspaceLayoutPreference { floating, sai2, csp }

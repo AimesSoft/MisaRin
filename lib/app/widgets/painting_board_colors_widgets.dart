@@ -234,6 +234,7 @@ class _ColorIndicatorButton extends StatefulWidget {
     required this.eraserActive,
     required this.onColorTap,
     required this.onEraserTap,
+    this.framed = true,
   });
 
   final Color color;
@@ -243,6 +244,7 @@ class _ColorIndicatorButton extends StatefulWidget {
   final bool eraserActive;
   final VoidCallback onColorTap;
   final VoidCallback onEraserTap;
+  final bool framed;
 
   @override
   State<_ColorIndicatorButton> createState() => _ColorIndicatorButtonState();
@@ -329,65 +331,69 @@ class _ColorIndicatorButtonState extends State<_ColorIndicatorButton> {
     return MouseRegion(
       onEnter: (_) => _setHover(true),
       onExit: (_) => _setHover(false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
+      child: SizedBox(
         width: CanvasToolbar.buttonSize,
         height: CanvasToolbar.buttonSize,
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: border, width: 1.5),
-          boxShadow: shadows,
-        ),
-        padding: const EdgeInsets.all(6),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final double size = constraints.biggest.shortestSide;
-            if (size <= 0) {
-              return const SizedBox();
-            }
-            final double swatchSize = size * 2 / 3;
-            final double offset = size - swatchSize;
-            final BorderRadius radius = BorderRadius.circular(4);
-            final bool eraserFront = widget.eraserActive;
-            final Widget colorSwatch = Positioned(
-              left: 0,
-              top: 0,
-              child: _buildSwatch(
-                size: swatchSize,
-                radius: radius,
-                borderColor: swatchBorder,
-                shadow: eraserFront ? null : frontShadow,
-                onTap: widget.onColorTap,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: widget.color),
-                ),
-              ),
-            );
-            final Widget eraserSwatch = Positioned(
-              left: offset,
-              top: offset,
-              child: _buildSwatch(
-                size: swatchSize,
-                radius: radius,
-                borderColor: swatchBorder,
-                shadow: eraserFront ? frontShadow : null,
-                onTap: widget.onEraserTap,
-                child: CustomPaint(
-                  painter: _TwoByTwoCheckerPainter(
-                    light: checkerLight,
-                    dark: checkerDark,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+          decoration: widget.framed
+              ? BoxDecoration(
+                  color: background,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: border, width: 1.5),
+                  boxShadow: shadows,
+                )
+              : null,
+          padding: widget.framed ? const EdgeInsets.all(6) : EdgeInsets.zero,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final double size = constraints.biggest.shortestSide;
+              if (size <= 0) {
+                return const SizedBox();
+              }
+              final double swatchSize = size * 2 / 3;
+              final double offset = size - swatchSize;
+              final BorderRadius radius = BorderRadius.circular(4);
+              final bool eraserFront = widget.eraserActive;
+              final Widget colorSwatch = Positioned(
+                left: 0,
+                top: 0,
+                child: _buildSwatch(
+                  size: swatchSize,
+                  radius: radius,
+                  borderColor: swatchBorder,
+                  shadow: eraserFront ? null : frontShadow,
+                  onTap: widget.onColorTap,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: widget.color),
                   ),
                 ),
-              ),
-            );
-            return Stack(
-              children: eraserFront
-                  ? <Widget>[colorSwatch, eraserSwatch]
-                  : <Widget>[eraserSwatch, colorSwatch],
-            );
-          },
+              );
+              final Widget eraserSwatch = Positioned(
+                left: offset,
+                top: offset,
+                child: _buildSwatch(
+                  size: swatchSize,
+                  radius: radius,
+                  borderColor: swatchBorder,
+                  shadow: eraserFront ? frontShadow : null,
+                  onTap: widget.onEraserTap,
+                  child: CustomPaint(
+                    painter: _TwoByTwoCheckerPainter(
+                      light: checkerLight,
+                      dark: checkerDark,
+                    ),
+                  ),
+                ),
+              );
+              return Stack(
+                children: eraserFront
+                    ? <Widget>[colorSwatch, eraserSwatch]
+                    : <Widget>[eraserSwatch, colorSwatch],
+              );
+            },
+          ),
         ),
       ),
     );

@@ -244,6 +244,7 @@
   "menuPerspective3Point": "3점 원근",
   "menuWorkspaceDefault": "기본",
   "menuWorkspaceSai2": "SAI2",
+  "menuWorkspaceCsp": "CSP",
   "menuSwitchWorkspace": "작업 공간 전환",
   "menuResetWorkspace": "작업 공간 재설정",
   "menuEdgeSofteningEllipsis": "가장자리 부드럽게…",

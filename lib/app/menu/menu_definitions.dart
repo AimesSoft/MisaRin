@@ -693,6 +693,11 @@ class MenuDefinitionBuilder {
         action: () => switchLayout(WorkspaceLayoutPreference.sai2),
         checked: current == WorkspaceLayoutPreference.sai2,
       ),
+      MenuActionEntry(
+        label: l10n.menuWorkspaceCsp,
+        action: () => switchLayout(WorkspaceLayoutPreference.csp),
+        checked: current == WorkspaceLayoutPreference.csp,
+      ),
     ];
     return MenuDefinition(
       label: l10n.menuWorkspace,

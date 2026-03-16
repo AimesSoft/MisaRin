@@ -192,6 +192,8 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
             widget.toolbarLayoutStyle;
         final bool isSai2Layout =
             toolbarStyle == PaintingToolbarLayoutStyle.sai2;
+        final bool isDockedLayout =
+            toolbarStyle != PaintingToolbarLayoutStyle.floating;
         final bool includeHistoryOnToolbar = _includeHistoryOnToolbar;
         final CanvasToolbarLayout activeToolbarLayout =
             _resolveToolbarLayoutForStyle(
@@ -275,7 +277,7 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
           onBrushToolsEraserModeChanged: _updateBrushToolsEraserMode,
           strokeStabilizerMaxLevel: _strokeStabilizerMaxLevel,
           streamlineMaxLevel: _streamlineMaxLevel,
-          compactLayout: isSai2Layout,
+          compactLayout: isDockedLayout,
           textFontSize: _textFontSize,
           onTextFontSizeChanged: _updateTextFontSize,
           textLineHeight: _textLineHeight,
@@ -315,11 +317,21 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
           expand: true,
         );
         final PaintingToolbarElements toolbarElements = PaintingToolbarElements(
-          toolbar: widget.showToolbars ? toolbarWidget : const SizedBox.shrink(),
-          toolSettings: widget.showToolbars ? toolSettingsCard : const SizedBox.shrink(),
-          colorIndicator: widget.showToolbars ? _buildColorIndicator(theme) : const SizedBox.shrink(),
-          colorPanel: widget.showToolbars ? colorPanelData : ToolbarPanelData.empty(),
-          layerPanel: widget.showToolbars ? layerPanelData : ToolbarPanelData.empty(),
+          toolbar: widget.showToolbars
+              ? toolbarWidget
+              : const SizedBox.shrink(),
+          toolSettings: widget.showToolbars
+              ? toolSettingsCard
+              : const SizedBox.shrink(),
+          colorIndicator: widget.showToolbars
+              ? _buildColorIndicator(theme)
+              : const SizedBox.shrink(),
+          colorPanel: widget.showToolbars
+              ? colorPanelData
+              : ToolbarPanelData.empty(),
+          layerPanel: widget.showToolbars
+              ? layerPanelData
+              : ToolbarPanelData.empty(),
           exitButton: null,
         );
         final WorkspaceLayoutSplits workspaceSplits = WorkspaceLayoutSplits(
@@ -350,11 +362,15 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
           toolSettingsMaxWidth: toolSettingsMaxWidth,
           workspaceSplits: workspaceSplits,
         );
-        final PaintingToolbarLayoutDelegate toolbarLayoutDelegate =
-            toolbarStyle == PaintingToolbarLayoutStyle.sai2
-            ? const Sai2ToolbarLayoutDelegate()
-            : const FloatingToolbarLayoutDelegate();
-        final PaintingToolbarLayoutResult toolbarLayoutResult = widget.showToolbars
+        final PaintingToolbarLayoutDelegate
+        toolbarLayoutDelegate = switch (toolbarStyle) {
+          PaintingToolbarLayoutStyle.sai2 => const Sai2ToolbarLayoutDelegate(),
+          PaintingToolbarLayoutStyle.csp => const CspToolbarLayoutDelegate(),
+          PaintingToolbarLayoutStyle.floating =>
+            const FloatingToolbarLayoutDelegate(),
+        };
+        final PaintingToolbarLayoutResult toolbarLayoutResult =
+            widget.showToolbars
             ? toolbarLayoutDelegate.build(
                 context,
                 toolbarElements,
@@ -1226,88 +1242,145 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                                       sprayStrokeWidth: _sprayStrokeWidth,
                                       eraserStrokeWidth: _eraserStrokeWidth,
                                       sprayMode: _sprayMode,
-                                      penStrokeSliderRange: _penStrokeSliderRange,
-                                      sprayStrokeSliderRange: _sprayStrokeSliderRange,
-                                      eraserStrokeSliderRange: _eraserStrokeSliderRange,
-                                      onPenStrokeWidthChanged: _updatePenStrokeWidth,
-                                      onSprayStrokeWidthChanged: _updateSprayStrokeWidth,
-                                      onEraserStrokeWidthChanged: _updateEraserStrokeWidth,
-                                      onPenStrokeSliderRangeChanged: _updatePenStrokeSliderRange,
-                                      onSprayStrokeSliderRangeChanged: _updateSprayStrokeSliderRange,
-                                      onEraserStrokeSliderRangeChanged: _updateEraserStrokeSliderRange,
+                                      penStrokeSliderRange:
+                                          _penStrokeSliderRange,
+                                      sprayStrokeSliderRange:
+                                          _sprayStrokeSliderRange,
+                                      eraserStrokeSliderRange:
+                                          _eraserStrokeSliderRange,
+                                      onPenStrokeWidthChanged:
+                                          _updatePenStrokeWidth,
+                                      onSprayStrokeWidthChanged:
+                                          _updateSprayStrokeWidth,
+                                      onEraserStrokeWidthChanged:
+                                          _updateEraserStrokeWidth,
+                                      onPenStrokeSliderRangeChanged:
+                                          _updatePenStrokeSliderRange,
+                                      onSprayStrokeSliderRangeChanged:
+                                          _updateSprayStrokeSliderRange,
+                                      onEraserStrokeSliderRangeChanged:
+                                          _updateEraserStrokeSliderRange,
                                       onSprayModeChanged: _updateSprayMode,
-                                      brushPresets: _brushLibrary?.presets ?? const <BrushPreset>[],
-                                      activeBrushPresetId: _activeBrushPreset?.id ?? _brushLibrary?.selectedId ?? 'pencil',
-                                      onOpenBrushPresetPicker: _openBrushPresetPicker,
-                                      strokeStabilizerStrength: _strokeStabilizerStrength,
-                                      onStrokeStabilizerChanged: _updateStrokeStabilizerStrength,
+                                      brushPresets:
+                                          _brushLibrary?.presets ??
+                                          const <BrushPreset>[],
+                                      activeBrushPresetId:
+                                          _activeBrushPreset?.id ??
+                                          _brushLibrary?.selectedId ??
+                                          'pencil',
+                                      onOpenBrushPresetPicker:
+                                          _openBrushPresetPicker,
+                                      strokeStabilizerStrength:
+                                          _strokeStabilizerStrength,
+                                      onStrokeStabilizerChanged:
+                                          _updateStrokeStabilizerStrength,
                                       streamlineStrength: _streamlineStrength,
-                                      onStreamlineChanged: _updateStreamlineStrength,
-                                      stylusPressureEnabled: _stylusPressureEnabled,
-                                      onStylusPressureEnabledChanged: _updateStylusPressureEnabled,
+                                      onStreamlineChanged:
+                                          _updateStreamlineStrength,
+                                      stylusPressureEnabled:
+                                          _stylusPressureEnabled,
+                                      onStylusPressureEnabledChanged:
+                                          _updateStylusPressureEnabled,
                                       touchDrawingEnabled: _touchDrawingEnabled,
-                                      onTouchDrawingEnabledChanged: _updateTouchDrawingEnabled,
+                                      onTouchDrawingEnabledChanged:
+                                          _updateTouchDrawingEnabled,
                                       simulatePenPressure: _simulatePenPressure,
-                                      onSimulatePenPressureChanged: _updatePenPressureSimulation,
+                                      onSimulatePenPressureChanged:
+                                          _updatePenPressureSimulation,
                                       penPressureProfile: _penPressureProfile,
-                                      onPenPressureProfileChanged: _updatePenPressureProfile,
-                                      bucketSampleAllLayers: _bucketSampleAllLayers,
+                                      onPenPressureProfileChanged:
+                                          _updatePenPressureProfile,
+                                      bucketSampleAllLayers:
+                                          _bucketSampleAllLayers,
                                       bucketContiguous: _bucketContiguous,
-                                      bucketSwallowColorLine: _bucketSwallowColorLine,
-                                      bucketSwallowColorLineMode: _bucketSwallowColorLineMode,
-                                      bucketAntialiasLevel: _bucketAntialiasLevel,
-                                      onBucketSampleAllLayersChanged: _updateBucketSampleAllLayers,
-                                      onBucketContiguousChanged: _updateBucketContiguous,
-                                      onBucketSwallowColorLineChanged: _updateBucketSwallowColorLine,
-                                      onBucketSwallowColorLineModeChanged: _updateBucketSwallowColorLineMode,
-                                      onBucketAntialiasChanged: _updateBucketAntialiasLevel,
+                                      bucketSwallowColorLine:
+                                          _bucketSwallowColorLine,
+                                      bucketSwallowColorLineMode:
+                                          _bucketSwallowColorLineMode,
+                                      bucketAntialiasLevel:
+                                          _bucketAntialiasLevel,
+                                      onBucketSampleAllLayersChanged:
+                                          _updateBucketSampleAllLayers,
+                                      onBucketContiguousChanged:
+                                          _updateBucketContiguous,
+                                      onBucketSwallowColorLineChanged:
+                                          _updateBucketSwallowColorLine,
+                                      onBucketSwallowColorLineModeChanged:
+                                          _updateBucketSwallowColorLineMode,
+                                      onBucketAntialiasChanged:
+                                          _updateBucketAntialiasLevel,
                                       bucketTolerance: _bucketTolerance,
-                                      onBucketToleranceChanged: _updateBucketTolerance,
+                                      onBucketToleranceChanged:
+                                          _updateBucketTolerance,
                                       bucketFillGap: _bucketFillGap,
-                                      onBucketFillGapChanged: _updateBucketFillGap,
-                                      layerAdjustCropOutside: _layerAdjustCropOutside,
-                                      onLayerAdjustCropOutsideChanged: _updateLayerAdjustCropOutside,
+                                      onBucketFillGapChanged:
+                                          _updateBucketFillGap,
+                                      layerAdjustCropOutside:
+                                          _layerAdjustCropOutside,
+                                      onLayerAdjustCropOutsideChanged:
+                                          _updateLayerAdjustCropOutside,
                                       selectionShape: selectionShape,
-                                      onSelectionShapeChanged: _updateSelectionShape,
-                                      selectionAdditiveEnabled: _selectionAdditiveEnabled,
-                                      onSelectionAdditiveChanged: _updateSelectionAdditiveEnabled,
+                                      onSelectionShapeChanged:
+                                          _updateSelectionShape,
+                                      selectionAdditiveEnabled:
+                                          _selectionAdditiveEnabled,
+                                      onSelectionAdditiveChanged:
+                                          _updateSelectionAdditiveEnabled,
                                       shapeToolVariant: shapeToolVariant,
-                                      onShapeToolVariantChanged: _updateShapeToolVariant,
+                                      onShapeToolVariantChanged:
+                                          _updateShapeToolVariant,
                                       shapeFillEnabled: _shapeFillEnabled,
-                                      onShapeFillChanged: _updateShapeFillEnabled,
-                                      onSizeChanged: _updateToolSettingsCardSize,
+                                      onShapeFillChanged:
+                                          _updateShapeFillEnabled,
+                                      onSizeChanged:
+                                          _updateToolSettingsCardSize,
                                       magicWandTolerance: _magicWandTolerance,
-                                      onMagicWandToleranceChanged: _updateMagicWandTolerance,
-                                      brushToolsEraserMode: _brushToolsEraserMode,
-                                      onBrushToolsEraserModeChanged: _updateBrushToolsEraserMode,
-                                      strokeStabilizerMaxLevel: _strokeStabilizerMaxLevel,
+                                      onMagicWandToleranceChanged:
+                                          _updateMagicWandTolerance,
+                                      brushToolsEraserMode:
+                                          _brushToolsEraserMode,
+                                      onBrushToolsEraserModeChanged:
+                                          _updateBrushToolsEraserMode,
+                                      strokeStabilizerMaxLevel:
+                                          _strokeStabilizerMaxLevel,
                                       streamlineMaxLevel: _streamlineMaxLevel,
                                       compactLayout: true,
                                       textFontSize: _textFontSize,
-                                      onTextFontSizeChanged: _updateTextFontSize,
+                                      onTextFontSizeChanged:
+                                          _updateTextFontSize,
                                       textLineHeight: _textLineHeight,
-                                      onTextLineHeightChanged: _updateTextLineHeight,
+                                      onTextLineHeightChanged:
+                                          _updateTextLineHeight,
                                       textLetterSpacing: _textLetterSpacing,
-                                      onTextLetterSpacingChanged: _updateTextLetterSpacing,
+                                      onTextLetterSpacingChanged:
+                                          _updateTextLetterSpacing,
                                       textFontFamily: _textFontFamily,
-                                      onTextFontFamilyChanged: _updateTextFontFamily,
+                                      onTextFontFamilyChanged:
+                                          _updateTextFontFamily,
                                       availableFontFamilies: _textFontFamilies,
                                       fontsLoading: _textFontsLoading,
                                       textAlign: _textAlign,
                                       onTextAlignChanged: _updateTextAlign,
                                       textOrientation: _textOrientation,
-                                      onTextOrientationChanged: _updateTextOrientation,
+                                      onTextOrientationChanged:
+                                          _updateTextOrientation,
                                       textAntialias: _textAntialias,
-                                      onTextAntialiasChanged: _updateTextAntialias,
+                                      onTextAntialiasChanged:
+                                          _updateTextAntialias,
                                       textStrokeEnabled: _textStrokeEnabled,
-                                      onTextStrokeEnabledChanged: _updateTextStrokeEnabled,
+                                      onTextStrokeEnabledChanged:
+                                          _updateTextStrokeEnabled,
                                       textStrokeWidth: _textStrokeWidth,
-                                      onTextStrokeWidthChanged: _updateTextStrokeWidth,
+                                      onTextStrokeWidthChanged:
+                                          _updateTextStrokeWidth,
                                       textStrokeColor: _colorLineColor,
-                                      onTextStrokeColorPressed: _handleEditTextStrokeColor,
+                                      onTextStrokeColorPressed:
+                                          _handleEditTextStrokeColor,
                                       canvasRotation: _viewport.rotation,
-                                      onCanvasRotationChanged: _setViewportRotation,
-                                      onCanvasRotationReset: _resetViewportRotation,
+                                      onCanvasRotationChanged:
+                                          _setViewportRotation,
+                                      onCanvasRotationReset:
+                                          _resetViewportRotation,
                                     ),
                                   );
                                 },
@@ -1337,7 +1410,8 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                               alignment: Alignment.bottomRight,
                               child: MobileRightButtons(
                                 colorIndicator: _buildColorIndicator(theme),
-                                layerPanelBuilder: (context) => _buildLayerPanelContent(theme),
+                                layerPanelBuilder: (context) =>
+                                    _buildLayerPanelContent(theme),
                                 rebuildListenable: _mobileUiRebuildListenable,
                               ),
                             ),

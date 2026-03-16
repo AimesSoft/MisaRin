@@ -242,6 +242,7 @@
   "menuPerspective3Point": "3-Point",
   "menuWorkspaceDefault": "Default",
   "menuWorkspaceSai2": "SAI2",
+  "menuWorkspaceCsp": "CSP",
   "menuSwitchWorkspace": "Switch Workspace",
   "menuResetWorkspace": "Reset Workspace",
   "menuEdgeSofteningEllipsis": "Edge Softening…",
