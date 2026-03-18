@@ -2059,7 +2059,7 @@ class CanvasPageState extends State<CanvasPage> {
             path,
             name: _preferredDocumentNameForDrop(item),
             svgRasterSizePx: svgRasterSizePx,
-            hideImportedImageLayer: true,
+            hideBackgroundLayer: true,
           ),
         );
       }
@@ -2072,7 +2072,7 @@ class CanvasPageState extends State<CanvasPage> {
       bytes,
       name: _preferredDocumentNameForDrop(item),
       svgRasterSizePx: svgRasterSizePx,
-      hideImportedImageLayer: true,
+      hideBackgroundLayer: true,
     );
   }
 

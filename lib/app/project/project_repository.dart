@@ -453,7 +453,7 @@ class ProjectRepository {
     String path, {
     String? name,
     int? svgRasterSizePx,
-    bool hideImportedImageLayer = false,
+    bool hideBackgroundLayer = false,
   }) async {
     if (kIsWeb) {
       throw UnsupportedError('Web 暂不支持从本地路径读取图像。');
@@ -475,7 +475,7 @@ class ProjectRepository {
     return _buildDocumentFromDecodedImage(
       decoded,
       resolvedName,
-      hideImportedImageLayer: hideImportedImageLayer,
+      hideBackgroundLayer: hideBackgroundLayer,
     );
   }
 
@@ -483,7 +483,7 @@ class ProjectRepository {
     Uint8List bytes, {
     String? name,
     int? svgRasterSizePx,
-    bool hideImportedImageLayer = false,
+    bool hideBackgroundLayer = false,
   }) async {
     if (!kIsWeb) {
       await _ensureProjectDirectory();
@@ -496,7 +496,7 @@ class ProjectRepository {
     return _buildDocumentFromDecodedImage(
       decoded,
       resolvedName,
-      hideImportedImageLayer: hideImportedImageLayer,
+      hideBackgroundLayer: hideBackgroundLayer,
     );
   }
 
@@ -543,7 +543,7 @@ class ProjectRepository {
   ProjectDocument _buildDocumentFromDecodedImage(
     _DecodedImage decoded,
     String name, {
-    bool hideImportedImageLayer = false,
+    bool hideBackgroundLayer = false,
   }) {
     final CanvasSettings settings = CanvasSettings(
       width: decoded.width.toDouble(),
@@ -558,11 +558,11 @@ class ProjectRepository {
     );
 
     final List<CanvasLayerData> layers = <CanvasLayerData>[
-      base.layers.first,
+      base.layers.first.copyWith(visible: !hideBackgroundLayer),
       base.layers.length > 1
           ? base.layers[1].copyWith(
               name: name,
-              visible: !hideImportedImageLayer,
+              visible: true,
               bitmap: decoded.rgba,
               bitmapWidth: decoded.width,
               bitmapHeight: decoded.height,
@@ -571,7 +571,7 @@ class ProjectRepository {
           : CanvasLayerData(
               id: generateLayerId(),
               name: name,
-              visible: !hideImportedImageLayer,
+              visible: true,
               bitmap: decoded.rgba,
               bitmapWidth: decoded.width,
               bitmapHeight: decoded.height,
