@@ -21,6 +21,18 @@ const bool _kEnableBridgeCoalescedForStroke = bool.fromEnvironment(
   'MISA_RIN_ENABLE_BRIDGE_COALESCED_FOR_STROKE',
   defaultValue: false,
 );
+const Duration _kCursorLocateDetectWindow = Duration(milliseconds: 480);
+const Duration _kCursorLocateHoldDuration = Duration(milliseconds: 120);
+const Duration _kCursorLocateExpandDuration = Duration(milliseconds: 110);
+const Duration _kCursorLocateFadeDuration = Duration(milliseconds: 420);
+const double _kCursorLocateTargetExtentRatio = 0.095;
+const double _kCursorLocateMinExtent = 110.0;
+const double _kCursorLocateMaxExtent = 260.0;
+const double _kCursorLocateExtraExtentFactor = 0.55;
+const double _kCursorLocateMinSegmentDistance = 3.0;
+const double _kCursorLocateMinSpeedPxPerSec = 1600.0;
+const int _kCursorLocateMinDirectionFlips = 3;
+const Duration _kCursorLocateTriggerDebounce = Duration(milliseconds: 550);
 
 final class _BackendPointBuffer {
   _BackendPointBuffer({int initialCapacityPoints = 256})
@@ -283,6 +295,13 @@ class _CpuStrokeEvent {
   final bool? snapToPixelOverride;
 }
 
+class _CursorMotionSample {
+  const _CursorMotionSample(this.position, this.timestampUs);
+
+  final Offset position;
+  final int timestampUs;
+}
+
 mixin _PaintingBoardInteractionMixin
     on
         _PaintingBoardBase,
@@ -321,6 +340,11 @@ mixin _PaintingBoardInteractionMixin
   int _debugPredictedOverlayBackendFrames = 0;
   int _debugPredictedOverlayCpuFrames = 0;
   DateTime? _debugPredictedOverlayLogAt;
+  final List<_CursorMotionSample> _cursorLocateSamples =
+      <_CursorMotionSample>[];
+  AnimationController? _cursorLocateController;
+  Timer? _cursorLocateCollapseTimer;
+  int _lastCursorLocateTriggerUs = 0;
 
   final List<_CpuStrokeEvent> _cpuStrokeQueue = <_CpuStrokeEvent>[];
   bool _cpuStrokeFlushScheduled = false;
@@ -329,6 +353,158 @@ mixin _PaintingBoardInteractionMixin
   bool get _showBackendPredictedOverlay =>
       _backendPredictedPoints.isNotEmpty &&
       _backendPredictedPoints.length == _backendPredictedRadii.length;
+
+  double get _cursorLocateOverlayProgress {
+    final AnimationController? controller = _cursorLocateController;
+    if (controller == null || !controller.value.isFinite) {
+      return 0.0;
+    }
+    return Curves.easeOutCubic.transform(controller.value.clamp(0.0, 1.0));
+  }
+
+  double _cursorLocateTargetExtent() {
+    final double shortestSide = _workspaceSize.shortestSide;
+    if (!shortestSide.isFinite || shortestSide <= 0) {
+      return 140.0;
+    }
+    final double target = shortestSide * _kCursorLocateTargetExtentRatio;
+    return target.clamp(_kCursorLocateMinExtent, _kCursorLocateMaxExtent);
+  }
+
+  double _cursorLocateScaledExtent(double baseExtent) {
+    final double base = (baseExtent.isFinite && baseExtent > 0)
+        ? baseExtent
+        : 1.0;
+    final double progress = _cursorLocateOverlayProgress;
+    if (progress <= 0.0) {
+      return base;
+    }
+    final double targetExtent = _cursorLocateTargetExtent();
+    final double desiredExtent = math.max(
+      targetExtent,
+      base + targetExtent * _kCursorLocateExtraExtentFactor,
+    );
+    return ui.lerpDouble(base, desiredExtent, progress) ?? desiredExtent;
+  }
+
+  double _cursorLocateScaleForExtent(double baseExtent) {
+    final double base = (baseExtent.isFinite && baseExtent > 0)
+        ? baseExtent
+        : 1.0;
+    return _cursorLocateScaledExtent(base) / base;
+  }
+
+  void _initializeCursorLocateOverlayAnimation() {
+    final AnimationController controller = AnimationController(
+      vsync: this,
+      duration: _kCursorLocateExpandDuration,
+      reverseDuration: _kCursorLocateFadeDuration,
+      value: 0.0,
+    )..addListener(_handleCursorLocateOverlayTick);
+    _cursorLocateController = controller;
+  }
+
+  void _disposeCursorLocateOverlayAnimation() {
+    _cursorLocateCollapseTimer?.cancel();
+    _cursorLocateCollapseTimer = null;
+    _cursorLocateSamples.clear();
+    final AnimationController? controller = _cursorLocateController;
+    if (controller == null) {
+      return;
+    }
+    controller.removeListener(_handleCursorLocateOverlayTick);
+    controller.dispose();
+    _cursorLocateController = null;
+  }
+
+  void _handleCursorLocateOverlayTick() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+  }
+
+  void _updateCursorLocateFromMouseMotion(
+    Offset workspacePosition, {
+    Duration? timestamp,
+  }) {
+    final AnimationController? controller = _cursorLocateController;
+    if (controller == null) {
+      return;
+    }
+    final int nowUs =
+        timestamp?.inMicroseconds ?? DateTime.now().microsecondsSinceEpoch;
+    _cursorLocateSamples.add(_CursorMotionSample(workspacePosition, nowUs));
+    final int minUs = nowUs - _kCursorLocateDetectWindow.inMicroseconds;
+    while (_cursorLocateSamples.length > 2 &&
+        _cursorLocateSamples.first.timestampUs < minUs) {
+      _cursorLocateSamples.removeAt(0);
+    }
+    if (_cursorLocateSamples.length < 4) {
+      return;
+    }
+
+    double distanceSum = 0.0;
+    int directionFlips = 0;
+    Offset? previousDirection;
+    for (int i = 1; i < _cursorLocateSamples.length; i++) {
+      final Offset delta =
+          _cursorLocateSamples[i].position -
+          _cursorLocateSamples[i - 1].position;
+      final double distance = delta.distance;
+      if (!distance.isFinite || distance < _kCursorLocateMinSegmentDistance) {
+        continue;
+      }
+      distanceSum += distance;
+      final Offset direction = Offset(delta.dx / distance, delta.dy / distance);
+      if (previousDirection != null) {
+        final double dot =
+            previousDirection.dx * direction.dx +
+            previousDirection.dy * direction.dy;
+        if (dot < -0.52) {
+          directionFlips += 1;
+        }
+      }
+      previousDirection = direction;
+    }
+    if (directionFlips < _kCursorLocateMinDirectionFlips) {
+      return;
+    }
+    final int durationUs =
+        _cursorLocateSamples.last.timestampUs -
+        _cursorLocateSamples.first.timestampUs;
+    if (durationUs <= 0) {
+      return;
+    }
+    final double speedPxPerSec =
+        distanceSum / (durationUs / Duration.microsecondsPerSecond);
+    if (!speedPxPerSec.isFinite ||
+        speedPxPerSec < _kCursorLocateMinSpeedPxPerSec) {
+      return;
+    }
+    if ((nowUs - _lastCursorLocateTriggerUs) <
+        _kCursorLocateTriggerDebounce.inMicroseconds) {
+      return;
+    }
+    _lastCursorLocateTriggerUs = nowUs;
+    _triggerCursorLocatePulse();
+  }
+
+  void _triggerCursorLocatePulse() {
+    final AnimationController? controller = _cursorLocateController;
+    if (controller == null) {
+      return;
+    }
+    _cursorLocateCollapseTimer?.cancel();
+    controller.animateTo(1.0, curve: Curves.easeOutCubic);
+    _cursorLocateCollapseTimer = Timer(_kCursorLocateHoldDuration, () {
+      final AnimationController? active = _cursorLocateController;
+      if (active == null) {
+        return;
+      }
+      active.reverse();
+    });
+  }
 
   void _scheduleBackendPredictedOverlayRepaint() {
     if (_backendPredictedOverlayFrameScheduled) {

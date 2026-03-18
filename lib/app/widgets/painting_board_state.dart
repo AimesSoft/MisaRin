@@ -72,6 +72,7 @@ class PaintingBoardState extends _PaintingBoardBase
   @override
   void initState() {
     super.initState();
+    _initializeCursorLocateOverlayAnimation();
     _viewInfoNotifier = ValueNotifier<CanvasViewInfo>(_buildViewInfo());
     initializeTextTool();
     initializeSelectionTicker(this);
@@ -247,6 +248,7 @@ class PaintingBoardState extends _PaintingBoardBase
     _pencilDoubleTapSubscription = null;
     _tabletHoverSubscription?.cancel();
     _tabletHoverSubscription = null;
+    _disposeCursorLocateOverlayAnimation();
     MobileBottomSheetController.activeCount.removeListener(
       _handleMobileBottomSheetChanged,
     );
@@ -270,7 +272,7 @@ class PaintingBoardState extends _PaintingBoardBase
     }
     final Offset local = box.globalToLocal(sample.position);
     _recordWorkspacePointer(local);
-    _updateToolCursorOverlay(local);
+    _updateToolCursorOverlay(local, pointerKind: PointerDeviceKind.stylus);
     _updatePerspectiveHover(_toBoardLocal(local));
   }
 

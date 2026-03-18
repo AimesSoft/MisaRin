@@ -1,6 +1,7 @@
 part of 'painting_board.dart';
 
-extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInteractionMixin {
+extension _PaintingBoardInteractionSprayCursorExtension
+    on _PaintingBoardInteractionMixin {
   void _trackStylusContact(PointerEvent event) {
     final bool stylusLike =
         _isStylusEvent(event) ||
@@ -34,7 +35,9 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
     }
     final CanvasTool tool = _effectiveActiveTool;
     final bool drawingTool =
-        tool == CanvasTool.pen || tool == CanvasTool.eraser || tool == CanvasTool.spray;
+        tool == CanvasTool.pen ||
+        tool == CanvasTool.eraser ||
+        tool == CanvasTool.spray;
     if (!drawingTool) {
       return false;
     }
@@ -183,7 +186,7 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
 
     final double recentMainExtent = recentCount > 0
         ? recentCount * recentSwatchSize +
-            math.max(0, recentCount - 1) * recentSwatchGap
+              math.max(0, recentCount - 1) * recentSwatchGap
         : 0;
     final double recentCrossExtent = recentCount > 0 ? recentSwatchSize : 0;
     Rect? recentRect;
@@ -207,11 +210,9 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
       }
     }
 
-    final double leftWidth =
-        padding * 2 + mobileButtonSize * 2 + mobileGap;
+    final double leftWidth = padding * 2 + mobileButtonSize * 2 + mobileGap;
     final double leftHeight = padding * 2 + mobileButtonSize;
-    final double leftTop =
-        _workspaceSize.height - safe.bottom - leftHeight;
+    final double leftTop = _workspaceSize.height - safe.bottom - leftHeight;
     final Rect leftRect = Rect.fromLTWH(
       safe.left,
       leftTop,
@@ -223,10 +224,8 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
         padding * 2 + math.max(mobileButtonSize, colorIndicatorSize);
     final double rightHeight =
         padding * 2 + colorIndicatorSize + mobileGap + mobileButtonSize;
-    final double rightLeft =
-        _workspaceSize.width - safe.right - rightWidth;
-    final double rightTop =
-        _workspaceSize.height - safe.bottom - rightHeight;
+    final double rightLeft = _workspaceSize.width - safe.right - rightWidth;
+    final double rightTop = _workspaceSize.height - safe.bottom - rightHeight;
     final Rect rightRect = Rect.fromLTWH(
       rightLeft,
       rightTop,
@@ -297,7 +296,9 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
     final bool erase = _isBrushEraserEnabled;
     final Color color =
         _activeSprayColor ?? (erase ? const Color(0xFFFFFFFF) : _primaryColor);
-    if (_backendSprayActive && _backend.supportsSpray && !engine.sampleInputColor) {
+    if (_backendSprayActive &&
+        _backend.supportsSpray &&
+        !engine.sampleInputColor) {
       final Size engineSize = _backendCanvasEngineSize ?? _canvasSize;
       double sx = 1.0;
       double sy = 1.0;
@@ -320,10 +321,7 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
           if (opacityScale <= 0.0) {
             return;
           }
-          final Offset enginePos = Offset(
-            position.dx * sx,
-            position.dy * sy,
-          );
+          final Offset enginePos = Offset(position.dx * sx, position.dy * sy);
           packed.add(enginePos.dx);
           packed.add(enginePos.dy);
           packed.add(particleRadius * scale);
@@ -398,11 +396,7 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
     final double spacing = _softSpraySpacingForRadius(radius);
     if (last == null) {
       _softSprayLastPoint = boardLocal;
-      _stampSoftSprayBatch(
-        <Offset>[boardLocal],
-        radius,
-        _sprayCurrentPressure,
-      );
+      _stampSoftSprayBatch(<Offset>[boardLocal], radius, _sprayCurrentPressure);
       _markDirty();
       return;
     }
@@ -570,8 +564,9 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
     final Offset dir = (direction != null && direction.distanceSquared > 1e-5)
         ? (direction / direction.distance)
         : Offset.zero;
-    final double strokeWidth =
-        _activeTool == CanvasTool.eraser ? _eraserStrokeWidth : _penStrokeWidth;
+    final double strokeWidth = _activeTool == CanvasTool.eraser
+        ? _eraserStrokeWidth
+        : _penStrokeWidth;
     final double stepDistance = math.max(strokeWidth * 0.35, 3.0);
     Offset currentPoint = anchor;
 
@@ -663,8 +658,9 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
       return _maybeSnapToPerspective(clamped, anchor: anchor);
     }
 
-    final double stabilizerStrength =
-        mapStrokeStabilizerStrength(_strokeStabilizerStrength);
+    final double stabilizerStrength = mapStrokeStabilizerStrength(
+      _strokeStabilizerStrength,
+    );
     final bool enableStabilizer = stabilizerStrength > 0.0001;
     if (!enableStabilizer) {
       if (isInitialSample) {
@@ -849,7 +845,12 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
     _setActiveTool(CanvasTool.eraser);
   }
 
-  void _updateToolCursorOverlay(Offset workspacePosition) {
+  void _updateToolCursorOverlay(
+    Offset workspacePosition, {
+    PointerDeviceKind? pointerKind,
+    Duration? timestamp,
+    bool enableLocate = false,
+  }) {
     final CanvasTool tool = _effectiveActiveTool;
     final bool overlayTool = ToolCursorStyles.hasOverlay(tool);
     final bool isPenLike =
@@ -895,6 +896,12 @@ extension _PaintingBoardInteractionSprayCursorExtension on _PaintingBoardInterac
         });
       }
       return;
+    }
+    if (enableLocate && pointerKind == PointerDeviceKind.mouse) {
+      _updateCursorLocateFromMouseMotion(
+        workspacePosition,
+        timestamp: timestamp,
+      );
     }
     if (overlayTool) {
       final Offset? current = _toolCursorPosition;

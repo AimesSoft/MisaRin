@@ -166,17 +166,24 @@ extension _PaintingBoardInteractionPointerImpl
       return;
     }
     _recordWorkspacePointer(event.localPosition);
-    _updateToolCursorOverlay(event.localPosition);
+    _updateToolCursorOverlay(
+      event.localPosition,
+      pointerKind: event.kind,
+      timestamp: event.timeStamp,
+      enableLocate: false,
+    );
     final Offset pointer = event.localPosition;
     if (_isInsideToolArea(pointer) || _isInsideWorkspacePanelArea(pointer)) {
       _debugPointerInput('down ignored: inside tool/panel area');
       return;
     }
     final Offset boardLocal = _toBoardLocal(pointer);
-    final double? perspectiveHitRadius =
-        isTouch ? _perspectiveHandleHitRadius() : null;
-    final double? perspectiveScreenRadius =
-        isTouch ? _perspectiveHandleScreenRadius() : null;
+    final double? perspectiveHitRadius = isTouch
+        ? _perspectiveHandleHitRadius()
+        : null;
+    final double? perspectiveScreenRadius = isTouch
+        ? _perspectiveHandleScreenRadius()
+        : null;
     if (isTouch && !isPrimary) {
       if (_handlePerspectivePointerDown(
         boardLocal,
@@ -496,7 +503,15 @@ extension _PaintingBoardInteractionPointerImpl
       return;
     }
     _recordWorkspacePointer(event.localPosition);
-    _updateToolCursorOverlay(event.localPosition);
+    _updateToolCursorOverlay(
+      event.localPosition,
+      pointerKind: event.kind,
+      timestamp: event.timeStamp,
+      enableLocate:
+          event.kind == PointerDeviceKind.mouse &&
+          !event.down &&
+          event.buttons == 0,
+    );
     if (_isDraggingPerspectiveHandle) {
       final Offset boardLocal = _toBoardLocal(event.localPosition);
       _handlePerspectivePointerMove(boardLocal);
@@ -956,7 +971,12 @@ extension _PaintingBoardInteractionPointerImpl
 
   void _handlePointerHoverImpl(PointerHoverEvent event) {
     _recordWorkspacePointer(event.localPosition);
-    _updateToolCursorOverlay(event.localPosition);
+    _updateToolCursorOverlay(
+      event.localPosition,
+      pointerKind: event.kind,
+      timestamp: event.timeStamp,
+      enableLocate: event.kind == PointerDeviceKind.mouse,
+    );
     final Offset boardLocal = _toBoardLocal(event.localPosition);
     _updatePerspectiveHover(boardLocal);
     if (_layerTransformModeActive) {
@@ -1192,7 +1212,9 @@ extension _PaintingBoardInteractionPointerImpl
       setState(() {
         _isDrawing = false;
         if (_brushRandomRotationEnabled) {
-          _brushRandomRotationPreviewSeed = _brushRotationRandom.nextInt(1 << 31);
+          _brushRandomRotationPreviewSeed = _brushRotationRandom.nextInt(
+            1 << 31,
+          );
         }
       });
       _resetPerspectiveLock();

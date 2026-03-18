@@ -81,12 +81,22 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                 hideCursorBecauseLayerTransform);
         final bool isLayerAdjustDragging =
             _effectiveActiveTool == CanvasTool.layerAdjust && _isLayerDragging;
+        const double toolIconBaseExtent = 20.0;
+        final double toolIconLocateScale = _cursorLocateScaleForExtent(
+          toolIconBaseExtent,
+        );
+        final double crosshairLocateScale = _cursorLocateScaleForExtent(
+          ToolCursorStyles.crosshairSize,
+        );
         final double overlayBrushDiameter =
             _effectiveActiveTool == CanvasTool.spray
             ? _sprayStrokeWidth
             : _effectiveActiveTool == CanvasTool.eraser
             ? _eraserStrokeWidth
             : _penStrokeWidth;
+        final double overlayCursorDiameter = _cursorLocateScaledExtent(
+          overlayBrushDiameter * _viewport.scale,
+        );
         final BrushShape overlayBrushShape =
             _effectiveActiveTool == CanvasTool.spray ||
                 _effectiveActiveTool == CanvasTool.selectionPen
@@ -1422,31 +1432,36 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                           if (!suppressToolCursorOverlays &&
                               _toolCursorPosition != null &&
                               cursorStyle != null)
-                            Positioned(
-                              left:
-                                  _toolCursorPosition!.dx -
-                                  cursorStyle.anchor.dx +
-                                  cursorStyle.iconOffset.dx,
-                              top:
-                                  _toolCursorPosition!.dy -
-                                  cursorStyle.anchor.dy +
-                                  cursorStyle.iconOffset.dy,
-                              child: IgnorePointer(
-                                ignoring: true,
-                                child: ToolCursorStyles.iconFor(
-                                  _effectiveActiveTool,
-                                  isDragging: isLayerAdjustDragging,
+                            (() {
+                              final Offset hotspot =
+                                  cursorStyle.anchor - cursorStyle.iconOffset;
+                              return Positioned(
+                                left:
+                                    _toolCursorPosition!.dx -
+                                    hotspot.dx * toolIconLocateScale,
+                                top:
+                                    _toolCursorPosition!.dy -
+                                    hotspot.dy * toolIconLocateScale,
+                                child: IgnorePointer(
+                                  ignoring: true,
+                                  child: Transform.scale(
+                                    scale: toolIconLocateScale,
+                                    alignment: Alignment.topLeft,
+                                    child: ToolCursorStyles.iconFor(
+                                      _effectiveActiveTool,
+                                      isDragging: isLayerAdjustDragging,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            })(),
                           if (!suppressToolCursorOverlays &&
                               _penRequiresOverlay &&
                               _penCursorWorkspacePosition != null)
                             overlayBrushRaster != null
                                 ? CustomBrushCursorOverlay(
                                     position: _penCursorWorkspacePosition!,
-                                    diameter:
-                                        overlayBrushDiameter * _viewport.scale,
+                                    diameter: overlayCursorDiameter,
                                     raster: overlayBrushRaster,
                                     rotation: _brushRandomRotationEnabled
                                         ? brushRandomRotationRadians(
@@ -1462,8 +1477,7 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                                   )
                                 : PenCursorOverlay(
                                     position: _penCursorWorkspacePosition!,
-                                    diameter:
-                                        overlayBrushDiameter * _viewport.scale,
+                                    diameter: overlayCursorDiameter,
                                     shape: overlayBrushShape,
                                     rotation:
                                         _brushRandomRotationEnabled &&
@@ -1485,13 +1499,21 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                             Positioned(
                               left:
                                   _toolCursorPosition!.dx -
-                                  ToolCursorStyles.crosshairSize / 2,
+                                  (ToolCursorStyles.crosshairSize *
+                                          crosshairLocateScale) /
+                                      2,
                               top:
                                   _toolCursorPosition!.dy -
-                                  ToolCursorStyles.crosshairSize / 2,
-                              child: const IgnorePointer(
+                                  (ToolCursorStyles.crosshairSize *
+                                          crosshairLocateScale) /
+                                      2,
+                              child: IgnorePointer(
                                 ignoring: true,
-                                child: ToolCursorCrosshair(),
+                                child: Transform.scale(
+                                  scale: crosshairLocateScale,
+                                  alignment: Alignment.topLeft,
+                                  child: const ToolCursorCrosshair(),
+                                ),
                               ),
                             ),
                         ],
