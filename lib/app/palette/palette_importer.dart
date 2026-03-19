@@ -28,6 +28,7 @@ class PaletteFileImporter {
     'gpl',
     'ase',
     'aseprite',
+    'json',
   ];
 
   static PaletteImportResult importData(
@@ -54,6 +55,7 @@ class PaletteFileImporter {
   static final List<_PaletteFileParser> _parsers = <_PaletteFileParser>[
     _GimpPaletteParser(),
     _AsepritePaletteParser(),
+    _JsonPaletteParser(),
   ];
 }
 
@@ -167,10 +169,7 @@ class _AsepritePaletteParser extends _PaletteFileParser {
         } else if (chunkType == 0x0004 || chunkType == 0x0011) {
           colors.clear();
           colors.addAll(
-            _readOldPaletteChunk(
-              reader,
-              isSixBit: chunkType == 0x0011,
-            ),
+            _readOldPaletteChunk(reader, isSixBit: chunkType == 0x0011),
           );
           return PaletteImportResult(
             name: fileName ?? 'Aseprite 调色盘',
@@ -236,7 +235,9 @@ class _AsepritePaletteParser extends _PaletteFileParser {
         index++;
       }
     }
-    final List<Color> colors = entries.whereType<Color>().toList(growable: false);
+    final List<Color> colors = entries.whereType<Color>().toList(
+      growable: false,
+    );
     if (colors.isEmpty) {
       throw PaletteImportException('该 Aseprite 调色盘没有有效颜色。');
     }
@@ -246,6 +247,159 @@ class _AsepritePaletteParser extends _PaletteFileParser {
   int _expand6BitChannel(int value) {
     final int scaled = (value & 0x3F) * 255 ~/ 63;
     return scaled.clamp(0, 255);
+  }
+}
+
+class _JsonPaletteParser extends _PaletteFileParser {
+  _JsonPaletteParser() : super(const <String>['json']);
+
+  @override
+  PaletteImportResult? parse(Uint8List data, {String? fileName}) {
+    final Object? root;
+    try {
+      root = jsonDecode(utf8.decode(data, allowMalformed: true));
+    } on FormatException {
+      throw PaletteImportException('JSON 文件格式无效。');
+    } catch (_) {
+      throw PaletteImportException('无法读取 JSON 调色盘。');
+    }
+    if (root is! Map<String, dynamic>) {
+      throw PaletteImportException('JSON 调色盘根节点必须是对象。');
+    }
+
+    final Object? rawColors = root['colors'];
+    if (rawColors is! List<dynamic>) {
+      throw PaletteImportException('JSON 调色盘缺少 colors 数组。');
+    }
+    final List<Color> colors = <Color>[];
+    for (final Object? raw in rawColors) {
+      final Color? parsed = _parseJsonColor(raw);
+      if (parsed != null) {
+        colors.add(parsed);
+      }
+    }
+    if (colors.isEmpty) {
+      throw PaletteImportException('JSON 调色盘没有有效颜色。');
+    }
+
+    final String name = _resolvePaletteName(root['name'], fileName: fileName);
+    return PaletteImportResult(name: name, colors: colors);
+  }
+
+  String _resolvePaletteName(Object? raw, {String? fileName}) {
+    if (raw is String) {
+      final String trimmed = raw.trim();
+      if (trimmed.isNotEmpty) {
+        return trimmed;
+      }
+    }
+    if (fileName != null && fileName.trim().isNotEmpty) {
+      return fileName.trim();
+    }
+    return 'JSON 调色盘';
+  }
+
+  Color? _parseJsonColor(Object? raw) {
+    if (raw is String) {
+      return _parseHexColor(raw);
+    }
+    if (raw is Map<String, dynamic>) {
+      final Object? hex = raw['hex'] ?? raw['color'] ?? raw['value'];
+      if (hex is String) {
+        return _parseHexColor(hex);
+      }
+      final int? r = _parseChannel(raw['r'] ?? raw['red']);
+      final int? g = _parseChannel(raw['g'] ?? raw['green']);
+      final int? b = _parseChannel(raw['b'] ?? raw['blue']);
+      final int? a = _parseChannel(raw['a'] ?? raw['alpha'], isAlpha: true);
+      if (r == null || g == null || b == null) {
+        return null;
+      }
+      return Color.fromARGB(a ?? 0xFF, r, g, b);
+    }
+    if (raw is List<dynamic>) {
+      if (raw.length < 3) {
+        return null;
+      }
+      final int? r = _parseChannel(raw[0]);
+      final int? g = _parseChannel(raw[1]);
+      final int? b = _parseChannel(raw[2]);
+      final int? a = raw.length >= 4
+          ? _parseChannel(raw[3], isAlpha: true)
+          : 0xFF;
+      if (r == null || g == null || b == null || a == null) {
+        return null;
+      }
+      return Color.fromARGB(a, r, g, b);
+    }
+    return null;
+  }
+
+  int? _parseChannel(Object? raw, {bool isAlpha = false}) {
+    if (raw is int) {
+      return raw.clamp(0, 255).toInt();
+    }
+    if (raw is double) {
+      if (!raw.isFinite) {
+        return null;
+      }
+      final double scaled = (isAlpha && raw >= 0 && raw <= 1) ? raw * 255 : raw;
+      return scaled.round().clamp(0, 255).toInt();
+    }
+    if (raw is String) {
+      final String trimmed = raw.trim();
+      if (trimmed.isEmpty) {
+        return null;
+      }
+      final num? parsed = num.tryParse(trimmed);
+      if (parsed == null) {
+        return null;
+      }
+      final double value = parsed.toDouble();
+      if (!value.isFinite) {
+        return null;
+      }
+      final double scaled = (isAlpha && value >= 0 && value <= 1)
+          ? value * 255
+          : value;
+      return scaled.round().clamp(0, 255).toInt();
+    }
+    return null;
+  }
+
+  Color? _parseHexColor(String raw) {
+    String normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    if (normalized.startsWith('#')) {
+      normalized = normalized.substring(1);
+    } else if (normalized.startsWith('0x') || normalized.startsWith('0X')) {
+      normalized = normalized.substring(2);
+    }
+    if (normalized.isEmpty) {
+      return null;
+    }
+    if (normalized.length == 3) {
+      final String r = normalized[0];
+      final String g = normalized[1];
+      final String b = normalized[2];
+      normalized = '$r$r$g$g$b$b';
+    }
+    if (normalized.length == 6) {
+      normalized = 'FF$normalized';
+    } else if (normalized.length != 8) {
+      return null;
+    }
+    final int? argb = int.tryParse(normalized, radix: 16);
+    if (argb == null) {
+      return null;
+    }
+    final int a = (argb >> 24) & 0xFF;
+    final int r = (argb >> 16) & 0xFF;
+    final int g = (argb >> 8) & 0xFF;
+    final int b = argb & 0xFF;
+    return Color.fromARGB(a, r, g, b);
   }
 }
 

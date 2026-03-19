@@ -401,10 +401,7 @@ class _ColorIndicatorButtonState extends State<_ColorIndicatorButton> {
 }
 
 class _TwoByTwoCheckerPainter extends CustomPainter {
-  const _TwoByTwoCheckerPainter({
-    required this.light,
-    required this.dark,
-  });
+  const _TwoByTwoCheckerPainter({required this.light, required this.dark});
 
   final Color light;
   final Color dark;
@@ -415,10 +412,7 @@ class _TwoByTwoCheckerPainter extends CustomPainter {
     final double cellHeight = size.height / 2;
     final Paint lightPaint = Paint()..color = light;
     final Paint darkPaint = Paint()..color = dark;
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, cellWidth, cellHeight),
-      lightPaint,
-    );
+    canvas.drawRect(Rect.fromLTWH(0, 0, cellWidth, cellHeight), lightPaint);
     canvas.drawRect(
       Rect.fromLTWH(cellWidth, 0, cellWidth, cellHeight),
       darkPaint,
@@ -439,16 +433,93 @@ class _TwoByTwoCheckerPainter extends CustomPainter {
   }
 }
 
-class _ColorHexPreview extends StatelessWidget {
-  const _ColorHexPreview({super.key, required this.color});
+class _ColorHexPreview extends StatefulWidget {
+  const _ColorHexPreview({required this.color, this.onColorChanged});
 
   final Color color;
+  final ValueChanged<Color>? onColorChanged;
+
+  @override
+  State<_ColorHexPreview> createState() => _ColorHexPreviewState();
+}
+
+class _ColorHexPreviewState extends State<_ColorHexPreview> {
+  late final TextEditingController _hexController;
+  late final FocusNode _hexFocusNode;
+  String _lastCommittedHex = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _hexController = TextEditingController();
+    _hexFocusNode = FocusNode();
+    _lastCommittedHex = _hexStringForColor(widget.color);
+    _hexController.text = _lastCommittedHex;
+    _hexFocusNode.addListener(_handleHexFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ColorHexPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final String hex = _hexStringForColor(widget.color);
+    _lastCommittedHex = hex;
+    if (!_hexFocusNode.hasFocus && _hexController.text != hex) {
+      _hexController.text = hex;
+    }
+  }
+
+  @override
+  void dispose() {
+    _hexFocusNode.removeListener(_handleHexFocusChanged);
+    _hexFocusNode.dispose();
+    _hexController.dispose();
+    super.dispose();
+  }
+
+  void _handleHexFocusChanged() {
+    if (_hexFocusNode.hasFocus) {
+      return;
+    }
+    _applyHexInput(_hexController.text, commitFormatting: true);
+  }
+
+  void _handleHexChanged(String text) {
+    _applyHexInput(text, commitFormatting: false);
+  }
+
+  void _handleHexSubmitted(String text) {
+    _applyHexInput(text, commitFormatting: true);
+  }
+
+  void _applyHexInput(String raw, {required bool commitFormatting}) {
+    final ValueChanged<Color>? onColorChanged = widget.onColorChanged;
+    if (onColorChanged == null) {
+      return;
+    }
+    final Color? parsed = _tryParseHexColor(raw);
+    if (parsed == null) {
+      if (commitFormatting &&
+          !_hexFocusNode.hasFocus &&
+          _hexController.text != _lastCommittedHex) {
+        _hexController.text = _lastCommittedHex;
+      }
+      return;
+    }
+    final String normalizedHex = _hexStringForColor(parsed);
+    if (widget.color.toARGB32() != parsed.toARGB32()) {
+      onColorChanged(parsed);
+    }
+    _lastCommittedHex = normalizedHex;
+    if (commitFormatting && _hexController.text != normalizedHex) {
+      _hexController.text = normalizedHex;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final FluentThemeData theme = FluentTheme.of(context);
     final bool isDark = theme.brightness.isDark;
-    final String hex = _hexStringForColor(color);
+    final String hex = _hexStringForColor(widget.color);
     final l10n = context.l10n;
 
     return Container(
@@ -458,50 +529,71 @@ class _ColorHexPreview extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: theme.resources.controlStrokeColorDefault),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(width: 12),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withOpacity(0.18)
-                    : Colors.black.withOpacity(0.08),
+          Row(
+            children: [
+              const SizedBox(width: 12),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.18)
+                        : Colors.black.withOpacity(0.08),
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: widget.color),
+                ),
               ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: DecoratedBox(decoration: BoxDecoration(color: color)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(l10n.currentColor, style: theme.typography.bodyStrong),
-                const SizedBox(height: 2),
-                Text(hex, style: theme.typography.caption),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Tooltip(
-              message: '${l10n.menuCopy} $hex',
-              child: IconButton(
-                icon: const Icon(FluentIcons.copy),
-                onPressed: () => _copyHex(context, hex),
-                style: ButtonStyle(
-                  padding: WidgetStateProperty.all<EdgeInsets>(
-                    const EdgeInsets.all(6),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l10n.currentColor, style: theme.typography.bodyStrong),
+                    const SizedBox(height: 2),
+                    Text(hex, style: theme.typography.caption),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Tooltip(
+                  message: '${l10n.menuCopy} $hex',
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.copy),
+                    onPressed: () => _copyHex(context, hex),
+                    style: ButtonStyle(
+                      padding: WidgetStateProperty.all<EdgeInsets>(
+                        const EdgeInsets.all(6),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
+          if (widget.onColorChanged != null) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: TextBox(
+                controller: _hexController,
+                focusNode: _hexFocusNode,
+                placeholder: '#RRGGBB / #AARRGGBB',
+                onChanged: _handleHexChanged,
+                onSubmitted: _handleHexSubmitted,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -549,7 +641,7 @@ class _FluentColorPickerHost extends StatelessWidget {
           isAlphaTextInputVisible: false,
         ),
         const SizedBox(height: 16),
-        _ColorHexPreview(color: color),
+        _ColorHexPreview(color: color, onColorChanged: onChanged),
       ],
     );
   }
@@ -659,7 +751,7 @@ class _ColorSliderEditor extends StatelessWidget {
               onChanged(hsv.withValue(value.clamp(0.0, 1.0)).toColor()),
         ),
         const SizedBox(height: 16),
-        _ColorHexPreview(color: color),
+        _ColorHexPreview(color: color, onColorChanged: onChanged),
       ],
     );
   }
@@ -779,7 +871,10 @@ class _BoardPanelColorPickerState extends State<_BoardPanelColorPicker> {
           },
         ),
         const SizedBox(height: 16),
-        _ColorHexPreview(color: displayColor),
+        _ColorHexPreview(
+          color: displayColor,
+          onColorChanged: (color) => _setColor(HSVColor.fromColor(color)),
+        ),
       ],
     );
   }
@@ -912,4 +1007,45 @@ class _BoardPanelColorPickerState extends State<_BoardPanelColorPicker> {
     });
     widget.onChanged(hsv.toColor());
   }
+}
+
+Color? _tryParseHexColor(String raw) {
+  String text = raw.trim();
+  if (text.isEmpty) {
+    return null;
+  }
+  if (text.startsWith('#')) {
+    text = text.substring(1);
+  } else if (text.startsWith('0x') || text.startsWith('0X')) {
+    text = text.substring(2);
+  }
+  if (text.isEmpty) {
+    return null;
+  }
+  if (text.length == 3) {
+    final String r = text[0];
+    final String g = text[1];
+    final String b = text[2];
+    text = '$r$r$g$g$b$b';
+  } else if (text.length == 4) {
+    final String a = text[0];
+    final String r = text[1];
+    final String g = text[2];
+    final String b = text[3];
+    text = '$a$a$r$r$g$g$b$b';
+  }
+  if (text.length == 6) {
+    text = 'FF$text';
+  } else if (text.length != 8) {
+    return null;
+  }
+  final int? argb = int.tryParse(text, radix: 16);
+  if (argb == null) {
+    return null;
+  }
+  final int a = (argb >> 24) & 0xFF;
+  final int r = (argb >> 16) & 0xFF;
+  final int g = (argb >> 8) & 0xFF;
+  final int b = argb & 0xFF;
+  return Color.fromARGB(a, r, g, b);
 }

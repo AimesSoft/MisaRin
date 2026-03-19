@@ -2180,6 +2180,9 @@ class CanvasPageState extends State<CanvasPage> {
 
   @override
   Widget build(BuildContext context) {
+    // desktop_drop keeps hidden routes listening unless disabled explicitly.
+    final bool enableDropTargets =
+        _supportsFileDrops && (ModalRoute.of(context)?.isCurrent ?? true);
     final handler = MenuActionHandler(
       newProject: () => AppMenuActions.createProject(context),
       open: () => AppMenuActions.openProjectFromDisk(context),
@@ -2517,6 +2520,7 @@ class CanvasPageState extends State<CanvasPage> {
 
     if (_supportsFileDrops) {
       titleBar = DropTarget(
+        enable: enableDropTargets,
         onDragDone: (details) =>
             unawaited(_handleTabBarFileDrop(details.files)),
         child: titleBar,
@@ -2554,6 +2558,7 @@ class CanvasPageState extends State<CanvasPage> {
     );
     if (_supportsFileDrops) {
       workspace = DropTarget(
+        enable: enableDropTargets,
         onDragDone: (details) =>
             unawaited(_handleCanvasFileDrop(details.files)),
         child: workspace,

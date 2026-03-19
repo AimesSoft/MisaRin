@@ -485,6 +485,9 @@ class _MisarinHomePageState extends State<MisarinHomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
+    // desktop_drop keeps hidden routes listening unless disabled explicitly.
+    final bool enableDropTargets =
+        _supportsFileDrops && (ModalRoute.of(context)?.isCurrent ?? true);
     final handler = MenuActionHandler(
       newProject: () => AppMenuActions.createProject(context),
       importImage: () => AppMenuActions.importImage(context),
@@ -527,6 +530,7 @@ class _MisarinHomePageState extends State<MisarinHomePage> {
     );
     if (_supportsFileDrops) {
       pageContent = DropTarget(
+        enable: enableDropTargets,
         onDragDone: (details) => _handleHomeFileDrop(details.files),
         child: pageContent,
       );
