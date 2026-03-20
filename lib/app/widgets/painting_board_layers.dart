@@ -223,9 +223,7 @@ mixin _PaintingBoardLayerMixin
   void _handleAddLayer() async {
     await _pushUndoSnapshot();
     final String? insertAbove =
-        _backend.isReady
-            ? (_layers.isEmpty ? null : _layers.last.id)
-            : _activeLayerId;
+        _activeLayerId ?? (_layers.isEmpty ? null : _layers.last.id);
     _controller.addLayer(aboveLayerId: insertAbove);
     setState(() {});
     _markDirty();

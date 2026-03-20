@@ -459,6 +459,13 @@ class CanvasEngineFfi {
     );
   }
 
+  int? readPresentPixel({required int handle, required int x, required int y}) {
+    if (!isSupported) {
+      return null;
+    }
+    return _rustWgpu.readPresentPixel(handle: handle, x: x, y: y);
+  }
+
   bool writeLayer({
     required int handle,
     required int layerIndex,
@@ -717,12 +724,7 @@ class CanvasBackendFacade {
     required int height,
     required Uint8List mask,
   }) {
-    _ffi.setBrushMask(
-      handle: handle,
-      width: width,
-      height: height,
-      mask: mask,
-    );
+    _ffi.setBrushMask(handle: handle, width: width, height: height, mask: mask);
   }
 
   void clearBrushMask({required int handle}) {
@@ -830,11 +832,7 @@ class CanvasBackendFacade {
     required int fromIndex,
     required int toIndex,
   }) {
-    _ffi.reorderLayer(
-      handle: handle,
-      fromIndex: fromIndex,
-      toIndex: toIndex,
-    );
+    _ffi.reorderLayer(handle: handle, fromIndex: fromIndex, toIndex: toIndex);
   }
 
   void setViewFlags({
@@ -842,11 +840,7 @@ class CanvasBackendFacade {
     required bool mirror,
     required bool blackWhite,
   }) {
-    _ffi.setViewFlags(
-      handle: handle,
-      mirror: mirror,
-      blackWhite: blackWhite,
-    );
+    _ffi.setViewFlags(handle: handle, mirror: mirror, blackWhite: blackWhite);
   }
 
   bool applyAntialias({
@@ -917,6 +911,10 @@ class CanvasBackendFacade {
       width: width,
       height: height,
     );
+  }
+
+  int? readPresentPixel({required int handle, required int x, required int y}) {
+    return _ffi.readPresentPixel(handle: handle, x: x, y: y);
   }
 
   bool writeLayer({
@@ -991,10 +989,7 @@ class CanvasBackendFacade {
     );
   }
 
-  Int32List? getLayerBounds({
-    required int handle,
-    required int layerIndex,
-  }) {
+  Int32List? getLayerBounds({required int handle, required int layerIndex}) {
     return _ffi.getLayerBounds(handle: handle, layerIndex: layerIndex);
   }
 

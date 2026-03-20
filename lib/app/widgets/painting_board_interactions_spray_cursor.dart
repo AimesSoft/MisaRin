@@ -803,10 +803,9 @@ extension _PaintingBoardInteractionSprayCursorExtension
   }
 
   void _applyEyedropperSample(Offset boardLocal, {bool remember = true}) {
-    final Color color = _controller.sampleColor(
-      boardLocal,
-      sampleAllLayers: true,
-    );
+    final Color color =
+        _backend.sampleCompositeColor(boardLocal) ??
+        _controller.sampleColor(boardLocal, sampleAllLayers: true);
     if (color.alpha == 0) {
       _updateBrushToolsEraserMode(true);
       return;

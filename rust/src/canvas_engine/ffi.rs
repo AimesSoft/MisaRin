@@ -1260,12 +1260,58 @@ pub extern "C" fn engine_read_present(
     }
 }
 
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[no_mangle]
+pub extern "C" fn engine_read_present_pixel(
+    handle: u64,
+    x: u32,
+    y: u32,
+    out_argb_ptr: *mut u32,
+) -> u8 {
+    if out_argb_ptr.is_null() {
+        return 0;
+    }
+    let Some(entry) = lookup_engine(handle) else {
+        return 0;
+    };
+
+    let (tx, rx) = mpsc::channel();
+    if entry
+        .cmd_tx
+        .send(EngineCommand::ReadPresentPixel { x, y, reply: tx })
+        .is_err()
+    {
+        return 0;
+    }
+
+    match rx.recv() {
+        Ok(Some(pixel)) => {
+            unsafe {
+                *out_argb_ptr = pixel;
+            }
+            1
+        }
+        _ => 0,
+    }
+}
+
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
 #[no_mangle]
 pub extern "C" fn engine_read_present(
     _handle: u64,
     _out_pixels_ptr: *mut u8,
     _out_pixels_len: usize,
+) -> u8 {
+    0
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[no_mangle]
+pub extern "C" fn engine_read_present_pixel(
+    _handle: u64,
+    _x: u32,
+    _y: u32,
+    _out_argb_ptr: *mut u32,
 ) -> u8 {
     0
 }

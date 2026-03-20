@@ -200,6 +200,10 @@ class CanvasEngineFfi {
     return null;
   }
 
+  int? readPresentPixel({required int handle, required int x, required int y}) {
+    return null;
+  }
+
   bool writeLayer({
     required int handle,
     required int layerIndex,

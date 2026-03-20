@@ -385,26 +385,38 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
         height: height,
       );
     }
-    final List<CanvasLayerData> rotated = <CanvasLayerData>[
-      for (final CanvasLayerData layer in original)
-        _rotateLayerData(layer, rotation, width, height),
-    ];
+    final String? activeLayerId = _controller.activeLayerId;
+    final int activeIndex = activeLayerId == null
+        ? -1
+        : original.indexWhere(
+            (CanvasLayerData layer) => layer.id == activeLayerId,
+          );
+    if (activeIndex < 0) {
+      return CanvasRotationResult(
+        layers: original,
+        width: width,
+        height: height,
+      );
+    }
+    final List<CanvasLayerData> rotated = List<CanvasLayerData>.from(original);
+    rotated[activeIndex] = _rotateLayerData(
+      original[activeIndex],
+      rotation,
+      width,
+      height,
+    );
     setSelectionState(path: null, mask: null);
     clearSelectionArtifacts();
     resetSelectionUndoFlag();
-    final bool swaps = _rotationSwapsDimensions(rotation);
-    if (!swaps) {
-      _controller.loadLayers(rotated, _controller.backgroundColor);
-      _resetHistory();
-      setState(() {});
-      _syncBackendCanvasLayersToEngine();
-      await _backend.syncAllLayerPixelsToBackend(warnIfFailed: true);
+    _controller.loadLayers(rotated, _controller.backgroundColor);
+    if (activeLayerId != null) {
+      _controller.setActiveLayer(activeLayerId);
     }
-    return CanvasRotationResult(
-      layers: rotated,
-      width: swaps ? height : width,
-      height: swaps ? width : height,
-    );
+    _resetHistory();
+    setState(() {});
+    _syncBackendCanvasLayersToEngine();
+    await _backend.syncAllLayerPixelsToBackend(warnIfFailed: true);
+    return CanvasRotationResult(layers: rotated, width: width, height: height);
   }
 
   Future<CanvasRotationResult?> flipCanvas(CanvasFlip flip) async {
@@ -429,14 +441,33 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
         height: height,
       );
     }
-    final List<CanvasLayerData> flipped = <CanvasLayerData>[
-      for (final CanvasLayerData layer in original)
-        _flipLayerData(layer, flip, width, height),
-    ];
+    final String? activeLayerId = _controller.activeLayerId;
+    final int activeIndex = activeLayerId == null
+        ? -1
+        : original.indexWhere(
+            (CanvasLayerData layer) => layer.id == activeLayerId,
+          );
+    if (activeIndex < 0) {
+      return CanvasRotationResult(
+        layers: original,
+        width: width,
+        height: height,
+      );
+    }
+    final List<CanvasLayerData> flipped = List<CanvasLayerData>.from(original);
+    flipped[activeIndex] = _flipLayerData(
+      original[activeIndex],
+      flip,
+      width,
+      height,
+    );
     setSelectionState(path: null, mask: null);
     clearSelectionArtifacts();
     resetSelectionUndoFlag();
     _controller.loadLayers(flipped, _controller.backgroundColor);
+    if (activeLayerId != null) {
+      _controller.setActiveLayer(activeLayerId);
+    }
     _resetHistory();
     setState(() {});
     _syncBackendCanvasLayersToEngine();

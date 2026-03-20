@@ -253,6 +253,11 @@ pub(crate) enum EngineCommand {
     ReadPresent {
         reply: mpsc::Sender<Option<Vec<u8>>>,
     },
+    ReadPresentPixel {
+        x: u32,
+        y: u32,
+        reply: mpsc::Sender<Option<u32>>,
+    },
     WriteLayer {
         layer_index: u32,
         pixels: Vec<u32>,
@@ -1333,6 +1338,7 @@ fn render_thread_main(
                     EngineCommand::ReadLayer { .. }
                         | EngineCommand::ReadLayerPreview { .. }
                         | EngineCommand::ReadPresent { .. }
+                        | EngineCommand::ReadPresentPixel { .. }
                 )
             {
                 deferred_reads.push(cmd);
@@ -1468,6 +1474,7 @@ fn render_thread_main(
                     EngineCommand::ReadLayer { .. }
                         | EngineCommand::ReadLayerPreview { .. }
                         | EngineCommand::ReadPresent { .. }
+                        | EngineCommand::ReadPresentPixel { .. }
                 ) {
                     deferred_reads.push(cmd);
                     continue;
@@ -4755,6 +4762,14 @@ fn handle_engine_command(
                 };
             }
             if let Some(texture_target) = target.as_texture() {
+                // Force a fresh composite before readback so sampling does not
+                // depend on asynchronous present timing.
+                present_renderer.render_base(
+                    device.as_ref(),
+                    queue.as_ref(),
+                    present_bind_group,
+                    texture_target.render_view(),
+                );
                 match read_bgra_texture(
                     device,
                     queue,
@@ -4767,6 +4782,63 @@ fn handle_engine_command(
                     }
                     Err(err) => {
                         debug::log(LogLevel::Warn, format_args!("present readback failed: {err}"));
+                        let _ = reply.send(None);
+                    }
+                }
+            } else {
+                let _ = reply.send(None);
+            }
+            return EngineCommandOutcome {
+                stop: false,
+                needs_render: false,
+                new_canvas_size: None,
+            };
+        }
+        EngineCommand::ReadPresentPixel { x, y, reply } => {
+            let Some(target) = &present else {
+                let _ = reply.send(None);
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            };
+            let target_width = target.width();
+            let target_height = target.height();
+            if target_width == 0 || target_height == 0 || x >= target_width || y >= target_height {
+                let _ = reply.send(None);
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+            if let Some(texture_target) = target.as_texture() {
+                // Force a fresh composite before readback so eyedropper always
+                // reads the latest canvas content.
+                present_renderer.render_base(
+                    device.as_ref(),
+                    queue.as_ref(),
+                    present_bind_group,
+                    texture_target.render_view(),
+                );
+                match read_bgra_texture_pixel(
+                    device,
+                    queue,
+                    texture_target.render_texture(),
+                    target_width,
+                    target_height,
+                    x,
+                    y,
+                ) {
+                    Ok(pixel) => {
+                        let _ = reply.send(Some(pixel));
+                    }
+                    Err(err) => {
+                        debug::log(
+                            LogLevel::Warn,
+                            format_args!("present pixel readback failed: {err}"),
+                        );
                         let _ = reply.send(None);
                     }
                 }
@@ -5804,6 +5876,98 @@ fn read_bgra_texture(
 
     map_status?;
     Ok(result.unwrap_or_default())
+}
+
+fn read_bgra_texture_pixel(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+    x: u32,
+    y: u32,
+) -> Result<u32, String> {
+    if width == 0 || height == 0 {
+        return Err("read_bgra_texture_pixel: empty texture".to_string());
+    }
+    if x >= width || y >= height {
+        return Err(format!(
+            "read_bgra_texture_pixel: out of bounds x={x} y={y} width={width} height={height}"
+        ));
+    }
+
+    const BYTES_PER_PIXEL: u32 = 4;
+    const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
+    let bytes_per_row_padded = align_up_u32(BYTES_PER_PIXEL, COPY_BYTES_PER_ROW_ALIGNMENT);
+    if bytes_per_row_padded == 0 {
+        return Err("read_bgra_texture_pixel: bytes_per_row_padded == 0".to_string());
+    }
+    let readback_size = bytes_per_row_padded as u64;
+
+    let readback = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("misa-rin canvas present pixel readback"),
+        size: readback_size,
+        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("misa-rin canvas present pixel readback encoder"),
+    });
+    encoder.copy_texture_to_buffer(
+        wgpu::ImageCopyTexture {
+            texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d { x, y, z: 0 },
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::ImageCopyBuffer {
+            buffer: &readback,
+            layout: wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(bytes_per_row_padded),
+                rows_per_image: Some(1),
+            },
+        },
+        wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+        },
+    );
+    queue.submit(Some(encoder.finish()));
+
+    let slice = readback.slice(0..readback_size);
+    let (tx, rx) = mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |res| {
+        let _ = tx.send(res);
+    });
+    device.poll(wgpu::Maintain::Wait);
+
+    match rx.recv() {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => {
+            return Err(format!("read_bgra_texture_pixel: map_async failed: {e:?}"));
+        }
+        Err(e) => {
+            return Err(format!("read_bgra_texture_pixel: map_async channel failed: {e}"));
+        }
+    }
+
+    let mapped = slice.get_mapped_range();
+    if mapped.len() < 4 {
+        drop(mapped);
+        readback.unmap();
+        return Err("read_bgra_texture_pixel: mapped buffer too small".to_string());
+    }
+    let b = mapped[0] as u32;
+    let g = mapped[1] as u32;
+    let r = mapped[2] as u32;
+    let a = mapped[3] as u32;
+    drop(mapped);
+    readback.unmap();
+
+    Ok((a << 24) | (r << 16) | (g << 8) | b)
 }
 
 fn bgra_to_rgba(mut bytes: Vec<u8>) -> Vec<u8> {

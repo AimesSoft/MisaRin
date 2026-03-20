@@ -223,6 +223,16 @@ typedef _EngineReadLayerPreviewDart =
       int outPixelsLen,
     );
 
+typedef _EngineReadPresentPixelNative =
+    ffi.Uint8 Function(
+      ffi.Uint64 handle,
+      ffi.Uint32 x,
+      ffi.Uint32 y,
+      ffi.Pointer<ffi.Uint32> outArgb,
+    );
+typedef _EngineReadPresentPixelDart =
+    int Function(int handle, int x, int y, ffi.Pointer<ffi.Uint32> outArgb);
+
 typedef _EngineWriteLayerNative =
     ffi.Uint8 Function(
       ffi.Uint64 handle,
@@ -529,9 +539,10 @@ class CanvasEngineFfi {
       }
       try {
         _requestPresent = _lib
-            .lookupFunction<_EngineRequestPresentNative, _EngineRequestPresentDart>(
-              'engine_request_present',
-            );
+            .lookupFunction<
+              _EngineRequestPresentNative,
+              _EngineRequestPresentDart
+            >('engine_request_present');
       } catch (_) {
         _requestPresent = null;
       }
@@ -655,6 +666,15 @@ class CanvasEngineFfi {
             >('engine_read_layer_preview');
       } catch (_) {
         _readLayerPreview = null;
+      }
+      try {
+        _readPresentPixel = _lib
+            .lookupFunction<
+              _EngineReadPresentPixelNative,
+              _EngineReadPresentPixelDart
+            >('engine_read_present_pixel');
+      } catch (_) {
+        _readPresentPixel = null;
       }
       try {
         _writeLayer = _lib
@@ -855,6 +875,7 @@ class CanvasEngineFfi {
   late final _EngineMagicWandMaskDart? _magicWandMask;
   late final _EngineReadLayerDart? _readLayer;
   late final _EngineReadLayerPreviewDart? _readLayerPreview;
+  late final _EngineReadPresentPixelDart? _readPresentPixel;
   late final _EngineWriteLayerDart? _writeLayer;
   late final _EngineWriteLayerAsyncDart? _writeLayerAsync;
   late final _EngineTranslateLayerDart? _translateLayer;
@@ -1279,6 +1300,25 @@ class CanvasEngineFfi {
         return null;
       }
       return Uint8List.fromList(outPtr.asTypedList(byteCount));
+    } finally {
+      malloc.free(outPtr);
+    }
+  }
+
+  int? readPresentPixel({required int handle, required int x, required int y}) {
+    final fn = _readPresentPixel;
+    if (!isSupported || fn == null || handle == 0 || x < 0 || y < 0) {
+      return null;
+    }
+    final ffi.Pointer<ffi.Uint32> outPtr = malloc.allocate<ffi.Uint32>(
+      ffi.sizeOf<ffi.Uint32>(),
+    );
+    try {
+      final int result = fn(handle, x, y, outPtr);
+      if (result == 0) {
+        return null;
+      }
+      return outPtr.value;
     } finally {
       malloc.free(outPtr);
     }

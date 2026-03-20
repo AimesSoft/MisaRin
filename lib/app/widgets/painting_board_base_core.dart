@@ -1018,6 +1018,9 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
 
       relative = Offset(rotatedDx + center.dx, rotatedDy + center.dy);
     }
+    if (_viewMirrorOverlay) {
+      relative = Offset(boardRect.width - relative.dx, relative.dy);
+    }
     return relative / _viewport.scale;
   }
 
@@ -2028,6 +2031,34 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       return null;
     }
     return _ffi.getInputQueueLen(effectiveHandle);
+  }
+
+  Color? sampleCompositeColor(Offset boardLocal, {bool requestPresent = true}) {
+    if (!_backendReady || _owner._viewBlackWhiteOverlay) {
+      return null;
+    }
+    final int handle = _owner._backendCanvasEngineHandle!;
+    final Size engineSize =
+        _owner._backendCanvasEngineSize ?? _owner._canvasSize;
+    final int width = engineSize.width.round();
+    final int height = engineSize.height.round();
+    if (width <= 0 || height <= 0) {
+      return null;
+    }
+    final Offset enginePos = _owner._backendToEngineSpace(boardLocal);
+    final int x = enginePos.dx.floor();
+    final int y = enginePos.dy.floor();
+    if (x < 0 || y < 0 || x >= width || y >= height) {
+      return null;
+    }
+    if (requestPresent) {
+      _ffi.requestPresent(handle: handle);
+    }
+    final int? argb = _ffi.readPresentPixel(handle: handle, x: x, y: y);
+    if (argb == null) {
+      return null;
+    }
+    return Color(argb.toUnsigned(32));
   }
 
   void setViewFlags({required bool mirror, required bool blackWhite}) {
