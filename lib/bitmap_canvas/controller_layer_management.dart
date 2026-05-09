@@ -120,7 +120,7 @@ void _layerManagerAddLayer(
   String? name,
 }) {
   final BitmapLayerState layer = BitmapLayerState(
-    id: generateLayerId(),
+    id: _generateUniqueLayerId(controller),
     name: name ?? '图层 ${controller._layers.length + 1}',
     surface: controller._createLayerSurface(),
   );
@@ -138,6 +138,33 @@ void _layerManagerAddLayer(
   controller._resetWorkerSurfaceSync();
   controller._layerOverflowStores[layer.id] = _LayerOverflowStore();
   controller._markDirty(pixelsDirty: false);
+}
+
+bool _layerIdExists(BitmapCanvasController controller, String id) {
+  for (final BitmapLayerState layer in controller._layers) {
+    if (layer.id == id) {
+      return true;
+    }
+  }
+  return false;
+}
+
+String _generateUniqueLayerId(BitmapCanvasController controller) {
+  String id = generateLayerId();
+  while (_layerIdExists(controller, id)) {
+    id = generateLayerId();
+  }
+  return id;
+}
+
+String _resolveUniqueLayerId(
+  BitmapCanvasController controller,
+  String preferredId,
+) {
+  if (!_layerIdExists(controller, preferredId)) {
+    return preferredId;
+  }
+  return _generateUniqueLayerId(controller);
 }
 
 void _layerManagerRemoveLayer(BitmapCanvasController controller, String id) {
@@ -1730,7 +1757,7 @@ void _blendOverflowPixelsNoCanvas(
             : 0.0);
   final bool useMask = clippingInfo != null && maskOpacity > 0;
   final Map<int, int> maskMap = <int, int>{};
-  if (useMask && !clippingInfo!.overflow.isEmpty) {
+  if (clippingInfo != null && maskOpacity > 0 && !clippingInfo.overflow.isEmpty) {
     clippingInfo.overflow
         .forEachSegment((int rowY, _LayerOverflowSegment segment) {
       for (int i = 0; i < segment.length; i++) {
@@ -2450,13 +2477,13 @@ CanvasLayerData? _layerManagerBuildClipboardLayer(
     }
   } else {
     final RasterIntRect bounds = maskBounds!;
-    final int boundsWidth = maskBounds.width;
-    final int boundsHeight = maskBounds.height;
-    final Uint32List pixels = layer.surface.readRect(maskBounds);
+    final int boundsWidth = bounds.width;
+    final int boundsHeight = bounds.height;
+    final Uint32List pixels = layer.surface.readRect(bounds);
     final Uint8List rgba = Uint8List(boundsWidth * boundsHeight * 4);
     for (int row = 0; row < boundsHeight; row++) {
-      final int globalY = maskBounds.top + row;
-      final int maskRowOffset = globalY * controller._width + maskBounds.left;
+      final int globalY = bounds.top + row;
+      final int maskRowOffset = globalY * controller._width + bounds.left;
       final int srcRowOffset = row * boundsWidth;
       for (int col = 0; col < boundsWidth; col++) {
         if (effectiveMask[maskRowOffset + col] == 0) {
@@ -2473,8 +2500,8 @@ CanvasLayerData? _layerManagerBuildClipboardLayer(
     bitmap = rgba;
     bitmapWidth = boundsWidth;
     bitmapHeight = boundsHeight;
-    bitmapLeft = maskBounds.left;
-    bitmapTop = maskBounds.top;
+    bitmapLeft = bounds.left;
+    bitmapTop = bounds.top;
   }
   if (bitmap == null && layer.text == null) {
     return null;
@@ -2504,13 +2531,14 @@ void _initializeDefaultLayers(
   final LayerSurface background =
       controller._createLayerSurface(fillColor: backgroundColor);
   final LayerSurface paintSurface = controller._createLayerSurface();
+  final String backgroundId = _generateUniqueLayerId(controller);
   controller._layers
     ..add(
-      BitmapLayerState(id: generateLayerId(), name: '背景', surface: background),
+      BitmapLayerState(id: backgroundId, name: '背景', surface: background),
     )
     ..add(
       BitmapLayerState(
-        id: generateLayerId(),
+        id: _generateUniqueLayerId(controller),
         name: '图层 2',
         surface: paintSurface,
       ),
@@ -2551,6 +2579,13 @@ void _loadFromCanvasLayers(
     return;
   }
   for (final CanvasLayerData layer in layers) {
+    final String resolvedLayerId = _resolveUniqueLayerId(controller, layer.id);
+    if (resolvedLayerId != layer.id) {
+      debugPrint(
+        'Duplicate layer id detected while loading layers: '
+        '${layer.id} -> $resolvedLayerId',
+      );
+    }
     final LayerSurface surface = controller._createLayerSurface();
     _LayerOverflowStore overflowStore = _LayerOverflowStore();
     if (layer.rawPixels != null || layer.bitmap != null) {
@@ -2570,7 +2605,7 @@ void _loadFromCanvasLayers(
     }
     controller._layers.add(
       BitmapLayerState(
-        id: layer.id,
+        id: resolvedLayerId,
         name: layer.name,
         visible: layer.visible,
         opacity: layer.opacity,
@@ -2582,7 +2617,7 @@ void _loadFromCanvasLayers(
         textBounds: textBounds,
       ),
     );
-    controller._layerOverflowStores[layer.id] = overflowStore;
+    controller._layerOverflowStores[resolvedLayerId] = overflowStore;
     if (layer == layers.first && layer.fillColor != null) {
       controller._backgroundColor = layer.fillColor!;
     }

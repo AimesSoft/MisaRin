@@ -645,6 +645,7 @@ class AppMenuActions {
           .createDocumentFromImageBytes(
             payload.bytes,
             name: payload.fileName ?? l10n.clipboardImageDefaultName,
+            hideBackgroundLayer: true,
           );
       if (!context.mounted) {
         return;
