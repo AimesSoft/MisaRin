@@ -61,6 +61,10 @@ class ToolSettingsSnapshot {
     required this.penStrokeWidth,
     required this.sprayStrokeWidth,
     required this.eraserStrokeWidth,
+    required this.liquifyStrokeWidth,
+    required this.liquifyStrength,
+    required this.liquifySoftness,
+    required this.liquifyMix,
     required this.sprayMode,
     required this.penStrokeSliderRange,
     required this.sprayStrokeSliderRange,
@@ -103,6 +107,10 @@ class ToolSettingsSnapshot {
   final double penStrokeWidth;
   final double sprayStrokeWidth;
   final double eraserStrokeWidth;
+  final double liquifyStrokeWidth;
+  final double liquifyStrength;
+  final double liquifySoftness;
+  final double liquifyMix;
   final SprayMode sprayMode;
   final PenStrokeSliderRange penStrokeSliderRange;
   final PenStrokeSliderRange sprayStrokeSliderRange;

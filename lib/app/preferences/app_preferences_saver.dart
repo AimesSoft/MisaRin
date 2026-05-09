@@ -1,7 +1,8 @@
 part of 'app_preferences.dart';
 
 Future<void> _saveAppPreferences() async {
-  final AppPreferences prefs = AppPreferences._instance ?? await _loadAppPreferences();
+  final AppPreferences prefs =
+      AppPreferences._instance ?? await _loadAppPreferences();
   final int history = _clampHistoryLimit(prefs.historyLimit);
   prefs.historyLimit = history;
   final double strokeWidthValue = prefs.penStrokeWidth.clamp(
@@ -10,9 +11,7 @@ Future<void> _saveAppPreferences() async {
   );
   prefs.penStrokeWidth = strokeWidthValue;
   final int strokeWidth = _encodePenStrokeWidth(strokeWidthValue);
-  final double sprayWidthValue = _clampSprayStrokeWidth(
-    prefs.sprayStrokeWidth,
-  );
+  final double sprayWidthValue = _clampSprayStrokeWidth(prefs.sprayStrokeWidth);
   prefs.sprayStrokeWidth = sprayWidthValue;
   final int sprayWidth = _encodeSprayStrokeWidth(sprayWidthValue);
   final double eraserWidthValue = _clampEraserStrokeWidth(
@@ -20,6 +19,23 @@ Future<void> _saveAppPreferences() async {
   );
   prefs.eraserStrokeWidth = eraserWidthValue;
   final int eraserWidth = _encodeEraserStrokeWidth(eraserWidthValue);
+  final double liquifyWidthValue = _clampLiquifyStrokeWidth(
+    prefs.liquifyStrokeWidth,
+  );
+  prefs.liquifyStrokeWidth = liquifyWidthValue;
+  final int liquifyWidth = _encodeLiquifyStrokeWidth(liquifyWidthValue);
+  prefs.liquifyStrength = _clampLiquifyRatio(
+    prefs.liquifyStrength,
+    _defaultLiquifyStrength,
+  );
+  prefs.liquifySoftness = _clampLiquifyRatio(
+    prefs.liquifySoftness,
+    _defaultLiquifySoftness,
+  );
+  prefs.liquifyMix = _clampLiquifyRatio(prefs.liquifyMix, _defaultLiquifyMix);
+  final int liquifyStrengthEncoded = _encodeRatioByte(prefs.liquifyStrength);
+  final int liquifySoftnessEncoded = _encodeRatioByte(prefs.liquifySoftness);
+  final int liquifyMixEncoded = _encodeRatioByte(prefs.liquifyMix);
   final double stylusCurve = _clampStylusFactor(
     prefs.stylusPressureCurve,
     lower: _stylusCurveLowerBound,
@@ -30,9 +46,7 @@ Future<void> _saveAppPreferences() async {
   prefs.strokeStabilizerStrength = _clampStrokeStabilizerStrength(
     prefs.strokeStabilizerStrength,
   );
-  prefs.streamlineStrength = _clampStreamlineStrength(
-    prefs.streamlineStrength,
-  );
+  prefs.streamlineStrength = _clampStreamlineStrength(prefs.streamlineStrength);
 
   final int stylusCurveEncoded = _encodeStylusFactor(
     stylusCurve,
@@ -69,10 +83,9 @@ Future<void> _saveAppPreferences() async {
   final double hollowStrokeRatio = prefs.hollowStrokeRatio.clamp(0.0, 1.0);
   prefs.hollowStrokeRatio = hollowStrokeRatio;
   final int hollowStrokeRatioEncoded = _encodeRatioByte(hollowStrokeRatio);
-  final int localeOverrideEncoded = _encodeLocaleOverride(
-    prefs.localeOverride,
-  );
-  final bool hollowStrokeEraseOccludedParts = prefs.hollowStrokeEraseOccludedParts;
+  final int localeOverrideEncoded = _encodeLocaleOverride(prefs.localeOverride);
+  final bool hollowStrokeEraseOccludedParts =
+      prefs.hollowStrokeEraseOccludedParts;
   final int bucketSwallowColorLineModeEncoded =
       _encodeBucketSwallowColorLineMode(prefs.bucketSwallowColorLineMode);
   final int bucketFillGapEncoded = _clampFillGapValue(prefs.bucketFillGap);
@@ -89,8 +102,9 @@ Future<void> _saveAppPreferences() async {
   final int newCanvasBackgroundColorValue =
       prefs.newCanvasBackgroundColor.value;
   final int canvasBackendEncoded = _encodeCanvasBackend(prefs.canvasBackend);
-  final int autoSaveCleanupThresholdMb =
-      _clampAutoSaveCleanupThresholdMb(prefs.autoSaveCleanupThresholdMb);
+  final int autoSaveCleanupThresholdMb = _clampAutoSaveCleanupThresholdMb(
+    prefs.autoSaveCleanupThresholdMb,
+  );
   prefs.autoSaveCleanupThresholdMb = autoSaveCleanupThresholdMb;
 
   final Uint8List payload = Uint8List.fromList(<int>[
@@ -160,6 +174,11 @@ Future<void> _saveAppPreferences() async {
     eraserWidth & 0xff,
     (eraserWidth >> 8) & 0xff,
     prefs.touchDrawingEnabled ? 1 : 0,
+    liquifyWidth & 0xff,
+    (liquifyWidth >> 8) & 0xff,
+    liquifyStrengthEncoded,
+    liquifySoftnessEncoded,
+    liquifyMixEncoded,
   ]);
   await _writePreferencesPayload(payload);
 }

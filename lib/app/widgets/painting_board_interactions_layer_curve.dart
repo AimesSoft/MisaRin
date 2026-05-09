@@ -1,6 +1,7 @@
 part of 'painting_board.dart';
 
-extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteractionMixin {
+extension _PaintingBoardInteractionLayerCurveExtension
+    on _PaintingBoardInteractionMixin {
   CanvasLayerInfo? _activeLayerForAdjustment() {
     final String? activeId = _controller.activeLayerId;
     if (activeId == null) {
@@ -322,7 +323,6 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
       return;
     }
     final _CanvasRasterEditSession edit = await _backend.beginRasterEdit(
-      captureUndoOnFallback: false,
       warnIfFailed: true,
     );
     if (!edit.ok) {
@@ -408,7 +408,10 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
       _clearCurvePreviewOverlay();
     }
     final bool backendOk = _drawQuadraticCurve(start, control, end);
-    _disposeCurveRasterPreview(restoreLayer: !backendOk, clearPreviewImage: true);
+    _disposeCurveRasterPreview(
+      restoreLayer: !backendOk,
+      clearPreviewImage: true,
+    );
     if (!backendOk) {
       _showBackendCanvasMessage('画布后端尚未准备好。');
       _cancelCurvePenSegment();
@@ -742,5 +745,4 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
       _curveStrokeSampleSpacing * 2.6,
     );
   }
-
 }

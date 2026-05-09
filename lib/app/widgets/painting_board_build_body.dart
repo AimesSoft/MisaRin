@@ -91,6 +91,8 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
         final double overlayBrushDiameter =
             _effectiveActiveTool == CanvasTool.spray
             ? _sprayStrokeWidth
+            : _effectiveActiveTool == CanvasTool.liquify
+            ? _liquifyStrokeWidth
             : _effectiveActiveTool == CanvasTool.eraser
             ? _eraserStrokeWidth
             : _penStrokeWidth;
@@ -99,11 +101,13 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
         );
         final BrushShape overlayBrushShape =
             _effectiveActiveTool == CanvasTool.spray ||
+                _effectiveActiveTool == CanvasTool.liquify ||
                 _effectiveActiveTool == CanvasTool.selectionPen
             ? BrushShape.circle
             : _brushShape;
         final BrushShapeRaster? overlayBrushRaster =
             _effectiveActiveTool == CanvasTool.spray ||
+                _effectiveActiveTool == CanvasTool.liquify ||
                 _effectiveActiveTool == CanvasTool.selectionPen
             ? null
             : (_brushShapeRaster != null &&
@@ -167,6 +171,9 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
               case CanvasTool.eraser:
                 workspaceCursor = SystemMouseCursors.precise;
                 break;
+              case CanvasTool.liquify:
+                workspaceCursor = SystemMouseCursors.precise;
+                break;
               case CanvasTool.selectionPen:
                 workspaceCursor = SystemMouseCursors.precise;
                 break;
@@ -228,6 +235,10 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
           penStrokeWidth: _penStrokeWidth,
           sprayStrokeWidth: _sprayStrokeWidth,
           eraserStrokeWidth: _eraserStrokeWidth,
+          liquifyStrokeWidth: _liquifyStrokeWidth,
+          liquifyStrength: _liquifyStrength,
+          liquifySoftness: _liquifySoftness,
+          liquifyMix: _liquifyMix,
           sprayMode: _sprayMode,
           penStrokeSliderRange: _penStrokeSliderRange,
           sprayStrokeSliderRange: _sprayStrokeSliderRange,
@@ -235,6 +246,10 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
           onPenStrokeWidthChanged: _updatePenStrokeWidth,
           onSprayStrokeWidthChanged: _updateSprayStrokeWidth,
           onEraserStrokeWidthChanged: _updateEraserStrokeWidth,
+          onLiquifyStrokeWidthChanged: _updateLiquifyStrokeWidth,
+          onLiquifyStrengthChanged: _updateLiquifyStrength,
+          onLiquifySoftnessChanged: _updateLiquifySoftness,
+          onLiquifyMixChanged: _updateLiquifyMix,
           onPenStrokeSliderRangeChanged: _updatePenStrokeSliderRange,
           onSprayStrokeSliderRangeChanged: _updateSprayStrokeSliderRange,
           onEraserStrokeSliderRangeChanged: _updateEraserStrokeSliderRange,
@@ -1241,6 +1256,10 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                                       penStrokeWidth: _penStrokeWidth,
                                       sprayStrokeWidth: _sprayStrokeWidth,
                                       eraserStrokeWidth: _eraserStrokeWidth,
+                                      liquifyStrokeWidth: _liquifyStrokeWidth,
+                                      liquifyStrength: _liquifyStrength,
+                                      liquifySoftness: _liquifySoftness,
+                                      liquifyMix: _liquifyMix,
                                       sprayMode: _sprayMode,
                                       penStrokeSliderRange:
                                           _penStrokeSliderRange,
@@ -1254,6 +1273,13 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                                           _updateSprayStrokeWidth,
                                       onEraserStrokeWidthChanged:
                                           _updateEraserStrokeWidth,
+                                      onLiquifyStrokeWidthChanged:
+                                          _updateLiquifyStrokeWidth,
+                                      onLiquifyStrengthChanged:
+                                          _updateLiquifyStrength,
+                                      onLiquifySoftnessChanged:
+                                          _updateLiquifySoftness,
+                                      onLiquifyMixChanged: _updateLiquifyMix,
                                       onPenStrokeSliderRangeChanged:
                                           _updatePenStrokeSliderRange,
                                       onSprayStrokeSliderRangeChanged:

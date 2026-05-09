@@ -132,6 +132,21 @@ Future<AppPreferences> _loadAppPreferences() async {
                 version >= 43 && bytes.length >= 66
                 ? bytes[65] != 0
                 : _defaultTouchDrawingEnabled;
+            final double decodedLiquifyStrokeWidth =
+                version >= 44 && bytes.length >= 71
+                ? _decodeLiquifyStrokeWidth(bytes[66] | (bytes[67] << 8))
+                : _defaultLiquifyStrokeWidth;
+            final double decodedLiquifyStrength =
+                version >= 44 && bytes.length >= 71
+                ? _decodeRatioByte(bytes[68])
+                : _defaultLiquifyStrength;
+            final double decodedLiquifySoftness =
+                version >= 44 && bytes.length >= 71
+                ? _decodeRatioByte(bytes[69])
+                : _defaultLiquifySoftness;
+            final double decodedLiquifyMix = version >= 44 && bytes.length >= 71
+                ? _decodeRatioByte(bytes[70])
+                : _defaultLiquifyMix;
             final bool decodedHollowStrokeEnabled;
             final double decodedHollowStrokeRatio;
             final bool decodedHollowStrokeEraseOccludedParts;
@@ -197,6 +212,10 @@ Future<AppPreferences> _loadAppPreferences() async {
               sai2LayerPanelWidthSplit: decodedSai2LayerSplit,
               sprayStrokeWidth: decodedSprayStrokeWidth,
               eraserStrokeWidth: decodedEraserStrokeWidth,
+              liquifyStrokeWidth: decodedLiquifyStrokeWidth,
+              liquifyStrength: decodedLiquifyStrength,
+              liquifySoftness: decodedLiquifySoftness,
+              liquifyMix: decodedLiquifyMix,
               sprayStrokeSliderRange: decodedSprayStrokeSliderRange,
               eraserStrokeSliderRange: decodedEraserStrokeSliderRange,
               sprayMode: decodedSprayMode,

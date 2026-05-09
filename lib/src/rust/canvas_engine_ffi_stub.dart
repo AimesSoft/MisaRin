@@ -86,6 +86,22 @@ class CanvasEngineFfi {
 
   void endSpray({required int handle}) {}
 
+  void beginLiquify({required int handle}) {}
+
+  void drawLiquify({
+    required int handle,
+    required double fromX,
+    required double fromY,
+    required double toX,
+    required double toY,
+    required double radius,
+    required double strength,
+    required double softness,
+    required double mix,
+  }) {}
+
+  void endLiquify({required int handle}) {}
+
   bool applyFilter({
     required int handle,
     required int layerIndex,

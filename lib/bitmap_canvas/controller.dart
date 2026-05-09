@@ -28,7 +28,6 @@ import '../canvas/brush_random_rotation.dart';
 import '../canvas/text_renderer.dart';
 import '../src/rust/api/bucket_fill.dart' as rust_bucket_fill;
 import '../backend/rust_wgpu_brush.dart' as rust_wgpu_brush;
-import '../src/rust/api/cpu_brush.dart' as rust;
 import '../src/rust/api/image_ops.dart' as rust_image_ops;
 import '../src/rust/rust_cpu_blend_ffi.dart';
 import '../src/rust/rust_cpu_brush_ffi.dart';
@@ -313,9 +312,7 @@ class BitmapCanvasController extends ChangeNotifier
   }
 
   UnmodifiableListView<CanvasLayerInfo> get layers =>
-      UnmodifiableListView<CanvasLayerInfo>(
-        _layers.cast<CanvasLayerInfo>(),
-      );
+      UnmodifiableListView<CanvasLayerInfo>(_layers.cast<CanvasLayerInfo>());
 
   UnmodifiableListView<CanvasCompositeLayer> get compositeLayers =>
       UnmodifiableListView<CanvasCompositeLayer>(
@@ -328,22 +325,23 @@ class BitmapCanvasController extends ChangeNotifier
   List<Offset> get activeStrokePoints {
     final List<Offset> source =
         _currentStrokePreviewPoints.isNotEmpty &&
-                _currentStrokePreviewPoints.length ==
-                    _currentStrokePreviewRadii.length
-            ? _currentStrokePreviewPoints
-            : _currentStrokePoints;
+            _currentStrokePreviewPoints.length ==
+                _currentStrokePreviewRadii.length
+        ? _currentStrokePreviewPoints
+        : _currentStrokePoints;
     return UnmodifiableListView(source);
   }
 
   List<double> get activeStrokeRadii {
     final List<double> source =
         _currentStrokePreviewRadii.isNotEmpty &&
-                _currentStrokePreviewPoints.length ==
-                    _currentStrokePreviewRadii.length
-            ? _currentStrokePreviewRadii
-            : _currentStrokeRadii;
+            _currentStrokePreviewPoints.length ==
+                _currentStrokePreviewRadii.length
+        ? _currentStrokePreviewRadii
+        : _currentStrokeRadii;
     return UnmodifiableListView(source);
   }
+
   List<PaintingDrawCommand> get committingStrokes =>
       UnmodifiableListView(_committingStrokes);
   int get commitOverlayFadeVersion => _commitOverlayFadeVersion;
@@ -358,7 +356,8 @@ class BitmapCanvasController extends ChangeNotifier
   bool get activeStrokeHollowEnabled => _currentStrokeHollowEnabled;
   double get activeStrokeHollowRatio => _currentStrokeHollowRatio;
   bool get activeStrokeEraseOccludedParts => _currentStrokeEraseOccludedParts;
-  bool get activeStrokeRandomRotationEnabled => _currentStrokeRandomRotationEnabled;
+  bool get activeStrokeRandomRotationEnabled =>
+      _currentStrokeRandomRotationEnabled;
   int get activeStrokeRotationSeed => _currentStrokeRotationSeed;
 
   String? get activeLayerId =>
@@ -476,10 +475,8 @@ class BitmapCanvasController extends ChangeNotifier
     }
   }
 
-  void configureStylusPressure({
-    required bool enabled,
-    double? curve,
-  }) => _strokeConfigureStylusPressure(this, enabled: enabled, curve: curve);
+  void configureStylusPressure({required bool enabled, double? curve}) =>
+      _strokeConfigureStylusPressure(this, enabled: enabled, curve: curve);
 
   void configureSharpTips({required bool enabled}) =>
       _strokeConfigureSharpTips(this, enabled: enabled);
@@ -506,14 +503,7 @@ class BitmapCanvasController extends ChangeNotifier
     int width,
     int height,
     double blendFactor,
-  ) => _controllerRunAntialiasPass(
-    this,
-    src,
-    dest,
-    width,
-    height,
-    blendFactor,
-  );
+  ) => _controllerRunAntialiasPass(this, src, dest, width, height, blendFactor);
 
   bool _runEdgeAwareColorSmoothPass(
     Uint32List src,
@@ -548,11 +538,9 @@ class BitmapCanvasController extends ChangeNotifier
     int height,
   ) => _controllerComputeGaussianBlur(src, dest, width, height);
 
-  static double _computeLuma(int color) =>
-      _controllerComputeLuma(color);
+  static double _computeLuma(int color) => _controllerComputeLuma(color);
 
-  static int _lerpArgb(int a, int b, double t) =>
-      _controllerLerpArgb(a, b, t);
+  static int _lerpArgb(int a, int b, double t) => _controllerLerpArgb(a, b, t);
 
   void translateActiveLayer(int dx, int dy) =>
       _translateActiveLayer(this, dx, dy);
@@ -619,13 +607,7 @@ class BitmapCanvasController extends ChangeNotifier
     CanvasTextData data, {
     String? aboveLayerId,
     String? name,
-  }) =>
-      _textLayerCreate(
-        this,
-        data,
-        aboveLayerId: aboveLayerId,
-        name: name,
-      );
+  }) => _textLayerCreate(this, data, aboveLayerId: aboveLayerId, name: name);
 
   Future<void> updateTextLayer(String id, CanvasTextData data) =>
       _textLayerUpdate(this, id, data);
@@ -644,12 +626,11 @@ class BitmapCanvasController extends ChangeNotifier
   Future<bool> applyAntialiasToActiveLayer(
     int level, {
     bool previewOnly = false,
-  }) =>
-      _controllerApplyAntialiasToActiveLayer(
-        this,
-        level,
-        previewOnly: previewOnly,
-      );
+  }) => _controllerApplyAntialiasToActiveLayer(
+    this,
+    level,
+    previewOnly: previewOnly,
+  );
 
   void setStrokePressureProfile(StrokePressureProfile profile) =>
       _strokeSetPressureProfile(this, profile);
@@ -691,9 +672,7 @@ class BitmapCanvasController extends ChangeNotifier
   Uint32List? readLayerPixels(String id) {
     for (final BitmapLayerState layer in _layers) {
       if (layer.id == id) {
-        return layer.surface.readRect(
-          RasterIntRect(0, 0, _width, _height),
-        );
+        return layer.surface.readRect(RasterIntRect(0, 0, _width, _height));
       }
     }
     return null;
@@ -711,11 +690,7 @@ class BitmapCanvasController extends ChangeNotifier
     return null;
   }
 
-  bool writeLayerPixels(
-    String id,
-    Uint32List pixels, {
-    bool markDirty = true,
-  }) {
+  bool writeLayerPixels(String id, Uint32List pixels, {bool markDirty = true}) {
     for (final BitmapLayerState layer in _layers) {
       if (layer.id != id) {
         continue;
@@ -723,10 +698,7 @@ class BitmapCanvasController extends ChangeNotifier
       if (layer.surface.pixelCount != pixels.length) {
         return false;
       }
-      layer.surface.writeRect(
-        RasterIntRect(0, 0, _width, _height),
-        pixels,
-      );
+      layer.surface.writeRect(RasterIntRect(0, 0, _width, _height), pixels);
       if (markDirty) {
         _markDirty(layerId: id, pixelsDirty: true);
         _notify();
@@ -844,10 +816,7 @@ class BitmapCanvasController extends ChangeNotifier
         workerOffset += copyWidth;
       }
     }
-    surface.writeRect(
-      RasterIntRect(startX, startY, endX, endY),
-      patch,
-    );
+    surface.writeRect(RasterIntRect(startX, startY, endX, endY), patch);
     final Rect dirtyRegion = Rect.fromLTRB(
       startX.toDouble(),
       startY.toDouble(),
@@ -1040,8 +1009,7 @@ class BitmapCanvasController extends ChangeNotifier
 
   void _notifyWorkerIdle() => _controllerNotifyWorkerIdle(this);
 
-  void _cancelPendingWorkerTasks() =>
-      _controllerCancelPendingWorkerTasks(this);
+  void _cancelPendingWorkerTasks() => _controllerCancelPendingWorkerTasks(this);
 
   CanvasPaintingWorker _ensurePaintingWorker() {
     return _paintingWorker ??= CanvasPaintingWorker();
@@ -1053,8 +1021,7 @@ class BitmapCanvasController extends ChangeNotifier
   Future<void> _ensureWorkerSelectionMaskSynced() =>
       _controllerEnsureWorkerSelectionMaskSynced(this);
 
-  void _resetWorkerSurfaceSync() =>
-      _controllerResetWorkerSurfaceSync(this);
+  void _resetWorkerSurfaceSync() => _controllerResetWorkerSurfaceSync(this);
 
   void _enqueueWorkerPatchFuture(
     Future<PaintingWorkerPatch?> future, {
@@ -1092,11 +1059,9 @@ class BitmapCanvasController extends ChangeNotifier
   void _scheduleTileImageDisposal() =>
       _controllerScheduleTileImageDisposal(this);
 
-  void _flushTileImageDisposals() =>
-      _controllerFlushTileImageDisposals(this);
+  void _flushTileImageDisposals() => _controllerFlushTileImageDisposals(this);
 
-  void _disposePendingTileImages() =>
-      _controllerDisposePendingTileImages(this);
+  void _disposePendingTileImages() => _controllerDisposePendingTileImages(this);
 
   BitmapLayerState get _activeLayer => _layers[_activeIndex];
 
@@ -1141,11 +1106,7 @@ class BitmapCanvasController extends ChangeNotifier
   void _applyPaintingCommandsSynchronously(
     Rect region,
     List<PaintingDrawCommand> commands,
-  ) => _controllerApplyPaintingCommandsSynchronously(
-    this,
-    region,
-    commands,
-  );
+  ) => _controllerApplyPaintingCommandsSynchronously(this, region, commands);
 
   void _applyStampSegmentFallback({
     required BitmapSurface surface,
@@ -1159,20 +1120,19 @@ class BitmapCanvasController extends ChangeNotifier
     required Uint8List? mask,
     required int antialias,
     required bool erase,
-  }) =>
-      _controllerApplyStampSegmentFallback(
-        surface: surface,
-        start: start,
-        end: end,
-        startRadius: startRadius,
-        endRadius: endRadius,
-        includeStart: includeStart,
-        shape: shape,
-        color: color,
-        mask: mask,
-        antialias: antialias,
-        erase: erase,
-      );
+  }) => _controllerApplyStampSegmentFallback(
+    surface: surface,
+    start: start,
+    end: end,
+    startRadius: startRadius,
+    endRadius: endRadius,
+    includeStart: includeStart,
+    shape: shape,
+    color: color,
+    mask: mask,
+    antialias: antialias,
+    erase: erase,
+  );
 
   Future<PaintingWorkerPatch?> _executeFloodFill({
     required Offset start,

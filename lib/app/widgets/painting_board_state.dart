@@ -110,6 +110,10 @@ class PaintingBoardState extends _PaintingBoardBase
     _eraserStrokeWidth = _eraserStrokeSliderRange.clamp(
       prefs.eraserStrokeWidth,
     );
+    _liquifyStrokeWidth = prefs.liquifyStrokeWidth.clamp(8.0, 500.0);
+    _liquifyStrength = prefs.liquifyStrength.clamp(0.0, 1.0);
+    _liquifySoftness = prefs.liquifySoftness.clamp(0.0, 1.0);
+    _liquifyMix = prefs.liquifyMix.clamp(0.0, 1.0);
     _sprayMode = prefs.sprayMode;
     _strokeStabilizerStrength = prefs.strokeStabilizerStrength;
     _streamlineStrength = prefs.streamlineStrength;
@@ -332,7 +336,9 @@ class PaintingBoardState extends _PaintingBoardBase
       throw StateError('Board not ready.');
     }
     if (!_backend.supportsInputQueue || _backendCanvasEngineHandle == null) {
-      throw StateError('Perf stress test requires the Rust/WGPU canvas backend.');
+      throw StateError(
+        'Perf stress test requires the Rust/WGPU canvas backend.',
+      );
     }
 
     _perfStressCancelRequested = false;
@@ -1156,6 +1162,10 @@ class PaintingBoardState extends _PaintingBoardBase
       penStrokeWidth: _penStrokeWidth,
       sprayStrokeWidth: _sprayStrokeWidth,
       eraserStrokeWidth: _eraserStrokeWidth,
+      liquifyStrokeWidth: _liquifyStrokeWidth,
+      liquifyStrength: _liquifyStrength,
+      liquifySoftness: _liquifySoftness,
+      liquifyMix: _liquifyMix,
       sprayMode: _sprayMode,
       penStrokeSliderRange: _penStrokeSliderRange,
       sprayStrokeSliderRange: _sprayStrokeSliderRange,
@@ -1211,6 +1221,10 @@ class PaintingBoardState extends _PaintingBoardBase
     _updatePenStrokeWidth(snapshot.penStrokeWidth);
     _updateSprayStrokeWidth(snapshot.sprayStrokeWidth);
     _updateEraserStrokeWidth(snapshot.eraserStrokeWidth);
+    _updateLiquifyStrokeWidth(snapshot.liquifyStrokeWidth);
+    _updateLiquifyStrength(snapshot.liquifyStrength);
+    _updateLiquifySoftness(snapshot.liquifySoftness);
+    _updateLiquifyMix(snapshot.liquifyMix);
     _updateSprayMode(snapshot.sprayMode);
     _updatePenStrokeSliderRange(snapshot.penStrokeSliderRange);
     _updateSprayStrokeSliderRange(snapshot.sprayStrokeSliderRange);

@@ -465,6 +465,37 @@ typedef _EngineSprayDrawDart =
 typedef _EngineSprayEndNative = ffi.Void Function(ffi.Uint64 handle);
 typedef _EngineSprayEndDart = void Function(int handle);
 
+typedef _EngineLiquifyBeginNative = ffi.Void Function(ffi.Uint64 handle);
+typedef _EngineLiquifyBeginDart = void Function(int handle);
+
+typedef _EngineLiquifyDrawNative =
+    ffi.Void Function(
+      ffi.Uint64 handle,
+      ffi.Float fromX,
+      ffi.Float fromY,
+      ffi.Float toX,
+      ffi.Float toY,
+      ffi.Float radius,
+      ffi.Float strength,
+      ffi.Float softness,
+      ffi.Float mix,
+    );
+typedef _EngineLiquifyDrawDart =
+    void Function(
+      int handle,
+      double fromX,
+      double fromY,
+      double toX,
+      double toY,
+      double radius,
+      double strength,
+      double softness,
+      double mix,
+    );
+
+typedef _EngineLiquifyEndNative = ffi.Void Function(ffi.Uint64 handle);
+typedef _EngineLiquifyEndDart = void Function(int handle);
+
 typedef _EngineApplyFilterNative =
     ffi.Uint8 Function(
       ffi.Uint64 handle,
@@ -814,6 +845,30 @@ class CanvasEngineFfi {
         _sprayEnd = null;
       }
       try {
+        _liquifyBegin = _lib
+            .lookupFunction<_EngineLiquifyBeginNative, _EngineLiquifyBeginDart>(
+              'engine_liquify_begin',
+            );
+      } catch (_) {
+        _liquifyBegin = null;
+      }
+      try {
+        _liquifyDraw = _lib
+            .lookupFunction<_EngineLiquifyDrawNative, _EngineLiquifyDrawDart>(
+              'engine_liquify_draw',
+            );
+      } catch (_) {
+        _liquifyDraw = null;
+      }
+      try {
+        _liquifyEnd = _lib
+            .lookupFunction<_EngineLiquifyEndNative, _EngineLiquifyEndDart>(
+              'engine_liquify_end',
+            );
+      } catch (_) {
+        _liquifyEnd = null;
+      }
+      try {
         _applyFilter = _lib
             .lookupFunction<_EngineApplyFilterNative, _EngineApplyFilterDart>(
               'engine_apply_filter',
@@ -892,6 +947,9 @@ class CanvasEngineFfi {
   late final _EngineSprayBeginDart? _sprayBegin;
   late final _EngineSprayDrawDart? _sprayDraw;
   late final _EngineSprayEndDart? _sprayEnd;
+  late final _EngineLiquifyBeginDart? _liquifyBegin;
+  late final _EngineLiquifyDrawDart? _liquifyDraw;
+  late final _EngineLiquifyEndDart? _liquifyEnd;
   late final _EngineApplyFilterDart? _applyFilter;
   late final _EngineApplyAntialiasDart? _applyAntialias;
   late final _EngineLogPopDart? _logPop;
@@ -1762,6 +1820,70 @@ class CanvasEngineFfi {
 
   void endSpray({required int handle}) {
     final fn = _sprayEnd;
+    if (!isSupported || fn == null || handle == 0) {
+      return;
+    }
+    fn(handle);
+  }
+
+  void beginLiquify({required int handle}) {
+    final fn = _liquifyBegin;
+    if (!isSupported || fn == null || handle == 0) {
+      return;
+    }
+    fn(handle);
+  }
+
+  void drawLiquify({
+    required int handle,
+    required double fromX,
+    required double fromY,
+    required double toX,
+    required double toY,
+    required double radius,
+    required double strength,
+    required double softness,
+    required double mix,
+  }) {
+    final fn = _liquifyDraw;
+    if (!isSupported || fn == null || handle == 0) {
+      return;
+    }
+    double safeRadius = radius;
+    if (!safeRadius.isFinite) {
+      safeRadius = 1.0;
+    }
+    safeRadius = safeRadius.clamp(1.0, 4096.0);
+    double safeStrength = strength;
+    if (!safeStrength.isFinite) {
+      safeStrength = 0.0;
+    }
+    safeStrength = safeStrength.clamp(0.0, 1.0);
+    double safeSoftness = softness;
+    if (!safeSoftness.isFinite) {
+      safeSoftness = 0.65;
+    }
+    safeSoftness = safeSoftness.clamp(0.0, 1.0);
+    double safeMix = mix;
+    if (!safeMix.isFinite) {
+      safeMix = 0.0;
+    }
+    safeMix = safeMix.clamp(0.0, 1.0);
+    fn(
+      handle,
+      fromX.isFinite ? fromX : 0.0,
+      fromY.isFinite ? fromY : 0.0,
+      toX.isFinite ? toX : 0.0,
+      toY.isFinite ? toY : 0.0,
+      safeRadius,
+      safeStrength,
+      safeSoftness,
+      safeMix,
+    );
+  }
+
+  void endLiquify({required int handle}) {
+    final fn = _liquifyEnd;
     if (!isSupported || fn == null || handle == 0) {
       return;
     }

@@ -65,6 +65,10 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   double _penStrokeWidth = _defaultPenStrokeWidth;
   double _sprayStrokeWidth = _defaultSprayStrokeWidth;
   double _eraserStrokeWidth = _defaultEraserStrokeWidth;
+  double _liquifyStrokeWidth = AppPreferences.defaultLiquifyStrokeWidth;
+  double _liquifyStrength = AppPreferences.defaultLiquifyStrength;
+  double _liquifySoftness = AppPreferences.defaultLiquifySoftness;
+  double _liquifyMix = AppPreferences.defaultLiquifyMix;
   SprayMode _sprayMode = AppPreferences.defaultSprayMode;
   double _strokeStabilizerStrength =
       AppPreferences.defaultStrokeStabilizerStrength;
@@ -204,6 +208,10 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   Color? _activeSprayColor;
   Offset? _softSprayLastPoint;
   double _softSprayResidual = 0.0;
+  bool _isLiquifying = false;
+  bool _backendLiquifyHasDrawn = false;
+  Offset? _liquifyLastEnginePoint;
+  double _liquifyResidual = 0.0;
   Size _toolSettingsCardSize = const Size(320, _toolbarButtonSize);
   CanvasToolbarLayout _toolbarLayout = const CanvasToolbarLayout(
     columns: 1,
@@ -1746,6 +1754,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   bool get _penRequiresOverlay =>
       _effectiveActiveTool == CanvasTool.pen ||
       _effectiveActiveTool == CanvasTool.spray ||
+      _effectiveActiveTool == CanvasTool.liquify ||
       _effectiveActiveTool == CanvasTool.curvePen ||
       _effectiveActiveTool == CanvasTool.shape ||
       _effectiveActiveTool == CanvasTool.eraser ||
@@ -1833,6 +1842,8 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       capabilities.isAvailable && capabilities.supportsInputQueue;
   bool get supportsSpray =>
       capabilities.isAvailable && capabilities.supportsSpray;
+  bool get supportsLiquify =>
+      capabilities.isAvailable && capabilities.supportsLiquify;
 
   @override
   CanvasBackendCapabilities get capabilities => CanvasBackendCapabilities(
@@ -1847,6 +1858,7 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
     supportsStrokeStream: _backendSupported,
     supportsInputQueue: _backendSupported,
     supportsSpray: _backendSupported,
+    supportsLiquify: _backendSupported,
   );
 
   bool supportsFilterType(CanvasFilterType? type) {
@@ -1870,22 +1882,14 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
   }
 
   Future<_CanvasRasterEditSession> beginRasterEdit({
-    bool captureUndoOnFallback = true,
     bool warnIfFailed = false,
-    bool requireBackend = false,
   }) async {
     if (!_backendReady) {
-      if (requireBackend) {
-        _handleBackendUnavailable(
-          skipIfUnavailable: false,
-          warnIfFailed: warnIfFailed,
-        );
-        return _CanvasRasterEditSession._(this, useBackend: false, ok: false);
-      }
-      if (captureUndoOnFallback) {
-        await _owner._pushUndoSnapshot();
-      }
-      return _CanvasRasterEditSession._(this, useBackend: false, ok: true);
+      _handleBackendUnavailable(
+        skipIfUnavailable: false,
+        warnIfFailed: warnIfFailed,
+      );
+      return _CanvasRasterEditSession._(this, useBackend: false, ok: false);
     }
     final bool ok = await syncActiveLayerFromBackend(
       warnIfFailed: warnIfFailed,
@@ -2303,6 +2307,47 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       antialiasLevel: antialiasLevel,
       softness: softness,
       accumulate: accumulate,
+    );
+    return true;
+  }
+
+  bool beginLiquify() {
+    if (!_backendReady) {
+      return false;
+    }
+    _ffi.beginLiquify(handle: _owner._backendCanvasEngineHandle!);
+    return true;
+  }
+
+  bool endLiquify() {
+    if (!_backendReady) {
+      return false;
+    }
+    _ffi.endLiquify(handle: _owner._backendCanvasEngineHandle!);
+    return true;
+  }
+
+  bool drawLiquify({
+    required Offset from,
+    required Offset to,
+    required double radius,
+    required double strength,
+    required double softness,
+    required double mix,
+  }) {
+    if (!_backendReady) {
+      return false;
+    }
+    _ffi.drawLiquify(
+      handle: _owner._backendCanvasEngineHandle!,
+      fromX: from.dx,
+      fromY: from.dy,
+      toX: to.dx,
+      toY: to.dy,
+      radius: radius,
+      strength: strength,
+      softness: softness,
+      mix: mix,
     );
     return true;
   }
@@ -2801,11 +2846,8 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
     int tolerance = 0,
   }) async {
     if (!_backendSupported) {
-      return _owner._controller.computeMagicWandMask(
-        position,
-        sampleAllLayers: sampleAllLayers,
-        tolerance: tolerance,
-      );
+      _owner._showBackendCanvasMessage('魔棒工具需要画布后端支持。');
+      return null;
     }
     if (!_backendReady) {
       return null;

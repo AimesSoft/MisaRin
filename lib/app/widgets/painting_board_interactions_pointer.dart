@@ -233,6 +233,7 @@ extension _PaintingBoardInteractionPointerImpl
         tool == CanvasTool.selection ||
         tool == CanvasTool.selectionPen ||
         tool == CanvasTool.spray ||
+        tool == CanvasTool.liquify ||
         tool == CanvasTool.pen ||
         tool == CanvasTool.eraser ||
         tool == CanvasTool.perspectivePen;
@@ -348,6 +349,13 @@ extension _PaintingBoardInteractionPointerImpl
           return;
         }
         await _startSprayStroke(boardLocal, event);
+        break;
+      case CanvasTool.liquify:
+        _focusNode.requestFocus();
+        if (!isPointInsideSelection(boardLocal)) {
+          return;
+        }
+        await _startLiquifyStroke(boardLocal, event);
         break;
       case CanvasTool.bucket:
         _focusNode.requestFocus();
@@ -583,6 +591,12 @@ extension _PaintingBoardInteractionPointerImpl
           _updateSprayStroke(boardLocal, event);
         }
         break;
+      case CanvasTool.liquify:
+        if (_isLiquifying) {
+          final Offset boardLocal = _toBoardLocal(event.localPosition);
+          _updateLiquifyStroke(boardLocal, event);
+        }
+        break;
       case CanvasTool.text:
         break;
     }
@@ -687,6 +701,11 @@ extension _PaintingBoardInteractionPointerImpl
           _finishSprayStroke();
         }
         break;
+      case CanvasTool.liquify:
+        if (_isLiquifying) {
+          _finishLiquifyStroke();
+        }
+        break;
       case CanvasTool.text:
         break;
       case CanvasTool.perspectivePen:
@@ -765,6 +784,11 @@ extension _PaintingBoardInteractionPointerImpl
       case CanvasTool.spray:
         if (_isSpraying) {
           _finishSprayStroke();
+        }
+        break;
+      case CanvasTool.liquify:
+        if (_isLiquifying) {
+          _finishLiquifyStroke();
         }
         break;
       case CanvasTool.bucket:
@@ -1037,6 +1061,9 @@ extension _PaintingBoardInteractionPointerImpl
     }
     if (_isSpraying) {
       _finishSprayStroke();
+    }
+    if (_isLiquifying) {
+      _finishLiquifyStroke();
     }
     _clearBackendPredictedOverlay();
   }

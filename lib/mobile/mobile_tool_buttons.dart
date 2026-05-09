@@ -34,10 +34,7 @@ class MobileToolButtons extends StatelessWidget {
             // Tool Settings Button
             MobileRoundedButton(
               onPressed: () => _showToolSettings(context),
-              child: const Icon(
-                FluentIcons.settings,
-                size: 24,
-              ),
+              child: const Icon(FluentIcons.settings, size: 24),
             ),
             const SizedBox(height: 16),
             // Tool Selector Button
@@ -86,21 +83,38 @@ class MobileToolButtons extends StatelessWidget {
 
   dynamic _getToolIconData(CanvasTool tool) {
     switch (tool) {
-      case CanvasTool.layerAdjust: return FluentIcons.move;
-      case CanvasTool.pen: return FluentIcons.edit;
-      case CanvasTool.perspectivePen: return FluentIcons.pencil_reply;
-      case CanvasTool.spray: return 'icons/spray.svg';
-      case CanvasTool.curvePen: return 'icons/line.svg';
-      case CanvasTool.shape: return FluentIcons.shapes;
-      case CanvasTool.eraser: return FluentIcons.erase_tool;
-      case CanvasTool.bucket: return FluentIcons.bucket_color;
-      case CanvasTool.magicWand: return FluentIcons.auto_enhance_on;
-      case CanvasTool.eyedropper: return FluentIcons.eyedropper;
-      case CanvasTool.selection: return 'icons/warp1.svg';
-      case CanvasTool.selectionPen: return FluentIcons.inking_tool;
-      case CanvasTool.text: return FluentIcons.text_field;
-      case CanvasTool.hand: return FluentIcons.hands_free;
-      case CanvasTool.rotate: return FluentIcons.rotate;
+      case CanvasTool.layerAdjust:
+        return FluentIcons.move;
+      case CanvasTool.pen:
+        return FluentIcons.edit;
+      case CanvasTool.perspectivePen:
+        return FluentIcons.pencil_reply;
+      case CanvasTool.spray:
+        return 'icons/spray.svg';
+      case CanvasTool.liquify:
+        return FluentIcons.processing;
+      case CanvasTool.curvePen:
+        return 'icons/line.svg';
+      case CanvasTool.shape:
+        return FluentIcons.shapes;
+      case CanvasTool.eraser:
+        return FluentIcons.erase_tool;
+      case CanvasTool.bucket:
+        return FluentIcons.bucket_color;
+      case CanvasTool.magicWand:
+        return FluentIcons.auto_enhance_on;
+      case CanvasTool.eyedropper:
+        return FluentIcons.eyedropper;
+      case CanvasTool.selection:
+        return 'icons/warp1.svg';
+      case CanvasTool.selectionPen:
+        return FluentIcons.inking_tool;
+      case CanvasTool.text:
+        return FluentIcons.text_field;
+      case CanvasTool.hand:
+        return FluentIcons.hands_free;
+      case CanvasTool.rotate:
+        return FluentIcons.rotate;
     }
   }
 }

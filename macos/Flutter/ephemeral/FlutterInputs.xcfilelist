@@ -784,6 +784,7 @@
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/eyedropper_tool_button.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/hand_tool_button.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/layer_adjust_tool_button.dart
+/Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/liquify_tool_button.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/magic_wand_tool_button.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/measured_size.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/pen_tool_button.dart
@@ -821,7 +822,6 @@
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/adaptive_canvas_surface.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/app_notification.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/backend_canvas_surface.dart
-/Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/bitmap_canvas_surface.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/brush_preset_stroke_preview.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/canvas_title_bar.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/layer_visibility_button.dart

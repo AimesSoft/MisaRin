@@ -17,6 +17,7 @@ import 'undo_tool_button.dart';
 import 'layer_adjust_tool_button.dart';
 import 'curve_pen_tool_button.dart';
 import 'eyedropper_tool_button.dart';
+import 'liquify_tool_button.dart';
 import 'shape_tool_button.dart';
 import 'spray_tool_button.dart';
 import 'text_tool_button.dart';
@@ -49,7 +50,7 @@ class CanvasToolbar extends StatelessWidget {
   final CanvasToolbarLayout layout;
   final bool includeHistoryButtons;
 
-  static const int buttonCount = 15;
+  static const int buttonCount = 16;
   static const int historyButtonCount = 2;
   static const double buttonSize = 48;
   static const double spacing = 9;
@@ -96,8 +97,7 @@ class CanvasToolbar extends StatelessWidget {
 
     final int columns = (clampedToolCount / maxRows).ceil();
     final double width = buttonSize * columns + spacing * (columns - 1);
-    final double height =
-        maxRows * buttonSize + spacing * (maxRows - 1);
+    final double height = maxRows * buttonSize + spacing * (maxRows - 1);
     return CanvasToolbarLayout(
       columns: columns,
       rows: maxRows,
@@ -118,6 +118,7 @@ class CanvasToolbar extends StatelessWidget {
     ToolbarAction.penTool: '使用当前画笔绘制连续笔触，兼容压力与速度控制',
     ToolbarAction.perspectivePenTool: '沿透视线绘制直线，先预览再落笔，确保对齐消失点',
     ToolbarAction.sprayTool: '喷洒颗粒色点，适合铺色或叠加随机纹理',
+    ToolbarAction.liquifyTool: '推拉并融合彩色像素，适合调整局部形变和颜色过渡',
     ToolbarAction.curvePenTool: '通过锚点绘制可编辑的曲线路径',
     ToolbarAction.eraserTool: '擦除当前图层内容，可调节笔刷大小和硬度',
     ToolbarAction.bucketTool: '在闭合区域内填充颜色，并沿用前景色配置',
@@ -242,6 +243,14 @@ class CanvasToolbar extends StatelessWidget {
         child: SprayToolButton(
           isSelected: activeTool == CanvasTool.spray,
           onPressed: () => onToolSelected(CanvasTool.spray),
+        ),
+      ),
+      wrapWithTooltip(
+        action: ToolbarAction.liquifyTool,
+        label: '液化笔刷',
+        child: LiquifyToolButton(
+          isSelected: activeTool == CanvasTool.liquify,
+          onPressed: () => onToolSelected(CanvasTool.liquify),
         ),
       ),
       wrapWithTooltip(

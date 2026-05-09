@@ -3,26 +3,76 @@ use std::os::raw::c_char;
 
 use super::types::{EnginePoint, SprayPoint};
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 use super::engine::{create_engine, lookup_engine, remove_engine, EngineCommand, EngineInputBatch};
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 use crate::gpu::debug::{self, LogLevel};
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 use log::LevelFilter;
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
-use std::ffi::CString;
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 use std::collections::HashMap;
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+use std::ffi::CString;
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 use std::sync::atomic::{AtomicU64, Ordering};
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
-use std::sync::{Mutex, OnceLock};
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 use std::sync::mpsc;
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+use std::sync::{Mutex, OnceLock};
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_create(width: u32, height: u32) -> u64 {
     match create_engine(width, height) {
@@ -40,13 +90,23 @@ pub extern "C" fn engine_create(width: u32, height: u32) -> u64 {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_create(_width: u32, _height: u32) -> u64 {
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_get_mtl_device(handle: u64) -> *mut c_void {
     lookup_engine(handle)
@@ -54,13 +114,23 @@ pub extern "C" fn engine_get_mtl_device(handle: u64) -> *mut c_void {
         .unwrap_or(std::ptr::null_mut())
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_get_mtl_device(_handle: u64) -> *mut c_void {
     std::ptr::null_mut()
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_attach_present_texture(
     handle: u64,
@@ -80,7 +150,12 @@ pub extern "C" fn engine_attach_present_texture(
     });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_attach_present_texture(
     _handle: u64,
@@ -135,9 +210,7 @@ pub extern "C" fn engine_create_present_dxgi_surface(
 
     debug::log(
         LogLevel::Info,
-        format_args!(
-            "dxgi_surface request handle={handle} size={width}x{height}"
-        ),
+        format_args!("dxgi_surface request handle={handle} size={width}x{height}"),
     );
 
     let (tx, rx) = mpsc::channel();
@@ -163,27 +236,21 @@ pub extern "C" fn engine_create_present_dxgi_surface(
         Ok(Some(shared_handle)) => {
             debug::log(
                 LogLevel::Info,
-                format_args!(
-                    "dxgi_surface ready handle={handle} shared=0x{shared_handle:x}"
-                ),
+                format_args!("dxgi_surface ready handle={handle} shared=0x{shared_handle:x}"),
             );
             shared_handle as *mut c_void
         }
         Ok(None) => {
             debug::log(
                 LogLevel::Warn,
-                format_args!(
-                    "dxgi_surface failed (null) handle={handle} size={width}x{height}"
-                ),
+                format_args!("dxgi_surface failed (null) handle={handle} size={width}x{height}"),
             );
             std::ptr::null_mut()
         }
         Err(_) => {
             debug::log(
                 LogLevel::Warn,
-                format_args!(
-                    "dxgi_surface failed (recv) handle={handle} size={width}x{height}"
-                ),
+                format_args!("dxgi_surface failed (recv) handle={handle} size={width}x{height}"),
             );
             std::ptr::null_mut()
         }
@@ -200,7 +267,12 @@ pub extern "C" fn engine_create_present_dxgi_surface(
     std::ptr::null_mut()
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_dispose(handle: u64) {
     let Some(entry) = remove_engine(handle) else {
@@ -210,15 +282,28 @@ pub extern "C" fn engine_dispose(handle: u64) {
         );
         return;
     };
-    debug::log(LogLevel::Info, format_args!("engine_dispose handle={handle}"));
+    debug::log(
+        LogLevel::Info,
+        format_args!("engine_dispose handle={handle}"),
+    );
     let _ = entry.cmd_tx.send(EngineCommand::Stop);
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_dispose(_handle: u64) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[derive(Default)]
 struct FrameReadyPollStats {
     last_log_ms: u64,
@@ -226,21 +311,51 @@ struct FrameReadyPollStats {
     ready_count: u64,
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 static FRAME_READY_STATS: OnceLock<Mutex<HashMap<u64, FrameReadyPollStats>>> = OnceLock::new();
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 static LAST_INPUT_LOG_MS: AtomicU64 = AtomicU64::new(0);
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 static LAST_BRUSH_LOG_MS: AtomicU64 = AtomicU64::new(0);
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 static LAST_FILL_LOG_MS: AtomicU64 = AtomicU64::new(0);
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 fn frame_ready_stats() -> &'static Mutex<HashMap<u64, FrameReadyPollStats>> {
     FRAME_READY_STATS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -248,7 +363,12 @@ fn now_ms() -> u64 {
         .as_millis() as u64
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_poll_frame_ready(handle: u64) -> bool {
     let Some(entry) = lookup_engine(handle) else {
@@ -281,13 +401,23 @@ pub extern "C" fn engine_poll_frame_ready(handle: u64) -> bool {
     ready
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_poll_frame_ready(_handle: u64) -> bool {
     false
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_push_points(handle: u64, points: *const EnginePoint, len: usize) {
     let Some(entry) = lookup_engine(handle) else {
@@ -356,11 +486,21 @@ pub extern "C" fn engine_push_points(handle: u64, points: *const EnginePoint, le
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_push_points(_handle: u64, _points: *const EnginePoint, _len: usize) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_get_input_queue_len(handle: u64) -> u64 {
     lookup_engine(handle)
@@ -368,7 +508,12 @@ pub extern "C" fn engine_get_input_queue_len(handle: u64) -> u64 {
         .unwrap_or(0)
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_log_level(level: u32) {
     debug::set_level_from_u32(level);
@@ -380,56 +525,109 @@ pub extern "C" fn engine_set_log_level(level: u32) {
     log::set_max_level(filter);
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_is_valid(handle: u64) -> u8 {
-    if lookup_engine(handle).is_some() { 1 } else { 0 }
+    if lookup_engine(handle).is_some() {
+        1
+    } else {
+        0
+    }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_log_pop() -> *mut c_char {
     match debug::pop_log_line() {
-        Some(line) => CString::new(line).map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut()),
+        Some(line) => CString::new(line)
+            .map(|s| s.into_raw())
+            .unwrap_or(std::ptr::null_mut()),
         None => std::ptr::null_mut(),
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_log_free(ptr: *mut c_char) {
     if !ptr.is_null() {
-        unsafe { let _ = CString::from_raw(ptr); };
+        unsafe {
+            let _ = CString::from_raw(ptr);
+        };
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_get_input_queue_len(_handle: u64) -> u64 {
     0
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_log_level(_level: u32) {}
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_is_valid(_handle: u64) -> u8 {
     0
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_log_pop() -> *mut c_char {
     std::ptr::null_mut()
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_log_free(_ptr: *mut c_char) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_active_layer(handle: u64, layer_index: u32) {
     let Some(entry) = lookup_engine(handle) else {
@@ -440,11 +638,21 @@ pub extern "C" fn engine_set_active_layer(handle: u64, layer_index: u32) {
         .send(EngineCommand::SetActiveLayer { layer_index });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_active_layer(_handle: u64, _layer_index: u32) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_layer_opacity(handle: u64, layer_index: u32, opacity: f32) {
     let Some(entry) = lookup_engine(handle) else {
@@ -456,11 +664,21 @@ pub extern "C" fn engine_set_layer_opacity(handle: u64, layer_index: u32, opacit
     });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_layer_opacity(_handle: u64, _layer_index: u32, _opacity: f32) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_layer_visible(handle: u64, layer_index: u32, visible: bool) {
     let Some(entry) = lookup_engine(handle) else {
@@ -472,11 +690,21 @@ pub extern "C" fn engine_set_layer_visible(handle: u64, layer_index: u32, visibl
     });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_layer_visible(_handle: u64, _layer_index: u32, _visible: bool) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_layer_clipping_mask(
     handle: u64,
@@ -492,7 +720,12 @@ pub extern "C" fn engine_set_layer_clipping_mask(
     });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_layer_clipping_mask(
     _handle: u64,
@@ -501,7 +734,12 @@ pub extern "C" fn engine_set_layer_clipping_mask(
 ) {
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_layer_blend_mode(
     handle: u64,
@@ -517,7 +755,12 @@ pub extern "C" fn engine_set_layer_blend_mode(
     });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_layer_blend_mode(
     _handle: u64,
@@ -526,7 +769,12 @@ pub extern "C" fn engine_set_layer_blend_mode(
 ) {
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_reorder_layer(handle: u64, from_index: u32, to_index: u32) {
     let Some(entry) = lookup_engine(handle) else {
@@ -538,11 +786,21 @@ pub extern "C" fn engine_reorder_layer(handle: u64, from_index: u32, to_index: u
     });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_reorder_layer(_handle: u64, _from_index: u32, _to_index: u32) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_view_flags(handle: u64, view_flags: u32) {
     let Some(entry) = lookup_engine(handle) else {
@@ -553,11 +811,21 @@ pub extern "C" fn engine_set_view_flags(handle: u64, view_flags: u32) {
         .send(EngineCommand::SetViewFlags { view_flags });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_view_flags(_handle: u64, _view_flags: u32) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_brush(
     handle: u64,
@@ -639,7 +907,12 @@ pub extern "C" fn engine_set_brush(
     });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_brush(
     _handle: u64,
@@ -673,7 +946,12 @@ pub extern "C" fn engine_set_brush(
 ) {
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_brush_mask(
     handle: u64,
@@ -697,12 +975,19 @@ pub extern "C" fn engine_set_brush_mask(
         return;
     }
     let mask = unsafe { std::slice::from_raw_parts(mask_ptr, mask_len).to_vec() };
-    let _ = entry
-        .cmd_tx
-        .send(EngineCommand::SetBrushMask { width, height, mask });
+    let _ = entry.cmd_tx.send(EngineCommand::SetBrushMask {
+        width,
+        height,
+        mask,
+    });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_brush_mask(
     _handle: u64,
@@ -713,7 +998,12 @@ pub extern "C" fn engine_set_brush_mask(
 ) {
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_clear_brush_mask(handle: u64) {
     let Some(entry) = lookup_engine(handle) else {
@@ -722,11 +1012,21 @@ pub extern "C" fn engine_clear_brush_mask(handle: u64) {
     let _ = entry.cmd_tx.send(EngineCommand::ClearBrushMask);
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_clear_brush_mask(_handle: u64) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_spray_begin(handle: u64) {
     let Some(entry) = lookup_engine(handle) else {
@@ -735,11 +1035,21 @@ pub extern "C" fn engine_spray_begin(handle: u64) {
     let _ = entry.cmd_tx.send(EngineCommand::BeginSpray);
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_spray_begin(_handle: u64) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_spray_draw(
     handle: u64,
@@ -788,7 +1098,12 @@ pub extern "C" fn engine_spray_draw(
     });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_spray_draw(
     _handle: u64,
@@ -803,7 +1118,12 @@ pub extern "C" fn engine_spray_draw(
 ) {
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_spray_end(handle: u64) {
     let Some(entry) = lookup_engine(handle) else {
@@ -812,11 +1132,120 @@ pub extern "C" fn engine_spray_end(handle: u64) {
     let _ = entry.cmd_tx.send(EngineCommand::EndSpray);
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_spray_end(_handle: u64) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+#[no_mangle]
+pub extern "C" fn engine_liquify_begin(handle: u64) {
+    let Some(entry) = lookup_engine(handle) else {
+        return;
+    };
+    let _ = entry.cmd_tx.send(EngineCommand::BeginLiquify);
+}
+
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
+#[no_mangle]
+pub extern "C" fn engine_liquify_begin(_handle: u64) {}
+
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+#[no_mangle]
+pub extern "C" fn engine_liquify_draw(
+    handle: u64,
+    from_x: f32,
+    from_y: f32,
+    to_x: f32,
+    to_y: f32,
+    radius: f32,
+    strength: f32,
+    softness: f32,
+    mix: f32,
+) {
+    let Some(entry) = lookup_engine(handle) else {
+        return;
+    };
+    let _ = entry.cmd_tx.send(EngineCommand::DrawLiquify {
+        from_x,
+        from_y,
+        to_x,
+        to_y,
+        radius,
+        strength,
+        softness,
+        mix,
+    });
+}
+
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
+#[no_mangle]
+pub extern "C" fn engine_liquify_draw(
+    _handle: u64,
+    _from_x: f32,
+    _from_y: f32,
+    _to_x: f32,
+    _to_y: f32,
+    _radius: f32,
+    _strength: f32,
+    _softness: f32,
+    _mix: f32,
+) {
+}
+
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+#[no_mangle]
+pub extern "C" fn engine_liquify_end(handle: u64) {
+    let Some(entry) = lookup_engine(handle) else {
+        return;
+    };
+    let _ = entry.cmd_tx.send(EngineCommand::EndLiquify);
+}
+
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
+#[no_mangle]
+pub extern "C" fn engine_liquify_end(_handle: u64) {}
+
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_apply_filter(
     handle: u64,
@@ -847,12 +1276,23 @@ pub extern "C" fn engine_apply_filter(
         return 0;
     }
     match rx.recv() {
-        Ok(changed) => if changed { 1 } else { 0 },
+        Ok(changed) => {
+            if changed {
+                1
+            } else {
+                0
+            }
+        }
         Err(_) => 0,
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_apply_filter(
     _handle: u64,
@@ -866,13 +1306,14 @@ pub extern "C" fn engine_apply_filter(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
-pub extern "C" fn engine_apply_antialias(
-    handle: u64,
-    layer_index: u32,
-    level: u32,
-) -> u8 {
+pub extern "C" fn engine_apply_antialias(handle: u64, layer_index: u32, level: u32) -> u8 {
     let Some(entry) = lookup_engine(handle) else {
         return 0;
     };
@@ -889,22 +1330,34 @@ pub extern "C" fn engine_apply_antialias(
         return 0;
     }
     match rx.recv() {
-        Ok(changed) => if changed { 1 } else { 0 },
+        Ok(changed) => {
+            if changed {
+                1
+            } else {
+                0
+            }
+        }
         Err(_) => 0,
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
-pub extern "C" fn engine_apply_antialias(
-    _handle: u64,
-    _layer_index: u32,
-    _level: u32,
-) -> u8 {
+pub extern "C" fn engine_apply_antialias(_handle: u64, _layer_index: u32, _level: u32) -> u8 {
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_clear_layer(handle: u64, layer_index: u32) {
     let Some(entry) = lookup_engine(handle) else {
@@ -913,11 +1366,21 @@ pub extern "C" fn engine_clear_layer(handle: u64, layer_index: u32) {
     let _ = entry.cmd_tx.send(EngineCommand::ClearLayer { layer_index });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_clear_layer(_handle: u64, _layer_index: u32) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_fill_layer(handle: u64, layer_index: u32, color_argb: u32) {
     let Some(entry) = lookup_engine(handle) else {
@@ -942,11 +1405,21 @@ pub extern "C" fn engine_fill_layer(handle: u64, layer_index: u32, color_argb: u
     });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_fill_layer(_handle: u64, _layer_index: u32, _color_argb: u32) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_bucket_fill(
     handle: u64,
@@ -1014,7 +1487,12 @@ pub extern "C" fn engine_bucket_fill(
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_bucket_fill(
     _handle: u64,
@@ -1035,7 +1513,12 @@ pub extern "C" fn engine_bucket_fill(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_magic_wand_mask(
     handle: u64,
@@ -1094,7 +1577,12 @@ pub extern "C" fn engine_magic_wand_mask(
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_magic_wand_mask(
     _handle: u64,
@@ -1111,7 +1599,12 @@ pub extern "C" fn engine_magic_wand_mask(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_read_layer(
     handle: u64,
@@ -1152,7 +1645,12 @@ pub extern "C" fn engine_read_layer(
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_read_layer(
     _handle: u64,
@@ -1163,7 +1661,12 @@ pub extern "C" fn engine_read_layer(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_read_layer_preview(
     handle: u64,
@@ -1214,7 +1717,12 @@ pub extern "C" fn engine_read_layer_preview(
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_read_layer_preview(
     _handle: u64,
@@ -1227,7 +1735,12 @@ pub extern "C" fn engine_read_layer_preview(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_read_present(
     handle: u64,
@@ -1242,7 +1755,11 @@ pub extern "C" fn engine_read_present(
     };
 
     let (tx, rx) = mpsc::channel();
-    if entry.cmd_tx.send(EngineCommand::ReadPresent { reply: tx }).is_err() {
+    if entry
+        .cmd_tx
+        .send(EngineCommand::ReadPresent { reply: tx })
+        .is_err()
+    {
         return 0;
     }
 
@@ -1260,7 +1777,12 @@ pub extern "C" fn engine_read_present(
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_read_present_pixel(
     handle: u64,
@@ -1295,7 +1817,12 @@ pub extern "C" fn engine_read_present_pixel(
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_read_present(
     _handle: u64,
@@ -1305,7 +1832,12 @@ pub extern "C" fn engine_read_present(
     0
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_read_present_pixel(
     _handle: u64,
@@ -1316,7 +1848,12 @@ pub extern "C" fn engine_read_present_pixel(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_write_layer(
     handle: u64,
@@ -1359,7 +1896,12 @@ pub extern "C" fn engine_write_layer(
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_write_layer(
     _handle: u64,
@@ -1371,7 +1913,12 @@ pub extern "C" fn engine_write_layer(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_write_layer_async(
     handle: u64,
@@ -1404,7 +1951,12 @@ pub extern "C" fn engine_write_layer_async(
     1
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_write_layer_async(
     _handle: u64,
@@ -1416,7 +1968,12 @@ pub extern "C" fn engine_write_layer_async(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_translate_layer(
     handle: u64,
@@ -1454,7 +2011,12 @@ pub extern "C" fn engine_translate_layer(
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_translate_layer(
     _handle: u64,
@@ -1465,7 +2027,12 @@ pub extern "C" fn engine_translate_layer(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_layer_transform_preview(
     handle: u64,
@@ -1499,7 +2066,12 @@ pub extern "C" fn engine_set_layer_transform_preview(
     1
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_layer_transform_preview(
     _handle: u64,
@@ -1512,7 +2084,12 @@ pub extern "C" fn engine_set_layer_transform_preview(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_apply_layer_transform(
     handle: u64,
@@ -1556,7 +2133,12 @@ pub extern "C" fn engine_apply_layer_transform(
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_apply_layer_transform(
     _handle: u64,
@@ -1568,7 +2150,12 @@ pub extern "C" fn engine_apply_layer_transform(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_get_layer_bounds(
     handle: u64,
@@ -1609,7 +2196,12 @@ pub extern "C" fn engine_get_layer_bounds(
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_get_layer_bounds(
     _handle: u64,
@@ -1620,7 +2212,12 @@ pub extern "C" fn engine_get_layer_bounds(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_set_selection_mask(
     handle: u64,
@@ -1641,7 +2238,12 @@ pub extern "C" fn engine_set_selection_mask(
         .send(EngineCommand::SetSelectionMask { selection_mask });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_set_selection_mask(
     _handle: u64,
@@ -1650,7 +2252,12 @@ pub extern "C" fn engine_set_selection_mask(
 ) {
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_reset_canvas(handle: u64, background_color_argb: u32) {
     let Some(entry) = lookup_engine(handle) else {
@@ -1661,11 +2268,21 @@ pub extern "C" fn engine_reset_canvas(handle: u64, background_color_argb: u32) {
     });
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_reset_canvas(_handle: u64, _background_color_argb: u32) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_reset_canvas_with_layers(
     handle: u64,
@@ -1687,7 +2304,12 @@ pub extern "C" fn engine_reset_canvas_with_layers(
     });
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_request_present(handle: u64) {
     let Some(entry) = lookup_engine(handle) else {
@@ -1696,7 +2318,12 @@ pub extern "C" fn engine_request_present(handle: u64) {
     let _ = entry.cmd_tx.send(EngineCommand::RequestPresent);
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_reset_canvas_with_layers(
     _handle: u64,
@@ -1705,11 +2332,21 @@ pub extern "C" fn engine_reset_canvas_with_layers(
 ) {
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_request_present(_handle: u64) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_resize_canvas(
     handle: u64,
@@ -1750,7 +2387,12 @@ pub extern "C" fn engine_resize_canvas(
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_resize_canvas(
     _handle: u64,
@@ -1762,7 +2404,12 @@ pub extern "C" fn engine_resize_canvas(
     0
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_undo(handle: u64) {
     let Some(entry) = lookup_engine(handle) else {
@@ -1771,11 +2418,21 @@ pub extern "C" fn engine_undo(handle: u64) {
     let _ = entry.cmd_tx.send(EngineCommand::Undo);
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_undo(_handle: u64) {}
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 #[no_mangle]
 pub extern "C" fn engine_redo(handle: u64) {
     let Some(entry) = lookup_engine(handle) else {
@@ -1784,6 +2441,11 @@ pub extern "C" fn engine_redo(handle: u64) {
     let _ = entry.cmd_tx.send(EngineCommand::Redo);
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
 #[no_mangle]
 pub extern "C" fn engine_redo(_handle: u64) {}

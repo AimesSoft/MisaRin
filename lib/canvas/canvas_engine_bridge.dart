@@ -210,6 +210,47 @@ class CanvasEngineFfi {
     _rustWgpu.endSpray(handle: handle);
   }
 
+  void beginLiquify({required int handle}) {
+    if (!isSupported) {
+      return;
+    }
+    _rustWgpu.beginLiquify(handle: handle);
+  }
+
+  void drawLiquify({
+    required int handle,
+    required double fromX,
+    required double fromY,
+    required double toX,
+    required double toY,
+    required double radius,
+    required double strength,
+    required double softness,
+    required double mix,
+  }) {
+    if (!isSupported) {
+      return;
+    }
+    _rustWgpu.drawLiquify(
+      handle: handle,
+      fromX: fromX,
+      fromY: fromY,
+      toX: toX,
+      toY: toY,
+      radius: radius,
+      strength: strength,
+      softness: softness,
+      mix: mix,
+    );
+  }
+
+  void endLiquify({required int handle}) {
+    if (!isSupported) {
+      return;
+    }
+    _rustWgpu.endLiquify(handle: handle);
+  }
+
   bool applyFilter({
     required int handle,
     required int layerIndex,
@@ -801,6 +842,38 @@ class CanvasBackendFacade {
       softness: softness,
       accumulate: accumulate,
     );
+  }
+
+  void beginLiquify({required int handle}) {
+    _ffi.beginLiquify(handle: handle);
+  }
+
+  void drawLiquify({
+    required int handle,
+    required double fromX,
+    required double fromY,
+    required double toX,
+    required double toY,
+    required double radius,
+    required double strength,
+    required double softness,
+    required double mix,
+  }) {
+    _ffi.drawLiquify(
+      handle: handle,
+      fromX: fromX,
+      fromY: fromY,
+      toX: toX,
+      toY: toY,
+      radius: radius,
+      strength: strength,
+      softness: softness,
+      mix: mix,
+    );
+  }
+
+  void endLiquify({required int handle}) {
+    _ffi.endLiquify(handle: handle);
   }
 
   void setLayerClippingMask({

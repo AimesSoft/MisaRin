@@ -1,6 +1,7 @@
 part of 'painting_board.dart';
 
-extension _PaintingBoardInteractionStrokeExtension on _PaintingBoardInteractionMixin {
+extension _PaintingBoardInteractionStrokeExtension
+    on _PaintingBoardInteractionMixin {
   void _updateBucketSwallowColorLine(bool value) {
     if (_bucketSwallowColorLine == value) {
       return;
@@ -243,5 +244,124 @@ extension _PaintingBoardInteractionStrokeExtension on _PaintingBoardInteractionM
     _sprayEmissionAccumulator = 0.0;
     _softSprayLastPoint = null;
     _softSprayResidual = 0.0;
+  }
+
+  double _resolveLiquifyRadius() {
+    double radius = (_liquifyStrokeWidth / 2.0).clamp(4.0, 250.0).toDouble();
+    final Size engineSize = _backendCanvasEngineSize ?? _canvasSize;
+    if (engineSize != _canvasSize &&
+        _canvasSize.width > 0 &&
+        _canvasSize.height > 0) {
+      final double sx = engineSize.width / _canvasSize.width;
+      final double sy = engineSize.height / _canvasSize.height;
+      final double scale = (sx.isFinite && sy.isFinite)
+          ? ((sx + sy) / 2.0)
+          : 1.0;
+      if (scale.isFinite && scale > 0) {
+        radius *= scale;
+      }
+    }
+    return radius.clamp(4.0, 4096.0).toDouble();
+  }
+
+  Future<void> _startLiquifyStroke(
+    Offset boardLocal,
+    PointerEvent event,
+  ) async {
+    if (!isPointInsideSelection(boardLocal)) {
+      return;
+    }
+    _focusNode.requestFocus();
+    if (!_isBackendDrawingPointer(event)) {
+      return;
+    }
+    if (!_backend.supportsLiquify) {
+      _showBackendCanvasMessage('液化笔刷需要画布后端支持。');
+      return;
+    }
+    if (_isActiveLayerLocked()) {
+      _showBackendCanvasMessage('当前图层已锁定。');
+      return;
+    }
+    if (!_backend.beginLiquify()) {
+      _showBackendCanvasMessage('画布后端尚未准备好。');
+      return;
+    }
+    final Offset clamped = _clampToCanvas(boardLocal);
+    final Offset enginePoint = _backendToEngineSpace(clamped);
+    _isLiquifying = true;
+    _backendLiquifyHasDrawn = false;
+    _liquifyLastEnginePoint = enginePoint;
+    _liquifyResidual = 0.0;
+    setState(() {
+      _penCursorWorkspacePosition = event.localPosition;
+    });
+  }
+
+  void _updateLiquifyStroke(Offset boardLocal, PointerEvent event) {
+    if (!_isLiquifying) {
+      return;
+    }
+    final Offset clamped = _clampToCanvas(boardLocal);
+    final Offset nextEnginePoint = _backendToEngineSpace(clamped);
+    final Offset? previous = _liquifyLastEnginePoint;
+    _penCursorWorkspacePosition = event.localPosition;
+    if (previous == null) {
+      _liquifyLastEnginePoint = nextEnginePoint;
+      return;
+    }
+    final Offset delta = nextEnginePoint - previous;
+    final double distance = delta.distance;
+    if (!distance.isFinite || distance <= 0.001) {
+      return;
+    }
+    final double radius = _resolveLiquifyRadius();
+    final double spacing = math.max(1.0, radius * 0.18);
+    final double available = _liquifyResidual + distance;
+    if (available < spacing) {
+      _liquifyResidual = available;
+      _liquifyLastEnginePoint = nextEnginePoint;
+      return;
+    }
+    final int steps = math.max(1, (available / spacing).floor());
+    final Offset unit = delta / distance;
+    double cursorDistance = spacing - _liquifyResidual;
+    Offset segmentStart = previous;
+    for (int i = 0; i < steps && cursorDistance <= distance + 0.001; i++) {
+      final Offset segmentEnd = previous + unit * cursorDistance;
+      _backend.drawLiquify(
+        from: segmentStart,
+        to: segmentEnd,
+        radius: radius,
+        strength: _liquifyStrength,
+        softness: _liquifySoftness,
+        mix: _liquifyMix,
+      );
+      _backendLiquifyHasDrawn = true;
+      segmentStart = segmentEnd;
+      cursorDistance += spacing;
+    }
+    _liquifyResidual = (available - steps * spacing).clamp(0.0, spacing);
+    _liquifyLastEnginePoint = nextEnginePoint;
+    _markDirty();
+  }
+
+  void _finishLiquifyStroke() {
+    if (!_isLiquifying) {
+      return;
+    }
+    _backend.endLiquify();
+    if (_backendLiquifyHasDrawn) {
+      _recordBackendHistoryAction(layerId: _activeLayerId, deferPreview: true);
+      if (mounted) {
+        setState(() {});
+      }
+    } else {
+      setState(() {});
+    }
+    _isLiquifying = false;
+    _backendLiquifyHasDrawn = false;
+    _liquifyLastEnginePoint = null;
+    _liquifyResidual = 0.0;
   }
 }

@@ -23,16 +23,16 @@ use crate::gpu::filter_renderer::{
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
 
 use super::layers::LayerTextures;
-use super::present::{
-    attach_present_texture, create_present_params_buffer, create_present_transform_buffer,
-    copy_render_to_shared, signal_frame_ready, write_present_config, write_present_transform,
-    PresentRenderer, PresentTarget,
-};
 #[cfg(target_os = "android")]
 use super::present::attach_present_surface;
-use super::preview::{PreviewConfig, PreviewRenderer, PreviewSegment};
 #[cfg(target_os = "windows")]
 use super::present::create_dxgi_shared_present_target;
+use super::present::{
+    attach_present_texture, copy_render_to_shared, create_present_params_buffer,
+    create_present_transform_buffer, signal_frame_ready, write_present_config,
+    write_present_transform, PresentRenderer, PresentTarget,
+};
+use super::preview::{PreviewConfig, PreviewRenderer, PreviewSegment};
 use super::stroke::{
     apply_streamline, brush_random_rotation_radians, map_brush_shape, prepare_brush_samples,
     EngineBrushSettings, StrokeResampler,
@@ -83,9 +83,7 @@ fn record_present_wait(waited_us: u64) {
         let max_ms = (max as f64) / 1000.0;
         debug::log(
             LogLevel::Info,
-            format_args!(
-                "[perf] present wait avg={avg_ms:.2}ms max={max_ms:.2}ms"
-            ),
+            format_args!("[perf] present wait avg={avg_ms:.2}ms max={max_ms:.2}ms"),
         );
     }
 }
@@ -203,6 +201,18 @@ pub(crate) enum EngineCommand {
         accumulate: bool,
     },
     EndSpray,
+    BeginLiquify,
+    DrawLiquify {
+        from_x: f32,
+        from_y: f32,
+        to_x: f32,
+        to_y: f32,
+        radius: f32,
+        strength: f32,
+        softness: f32,
+        mix: f32,
+    },
+    EndLiquify,
     ApplyFilter {
         layer_index: u32,
         filter_type: u32,
@@ -590,19 +600,11 @@ fn maybe_log_layer_sample(
         let y_u = (y as u32).min(canvas_height.saturating_sub(1));
         (x_u, y_u, "dirty")
     };
-    let Some(pixel) = read_layer_pixel_u32(
-        device,
-        queue,
-        layer_texture,
-        layer_index,
-        x_u,
-        y_u,
-    ) else {
+    let Some(pixel) = read_layer_pixel_u32(device, queue, layer_texture, layer_index, x_u, y_u)
+    else {
         debug::log(
             LogLevel::Warn,
-            format_args!(
-                "layer sample failed tag={tag} layer={layer_index} x={x_u} y={y_u}"
-            ),
+            format_args!("layer sample failed tag={tag} layer={layer_index} x={x_u} y={y_u}"),
         );
         return;
     };
@@ -1025,8 +1027,7 @@ fn render_streamline_frame(
         return false;
     }
     let mut before_draw = |brush: &mut BrushRenderer, dirty_rect| {
-        if let Err(err) =
-            brush.prepare_layer_read(layer_texture, animation.layer_index, dirty_rect)
+        if let Err(err) = brush.prepare_layer_read(layer_texture, animation.layer_index, dirty_rect)
         {
             debug::log(
                 LogLevel::Warn,
@@ -1320,6 +1321,7 @@ fn render_thread_main(
     let mut preview_state: Option<PreviewStrokeState> = None;
     let mut selection_mask_active = false;
     let mut spray_active_layer: Option<u32> = None;
+    let mut liquify_active_layer: Option<u32> = None;
     let mut pending_present = false;
     let mut pending_present_since: Option<Instant> = None;
     let mut presented_once = false;
@@ -1377,8 +1379,7 @@ fn render_thread_main(
                         canvas_width,
                         canvas_height,
                     );
-                    undo_manager
-                        .end_stroke(device.as_ref(), queue.as_ref(), layers.texture());
+                    undo_manager.end_stroke(device.as_ref(), queue.as_ref(), layers.texture());
                     if frame_drawn {
                         if let Some(entry) = layer_uniform.get_mut(active_layer_index) {
                             *entry = None;
@@ -1422,6 +1423,7 @@ fn render_thread_main(
                 &mut stroke,
                 &mut selection_mask_active,
                 &mut spray_active_layer,
+                &mut liquify_active_layer,
                 &mut undo_manager,
                 canvas_width,
                 canvas_height,
@@ -1512,8 +1514,7 @@ fn render_thread_main(
                             canvas_width,
                             canvas_height,
                         );
-                        undo_manager
-                            .end_stroke(device.as_ref(), queue.as_ref(), layers.texture());
+                        undo_manager.end_stroke(device.as_ref(), queue.as_ref(), layers.texture());
                         if frame_drawn {
                             if let Some(entry) = layer_uniform.get_mut(active_layer_index) {
                                 *entry = None;
@@ -1557,6 +1558,7 @@ fn render_thread_main(
                     &mut stroke,
                     &mut selection_mask_active,
                     &mut spray_active_layer,
+                    &mut liquify_active_layer,
                     &mut undo_manager,
                     canvas_width,
                     canvas_height,
@@ -1580,11 +1582,12 @@ fn render_thread_main(
             for batch in batches {
                 raw_points.extend(batch.points);
             }
-            let backlog_points =
-                raw_points.len() as u64 + input_queue_len.load(Ordering::Relaxed);
+            let backlog_points = raw_points.len() as u64 + input_queue_len.load(Ordering::Relaxed);
             stroke.set_resample_scale(resample_scale_for_backlog(backlog_points));
-            let layer_blend_mode_value =
-                layer_blend_mode.get(active_layer_index).copied().unwrap_or(0);
+            let layer_blend_mode_value = layer_blend_mode
+                .get(active_layer_index)
+                .copied()
+                .unwrap_or(0);
             let has_visible_above = has_visible_layer_above(
                 active_layer_index,
                 &layer_visible,
@@ -1649,11 +1652,7 @@ fn render_thread_main(
                             canvas_width,
                             canvas_height,
                         );
-                        undo_manager.end_stroke(
-                            device.as_ref(),
-                            queue.as_ref(),
-                            layers.texture(),
-                        );
+                        undo_manager.end_stroke(device.as_ref(), queue.as_ref(), layers.texture());
                         if let Some(entry) = layer_uniform.get_mut(active_layer_index) {
                             *entry = None;
                         }
@@ -1706,22 +1705,13 @@ fn render_thread_main(
                             }
                             if from_points.len() > 2 && strength > 0.0001 {
                                 let smoothed = apply_streamline(&from_points, strength);
-                                if !smoothed.is_empty()
-                                    && smoothed.len() == from_points.len()
-                                {
-                                    let duration =
-                                        streamline_animation_duration(strength);
+                                if !smoothed.is_empty() && smoothed.len() == from_points.len() {
+                                    let duration = streamline_animation_duration(strength);
                                     let (preview_from, preview_to, preview_len) =
-                                        match build_streamline_preview(
-                                            &from_points, &smoothed,
-                                        ) {
+                                        match build_streamline_preview(&from_points, &smoothed) {
                                             Some((preview_from, preview_to)) => {
                                                 let len = preview_from.len();
-                                                (
-                                                    Some(preview_from),
-                                                    Some(preview_to),
-                                                    len,
-                                                )
+                                                (Some(preview_from), Some(preview_to), len)
                                             }
                                             None => (None, None, from_points.len()),
                                         };
@@ -1780,8 +1770,7 @@ fn render_thread_main(
 
                 if !segment.is_empty() {
                     if let Some(state) = preview_state.as_mut() {
-                        let emitted =
-                            stroke.consume_points(&state.brush_settings, segment);
+                        let emitted = stroke.consume_points(&state.brush_settings, segment);
                         if !emitted.is_empty() {
                             state.points.extend(emitted);
                             preview_updated = true;
@@ -1793,23 +1782,18 @@ fn render_thread_main(
                     needs_render = true;
                 }
             } else {
-                let brush_ref = match ensure_brush(
-                    &mut brush,
-                    &device,
-                    &queue,
-                    canvas_width,
-                    canvas_height,
-                ) {
-                    Ok(brush_ref) => brush_ref,
-                    Err(err) => {
-                        debug::log(
-                            LogLevel::Warn,
-                            format_args!("BrushRenderer init failed: {err}"),
-                        );
-                        stroke = StrokeResampler::new();
-                        continue;
-                    }
-                };
+                let brush_ref =
+                    match ensure_brush(&mut brush, &device, &queue, canvas_width, canvas_height) {
+                        Ok(brush_ref) => brush_ref,
+                        Err(err) => {
+                            debug::log(
+                                LogLevel::Warn,
+                                format_args!("BrushRenderer init failed: {err}"),
+                            );
+                            stroke = StrokeResampler::new();
+                            continue;
+                        }
+                    };
 
                 let active_layer_view = layers
                     .layer_view(active_layer_index)
@@ -1852,44 +1836,35 @@ fn render_thread_main(
                             use_hollow_mask && !brush_settings.hollow_erase_occluded;
                         let mut defer_end_stroke = false;
                         let segment_drawn = {
-                            let mut before_draw =
-                                |brush: &mut BrushRenderer, dirty_rect| {
-                                    if let Err(err) = brush.prepare_layer_read(
+                            let mut before_draw = |brush: &mut BrushRenderer, dirty_rect| {
+                                if let Err(err) =
+                                    brush.prepare_layer_read(layer_texture, layer_idx, dirty_rect)
+                                {
+                                    debug::log(
+                                        LogLevel::Warn,
+                                        format_args!("Brush layer read prep failed: {err}"),
+                                    );
+                                }
+                                undo_manager.capture_before_for_dirty_rect(
+                                    device.as_ref(),
+                                    queue.as_ref(),
+                                    layer_texture,
+                                    layer_idx,
+                                    dirty_rect,
+                                );
+                                if use_hollow_base {
+                                    if let Err(err) = brush.capture_stroke_base_region(
                                         layer_texture,
                                         layer_idx,
                                         dirty_rect,
                                     ) {
                                         debug::log(
                                             LogLevel::Warn,
-                                            format_args!(
-                                                "Brush layer read prep failed: {err}"
-                                            ),
+                                            format_args!("Brush stroke base capture failed: {err}"),
                                         );
                                     }
-                                    undo_manager.capture_before_for_dirty_rect(
-                                        device.as_ref(),
-                                        queue.as_ref(),
-                                        layer_texture,
-                                        layer_idx,
-                                        dirty_rect,
-                                    );
-                                    if use_hollow_base {
-                                        if let Err(err) =
-                                            brush.capture_stroke_base_region(
-                                                layer_texture,
-                                                layer_idx,
-                                                dirty_rect,
-                                            )
-                                        {
-                                            debug::log(
-                                                LogLevel::Warn,
-                                                format_args!(
-                                                    "Brush stroke base capture failed: {err}"
-                                                ),
-                                            );
-                                        }
-                                    }
-                                };
+                                }
+                            };
                             stroke.consume_and_draw(
                                 brush_ref,
                                 &brush_settings,
@@ -1922,22 +1897,13 @@ fn render_thread_main(
                             let strength = payload.strength;
                             if from_points.len() > 2 && strength > 0.0001 {
                                 let smoothed = apply_streamline(&from_points, strength);
-                                if !smoothed.is_empty()
-                                    && smoothed.len() == from_points.len()
-                                {
-                                    let duration =
-                                        streamline_animation_duration(strength);
+                                if !smoothed.is_empty() && smoothed.len() == from_points.len() {
+                                    let duration = streamline_animation_duration(strength);
                                     let (preview_from, preview_to, preview_len) =
-                                        match build_streamline_preview(
-                                            &from_points, &smoothed,
-                                        ) {
+                                        match build_streamline_preview(&from_points, &smoothed) {
                                             Some((preview_from, preview_to)) => {
                                                 let len = preview_from.len();
-                                                (
-                                                    Some(preview_from),
-                                                    Some(preview_to),
-                                                    len,
-                                                )
+                                                (Some(preview_from), Some(preview_to), len)
                                             }
                                             None => (None, None, from_points.len()),
                                         };
@@ -1975,11 +1941,7 @@ fn render_thread_main(
                             }
                         }
                         if !defer_end_stroke {
-                            undo_manager.end_stroke(
-                                device.as_ref(),
-                                queue.as_ref(),
-                                layer_texture,
-                            );
+                            undo_manager.end_stroke(device.as_ref(), queue.as_ref(), layer_texture);
                         }
                     }
                 }
@@ -1996,9 +1958,7 @@ fn render_thread_main(
                         {
                             debug::log(
                                 LogLevel::Warn,
-                                format_args!(
-                                    "Brush layer read prep failed: {err}"
-                                ),
+                                format_args!("Brush layer read prep failed: {err}"),
                             );
                         }
                         undo_manager.capture_before_for_dirty_rect(
@@ -2016,9 +1976,7 @@ fn render_thread_main(
                             ) {
                                 debug::log(
                                     LogLevel::Warn,
-                                    format_args!(
-                                        "Brush stroke base capture failed: {err}"
-                                    ),
+                                    format_args!("Brush stroke base capture failed: {err}"),
                                 );
                             }
                         }
@@ -2142,11 +2100,7 @@ fn render_thread_main(
                         needs_render = true;
                     }
                     if done {
-                        undo_manager.end_stroke(
-                            device.as_ref(),
-                            queue.as_ref(),
-                            layers.texture(),
-                        );
+                        undo_manager.end_stroke(device.as_ref(), queue.as_ref(), layers.texture());
                         clear_animation = true;
                     }
                 }
@@ -2156,9 +2110,7 @@ fn render_thread_main(
             streamline_animation = None;
         }
 
-        if !deferred_reads.is_empty()
-            && input_queue_len.load(Ordering::Relaxed) == 0
-        {
+        if !deferred_reads.is_empty() && input_queue_len.load(Ordering::Relaxed) == 0 {
             let pending = std::mem::take(&mut deferred_reads);
             for cmd in pending {
                 let outcome = handle_engine_command(
@@ -2196,6 +2148,7 @@ fn render_thread_main(
                     &mut stroke,
                     &mut selection_mask_active,
                     &mut spray_active_layer,
+                    &mut liquify_active_layer,
                     &mut undo_manager,
                     canvas_width,
                     canvas_height,
@@ -2307,32 +2260,29 @@ fn render_thread_main(
                                 let layer_opacity_value =
                                     layer_opacity.get(layer_idx).copied().unwrap_or(1.0);
                                 if layer_visible_value && layer_opacity_value > 0.0001 {
-                                    let preview_points: &[(
-                                        Point2D,
-                                        f32,
-                                    )] = if let Some(animation) = streamline_animation.as_ref() {
-                                        if animation.scratch.is_empty() {
-                                            state.points.as_slice()
+                                    let preview_points: &[(Point2D, f32)] =
+                                        if let Some(animation) = streamline_animation.as_ref() {
+                                            if animation.scratch.is_empty() {
+                                                state.points.as_slice()
+                                            } else {
+                                                animation.scratch.as_slice()
+                                            }
                                         } else {
-                                            animation.scratch.as_slice()
-                                        }
-                                    } else {
-                                        state.points.as_slice()
-                                    };
+                                            state.points.as_slice()
+                                        };
                                     if !preview_points.is_empty() {
                                         let segments = build_preview_segments(
                                             preview_points,
                                             &state.brush_settings,
                                         );
                                         if !segments.is_empty() {
-                                            let preview = preview_renderer.get_or_insert_with(
-                                                || {
+                                            let preview =
+                                                preview_renderer.get_or_insert_with(|| {
                                                     PreviewRenderer::new(
                                                         device.as_ref(),
                                                         present_format,
                                                     )
-                                                },
-                                            );
+                                                });
                                             let config = build_preview_config(
                                                 &state.brush_settings,
                                                 canvas_width,
@@ -2393,8 +2343,9 @@ fn render_thread_main(
                         let frame = surface.surface().get_current_texture();
                         match frame {
                             Ok(frame) => {
-                                let view =
-                                    frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+                                let view = frame
+                                    .texture
+                                    .create_view(&wgpu::TextureViewDescriptor::default());
                                 if let Some(state) = preview_state.as_ref() {
                                     present_renderer.render_base(
                                         device.as_ref(),
@@ -2408,10 +2359,11 @@ fn render_thread_main(
                                     let layer_opacity_value =
                                         layer_opacity.get(layer_idx).copied().unwrap_or(1.0);
                                     if layer_visible_value && layer_opacity_value > 0.0001 {
-                                        let preview_points: &[(
-                                            Point2D,
-                                            f32,
-                                        )] = if let Some(animation) = streamline_animation.as_ref() {
+                                        let preview_points: &[(Point2D, f32)] = if let Some(
+                                            animation,
+                                        ) =
+                                            streamline_animation.as_ref()
+                                        {
                                             if animation.scratch.is_empty() {
                                                 state.points.as_slice()
                                             } else {
@@ -2426,14 +2378,13 @@ fn render_thread_main(
                                                 &state.brush_settings,
                                             );
                                             if !segments.is_empty() {
-                                                let preview = preview_renderer.get_or_insert_with(
-                                                    || {
+                                                let preview =
+                                                    preview_renderer.get_or_insert_with(|| {
                                                         PreviewRenderer::new(
                                                             device.as_ref(),
                                                             present_format,
                                                         )
-                                                    },
-                                                );
+                                                    });
                                                 let config = build_preview_config(
                                                     &state.brush_settings,
                                                     canvas_width,
@@ -2479,10 +2430,7 @@ fn render_thread_main(
                                 surface.configure(device.as_ref());
                             }
                             Err(wgpu::SurfaceError::Timeout) => {
-                                debug::log(
-                                    LogLevel::Warn,
-                                    format_args!("present surface timeout"),
-                                );
+                                debug::log(LogLevel::Warn, format_args!("present surface timeout"));
                             }
                             Err(wgpu::SurfaceError::OutOfMemory) => {
                                 debug::log(
@@ -2541,6 +2489,7 @@ fn handle_engine_command(
     stroke: &mut StrokeResampler,
     selection_mask_active: &mut bool,
     spray_active_layer: &mut Option<u32>,
+    liquify_active_layer: &mut Option<u32>,
     undo: &mut UndoManager,
     canvas_width: u32,
     canvas_height: u32,
@@ -2836,7 +2785,9 @@ fn handle_engine_command(
 
             match create_dxgi_shared_present_target(device.as_ref(), width, height) {
                 Ok(mut target) => {
-                    let handle = target.as_texture_mut().and_then(|tex| tex.take_dxgi_handle());
+                    let handle = target
+                        .as_texture_mut()
+                        .and_then(|tex| tex.take_dxgi_handle());
                     *present = Some(target);
                     if handle.is_some() {
                         if let Some(shared) = handle {
@@ -3688,6 +3639,179 @@ fn handle_engine_command(
             }
             *spray_active_layer = None;
         }
+        EngineCommand::BeginLiquify => {
+            let layer_idx = *active_layer_index as u32;
+            *liquify_active_layer = Some(layer_idx);
+            undo.begin_stroke(layer_idx);
+        }
+        EngineCommand::DrawLiquify {
+            from_x,
+            from_y,
+            to_x,
+            to_y,
+            radius,
+            strength,
+            softness,
+            mix,
+        } => {
+            let layer_idx = match *liquify_active_layer {
+                Some(layer) => layer,
+                None => *active_layer_index as u32,
+            };
+            let idx = layer_idx as usize;
+            if !ensure_layer_index(layer_count, idx, *transform_layer_index, *transform_flags) {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+            if canvas_width == 0 || canvas_height == 0 {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+
+            let liquify_radius = finite_or(radius, 0.0).clamp(1.0, 4096.0);
+            let liquify_strength = finite_or(strength, 0.0).clamp(0.0, 1.0);
+            let liquify_softness = finite_or(softness, 0.65).clamp(0.0, 1.0);
+            let liquify_mix = finite_or(mix, 0.0).clamp(0.0, 1.0);
+            let from = (finite_or(from_x, 0.0), finite_or(from_y, 0.0));
+            let to = (finite_or(to_x, from.0), finite_or(to_y, from.1));
+            let dx = to.0 - from.0;
+            let dy = to.1 - from.1;
+            let distance = (dx * dx + dy * dy).sqrt();
+            if liquify_strength <= 0.0001 || distance <= 0.001 {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+
+            let padding = (liquify_radius + distance * liquify_strength + 3.0).ceil() as i32;
+            let dirty = compute_segment_dirty_rect(from, to, padding, canvas_width, canvas_height);
+            if dirty.2 <= 0 || dirty.3 <= 0 {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+
+            let pixels = match read_r32uint_layer(
+                device,
+                queue,
+                layers.texture(),
+                canvas_width,
+                canvas_height,
+                layer_idx,
+            ) {
+                Ok(pixels) => pixels,
+                Err(err) => {
+                    debug::log(
+                        LogLevel::Warn,
+                        format_args!("liquify readback failed: {err}"),
+                    );
+                    return EngineCommandOutcome {
+                        stop: false,
+                        needs_render: false,
+                        new_canvas_size: None,
+                    };
+                }
+            };
+            if pixels.len() != (canvas_width as usize).saturating_mul(canvas_height as usize) {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+
+            undo.begin_stroke_if_needed(layer_idx);
+            undo.capture_before_for_dirty_rect(
+                device.as_ref(),
+                queue.as_ref(),
+                layers.texture(),
+                layer_idx,
+                dirty,
+            );
+
+            let Some((left, top, width, height, region_pixels)) = apply_liquify_region(
+                &pixels,
+                canvas_width,
+                canvas_height,
+                from,
+                to,
+                liquify_radius,
+                liquify_strength,
+                liquify_softness,
+                liquify_mix,
+                dirty,
+            ) else {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            };
+
+            let bytes_per_row_unpadded = match width.checked_mul(4) {
+                Some(value) => value,
+                None => {
+                    return EngineCommandOutcome {
+                        stop: false,
+                        needs_render: false,
+                        new_canvas_size: None,
+                    };
+                }
+            };
+            let bytes_per_row_padded = align_up_u32(bytes_per_row_unpadded, 256);
+            let packed = match pack_u32_rows_with_padding(
+                &region_pixels,
+                width,
+                height,
+                bytes_per_row_padded,
+            ) {
+                Ok(data) => data,
+                Err(err) => {
+                    debug::log(LogLevel::Warn, format_args!("liquify pack failed: {err}"));
+                    return EngineCommandOutcome {
+                        stop: false,
+                        needs_render: false,
+                        new_canvas_size: None,
+                    };
+                }
+            };
+            write_r32uint_region(
+                device.as_ref(),
+                queue,
+                layers.texture(),
+                left,
+                top,
+                width,
+                height,
+                layer_idx,
+                bytes_per_row_padded,
+                &packed,
+            );
+            if let Some(entry) = layer_uniform.get_mut(idx) {
+                *entry = None;
+            }
+            return EngineCommandOutcome {
+                stop: false,
+                needs_render: present.is_some(),
+                new_canvas_size: None,
+            };
+        }
+        EngineCommand::EndLiquify => {
+            if liquify_active_layer.is_some() {
+                undo.end_stroke(device.as_ref(), queue.as_ref(), layers.texture());
+            }
+            *liquify_active_layer = None;
+        }
         EngineCommand::ApplyFilter {
             layer_index,
             filter_type,
@@ -3749,12 +3873,7 @@ fn handle_engine_command(
             let mut result: Result<(), String> = Ok(());
             match filter_type {
                 FILTER_HUE_SATURATION => {
-                    let params0 = [
-                        param0 / 360.0,
-                        param1 / 100.0,
-                        param2 / 100.0,
-                        0.0,
-                    ];
+                    let params0 = [param0 / 360.0, param1 / 100.0, param2 / 100.0, 0.0];
                     undo.begin_stroke(layer_index);
                     undo.capture_before_for_dirty_rect(
                         device,
@@ -4108,7 +4227,10 @@ fn handle_engine_command(
 
             undo.cancel_stroke();
             if let Err(err) = result {
-                debug::log(LogLevel::Warn, format_args!("Antialias apply failed: {err}"));
+                debug::log(
+                    LogLevel::Warn,
+                    format_args!("Antialias apply failed: {err}"),
+                );
             }
             let _ = reply.send(false);
             return EngineCommandOutcome {
@@ -4664,8 +4786,8 @@ fn handle_engine_command(
             let scale_x = canvas_width as f32 / width as f32;
             let scale_y = canvas_height as f32 / height as f32;
             let preview_matrix = [
-                scale_x, 0.0, 0.0, 0.0, 0.0, scale_y, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-                0.0, 1.0,
+                scale_x, 0.0, 0.0, 0.0, 0.0, scale_y, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+                1.0,
             ];
             let preview_layer_opacity = [1.0f32];
             let preview_layer_visible = [true];
@@ -4704,17 +4826,17 @@ fn handle_engine_command(
             );
             present_renderer.render_base(device, queue, &preview_bind_group, &preview_view);
 
-            let preview_bytes = match read_bgra_texture(device, queue, &preview_texture, width, height)
-            {
-                Ok(bytes) => Some(bgra_to_rgba(bytes)),
-                Err(err) => {
-                    debug::log(
-                        LogLevel::Warn,
-                        format_args!("layer preview readback failed: {err}"),
-                    );
-                    None
-                }
-            };
+            let preview_bytes =
+                match read_bgra_texture(device, queue, &preview_texture, width, height) {
+                    Ok(bytes) => Some(bgra_to_rgba(bytes)),
+                    Err(err) => {
+                        debug::log(
+                            LogLevel::Warn,
+                            format_args!("layer preview readback failed: {err}"),
+                        );
+                        None
+                    }
+                };
 
             write_present_transform(
                 device.as_ref(),
@@ -4781,7 +4903,10 @@ fn handle_engine_command(
                         let _ = reply.send(Some(bytes));
                     }
                     Err(err) => {
-                        debug::log(LogLevel::Warn, format_args!("present readback failed: {err}"));
+                        debug::log(
+                            LogLevel::Warn,
+                            format_args!("present readback failed: {err}"),
+                        );
                         let _ = reply.send(None);
                     }
                 }
@@ -5538,23 +5663,11 @@ fn reorder_layer_textures(
     copy_layer(&mut encoder, texture, from as u32, &scratch, 0);
     if from < to {
         for idx in from..to {
-            copy_layer(
-                &mut encoder,
-                texture,
-                (idx + 1) as u32,
-                texture,
-                idx as u32,
-            );
+            copy_layer(&mut encoder, texture, (idx + 1) as u32, texture, idx as u32);
         }
     } else {
         for idx in (to..from).rev() {
-            copy_layer(
-                &mut encoder,
-                texture,
-                idx as u32,
-                texture,
-                (idx + 1) as u32,
-            );
+            copy_layer(&mut encoder, texture, idx as u32, texture, (idx + 1) as u32);
         }
     }
     copy_layer(&mut encoder, &scratch, 0, texture, to as u32);
@@ -5950,7 +6063,9 @@ fn read_bgra_texture_pixel(
             return Err(format!("read_bgra_texture_pixel: map_async failed: {e:?}"));
         }
         Err(e) => {
-            return Err(format!("read_bgra_texture_pixel: map_async channel failed: {e}"));
+            return Err(format!(
+                "read_bgra_texture_pixel: map_async channel failed: {e}"
+            ));
         }
     }
 
@@ -5977,6 +6092,217 @@ fn bgra_to_rgba(mut bytes: Vec<u8>) -> Vec<u8> {
         chunk[2] = b;
     }
     bytes
+}
+
+fn finite_or(value: f32, fallback: f32) -> f32 {
+    if value.is_finite() {
+        value
+    } else {
+        fallback
+    }
+}
+
+fn compute_segment_dirty_rect(
+    from: (f32, f32),
+    to: (f32, f32),
+    padding: i32,
+    canvas_width: u32,
+    canvas_height: u32,
+) -> (i32, i32, i32, i32) {
+    let min_x = from.0.min(to.0).floor() as i32 - padding;
+    let min_y = from.1.min(to.1).floor() as i32 - padding;
+    let max_x = from.0.max(to.0).ceil() as i32 + padding;
+    let max_y = from.1.max(to.1).ceil() as i32 + padding;
+    let left = min_x.clamp(0, canvas_width as i32);
+    let top = min_y.clamp(0, canvas_height as i32);
+    let right = max_x.clamp(0, canvas_width as i32);
+    let bottom = max_y.clamp(0, canvas_height as i32);
+    (left, top, right - left, bottom - top)
+}
+
+fn apply_liquify_region(
+    pixels: &[u32],
+    canvas_width: u32,
+    canvas_height: u32,
+    from: (f32, f32),
+    to: (f32, f32),
+    radius: f32,
+    strength: f32,
+    softness: f32,
+    mix: f32,
+    dirty: (i32, i32, i32, i32),
+) -> Option<(u32, u32, u32, u32, Vec<u32>)> {
+    let (left_i, top_i, width_i, height_i) = dirty;
+    if width_i <= 0 || height_i <= 0 || canvas_width == 0 || canvas_height == 0 {
+        return None;
+    }
+    let left = left_i.max(0) as u32;
+    let top = top_i.max(0) as u32;
+    let width = (width_i as u32).min(canvas_width.saturating_sub(left));
+    let height = (height_i as u32).min(canvas_height.saturating_sub(top));
+    if width == 0 || height == 0 {
+        return None;
+    }
+
+    let radius = radius.max(1.0);
+    let radius_sq = radius * radius;
+    let dx = to.0 - from.0;
+    let dy = to.1 - from.1;
+    let segment_len_sq = dx * dx + dy * dy;
+    if segment_len_sq <= 1e-6 {
+        return None;
+    }
+    let falloff_power = 0.35 + (1.0 - softness.clamp(0.0, 1.0)) * 4.65;
+    let displacement_scale = strength.clamp(0.0, 1.0);
+    let mix_amount = mix.clamp(0.0, 1.0);
+    let mut out = Vec::with_capacity((width as usize).saturating_mul(height as usize));
+    let mut changed = false;
+
+    for local_y in 0..height {
+        let y = top + local_y;
+        let fy = y as f32 + 0.5;
+        for local_x in 0..width {
+            let x = left + local_x;
+            let fx = x as f32 + 0.5;
+            let current = pixels[(y as usize) * (canvas_width as usize) + x as usize];
+            let vx = fx - from.0;
+            let vy = fy - from.1;
+            let projection = ((vx * dx + vy * dy) / segment_len_sq).clamp(0.0, 1.0);
+            let cx = from.0 + dx * projection;
+            let cy = from.1 + dy * projection;
+            let dist_x = fx - cx;
+            let dist_y = fy - cy;
+            let dist_sq = dist_x * dist_x + dist_y * dist_y;
+            if dist_sq >= radius_sq {
+                out.push(current);
+                continue;
+            }
+
+            let normalized = (dist_sq.sqrt() / radius).clamp(0.0, 1.0);
+            let falloff = (1.0 - normalized).powf(falloff_power);
+            let src_x = fx - dx * displacement_scale * falloff;
+            let src_y = fy - dy * displacement_scale * falloff;
+            let sampled = sample_argb_bilinear(
+                pixels,
+                canvas_width,
+                canvas_height,
+                src_x - 0.5,
+                src_y - 0.5,
+            );
+            let next = if mix_amount > 0.0001 {
+                let mixed = neighborhood_argb(
+                    pixels,
+                    canvas_width,
+                    canvas_height,
+                    src_x - 0.5,
+                    src_y - 0.5,
+                );
+                lerp_argb(sampled, mixed, mix_amount * falloff)
+            } else {
+                sampled
+            };
+            if next != current {
+                changed = true;
+            }
+            out.push(next);
+        }
+    }
+
+    if changed {
+        Some((left, top, width, height, out))
+    } else {
+        None
+    }
+}
+
+fn sample_argb_bilinear(pixels: &[u32], width: u32, height: u32, x: f32, y: f32) -> u32 {
+    if width == 0 || height == 0 {
+        return 0;
+    }
+    let max_x = width.saturating_sub(1) as f32;
+    let max_y = height.saturating_sub(1) as f32;
+    let sx = x.clamp(0.0, max_x);
+    let sy = y.clamp(0.0, max_y);
+    let x0 = sx.floor() as u32;
+    let y0 = sy.floor() as u32;
+    let x1 = (x0 + 1).min(width - 1);
+    let y1 = (y0 + 1).min(height - 1);
+    let tx = sx - x0 as f32;
+    let ty = sy - y0 as f32;
+    let row = width as usize;
+    let c00 = pixels[y0 as usize * row + x0 as usize];
+    let c10 = pixels[y0 as usize * row + x1 as usize];
+    let c01 = pixels[y1 as usize * row + x0 as usize];
+    let c11 = pixels[y1 as usize * row + x1 as usize];
+    let top = lerp_argb(c00, c10, tx);
+    let bottom = lerp_argb(c01, c11, tx);
+    lerp_argb(top, bottom, ty)
+}
+
+fn neighborhood_argb(pixels: &[u32], width: u32, height: u32, x: f32, y: f32) -> u32 {
+    if width == 0 || height == 0 {
+        return 0;
+    }
+    let cx = x.round() as i32;
+    let cy = y.round() as i32;
+    let mut a = 0.0f32;
+    let mut r = 0.0f32;
+    let mut g = 0.0f32;
+    let mut b = 0.0f32;
+    let mut total = 0.0f32;
+    let row = width as usize;
+    for oy in -1..=1 {
+        for ox in -1..=1 {
+            let px = (cx + ox).clamp(0, width.saturating_sub(1) as i32) as u32;
+            let py = (cy + oy).clamp(0, height.saturating_sub(1) as i32) as u32;
+            let weight = if ox == 0 && oy == 0 {
+                4.0
+            } else if ox == 0 || oy == 0 {
+                2.0
+            } else {
+                1.0
+            };
+            let c = pixels[py as usize * row + px as usize];
+            a += ((c >> 24) & 0xff) as f32 * weight;
+            r += ((c >> 16) & 0xff) as f32 * weight;
+            g += ((c >> 8) & 0xff) as f32 * weight;
+            b += (c & 0xff) as f32 * weight;
+            total += weight;
+        }
+    }
+    if total <= 0.0 {
+        return 0;
+    }
+    pack_argb(
+        (a / total).round(),
+        (r / total).round(),
+        (g / total).round(),
+        (b / total).round(),
+    )
+}
+
+fn lerp_argb(from: u32, to: u32, t: f32) -> u32 {
+    let t = t.clamp(0.0, 1.0);
+    if t <= 0.0 {
+        return from;
+    }
+    if t >= 1.0 {
+        return to;
+    }
+    let inv = 1.0 - t;
+    let a = ((from >> 24) & 0xff) as f32 * inv + ((to >> 24) & 0xff) as f32 * t;
+    let r = ((from >> 16) & 0xff) as f32 * inv + ((to >> 16) & 0xff) as f32 * t;
+    let g = ((from >> 8) & 0xff) as f32 * inv + ((to >> 8) & 0xff) as f32 * t;
+    let b = (from & 0xff) as f32 * inv + (to & 0xff) as f32 * t;
+    pack_argb(a.round(), r.round(), g.round(), b.round())
+}
+
+fn pack_argb(a: f32, r: f32, g: f32, b: f32) -> u32 {
+    let a = (a as i32).clamp(0, 255) as u32;
+    let r = (r as i32).clamp(0, 255) as u32;
+    let g = (g as i32).clamp(0, 255) as u32;
+    let b = (b as i32).clamp(0, 255) as u32;
+    (a << 24) | (r << 16) | (g << 8) | b
 }
 
 fn write_r32uint_region(

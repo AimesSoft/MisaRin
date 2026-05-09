@@ -289,6 +289,32 @@ int _encodeEraserStrokeWidth(double value) {
   );
 }
 
+double _clampLiquifyStrokeWidth(double value) {
+  if (!value.isFinite) {
+    return _defaultLiquifyStrokeWidth;
+  }
+  return value.clamp(8.0, 500.0);
+}
+
+double _decodeLiquifyStrokeWidth(int value) {
+  if (value <= 0) {
+    return _defaultLiquifyStrokeWidth;
+  }
+  return value.clamp(8, 500).toDouble();
+}
+
+int _encodeLiquifyStrokeWidth(double value) {
+  final double clamped = _clampLiquifyStrokeWidth(value);
+  return clamped.round().clamp(8, 500);
+}
+
+double _clampLiquifyRatio(double value, double fallback) {
+  if (!value.isFinite) {
+    return fallback;
+  }
+  return value.clamp(0.0, 1.0);
+}
+
 double _decodeStylusFactor(
   int value, {
   required double lower,

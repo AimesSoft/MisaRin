@@ -22,6 +22,7 @@ class MobileToolSelectorSheet extends StatelessWidget {
       _ToolItem(CanvasTool.pen, FluentIcons.edit, '画笔'),
       _ToolItem(CanvasTool.eraser, FluentIcons.erase_tool, '橡皮擦'),
       _ToolItem(CanvasTool.spray, 'icons/spray.svg', '喷枪'),
+      _ToolItem(CanvasTool.liquify, FluentIcons.processing, '液化'),
       _ToolItem(CanvasTool.bucket, FluentIcons.bucket_color, '油漆桶'),
       _ToolItem(CanvasTool.eyedropper, FluentIcons.eyedropper, '吸管'),
       _ToolItem(CanvasTool.selection, 'icons/warp1.svg', '选区'),
@@ -104,7 +105,9 @@ class _ToolGridItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final Color color = isSelected ? Colors.white : theme.resources.textFillColorPrimary;
+    final Color color = isSelected
+        ? Colors.white
+        : theme.resources.textFillColorPrimary;
     const double labelSpacing = 4;
     const double labelHeight = 16;
 
@@ -123,7 +126,8 @@ class _ToolGridItem extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         double buttonSize = constraints.maxWidth;
-        final double maxButton = constraints.maxHeight - labelHeight - labelSpacing;
+        final double maxButton =
+            constraints.maxHeight - labelHeight - labelSpacing;
         if (maxButton > 0 && maxButton < buttonSize) {
           buttonSize = maxButton;
         }
@@ -142,9 +146,11 @@ class _ToolGridItem extends StatelessWidget {
                     }
                     return theme.resources.subtleFillColorSecondary;
                   }),
-                  shape: WidgetStateProperty.all(RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  )),
+                  shape: WidgetStateProperty.all(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   padding: WidgetStateProperty.all(EdgeInsets.zero),
                 ),
                 child: iconWidget,

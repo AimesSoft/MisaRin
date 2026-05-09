@@ -579,6 +579,9 @@ mixin _PaintingBoardInteractionMixin
     if (_activeTool == CanvasTool.spray && _isSpraying) {
       _finishSprayStroke();
     }
+    if (_activeTool == CanvasTool.liquify && _isLiquifying) {
+      _finishLiquifyStroke();
+    }
     if (_activeTool == CanvasTool.curvePen) {
       _resetCurvePenState(notify: false);
     }
@@ -691,6 +694,50 @@ mixin _PaintingBoardInteractionMixin
     setState(() => _eraserStrokeWidth = clamped);
     final AppPreferences prefs = AppPreferences.instance;
     prefs.eraserStrokeWidth = clamped;
+    unawaited(AppPreferences.save());
+  }
+
+  void _updateLiquifyStrokeWidth(double value) {
+    final double clamped = value.clamp(8.0, 500.0).roundToDouble();
+    if ((_liquifyStrokeWidth - clamped).abs() < 0.0005) {
+      return;
+    }
+    setState(() => _liquifyStrokeWidth = clamped);
+    final AppPreferences prefs = AppPreferences.instance;
+    prefs.liquifyStrokeWidth = clamped;
+    unawaited(AppPreferences.save());
+  }
+
+  void _updateLiquifyStrength(double value) {
+    final double clamped = value.clamp(0.0, 1.0);
+    if ((_liquifyStrength - clamped).abs() < 0.0005) {
+      return;
+    }
+    setState(() => _liquifyStrength = clamped);
+    final AppPreferences prefs = AppPreferences.instance;
+    prefs.liquifyStrength = clamped;
+    unawaited(AppPreferences.save());
+  }
+
+  void _updateLiquifySoftness(double value) {
+    final double clamped = value.clamp(0.0, 1.0);
+    if ((_liquifySoftness - clamped).abs() < 0.0005) {
+      return;
+    }
+    setState(() => _liquifySoftness = clamped);
+    final AppPreferences prefs = AppPreferences.instance;
+    prefs.liquifySoftness = clamped;
+    unawaited(AppPreferences.save());
+  }
+
+  void _updateLiquifyMix(double value) {
+    final double clamped = value.clamp(0.0, 1.0);
+    if ((_liquifyMix - clamped).abs() < 0.0005) {
+      return;
+    }
+    setState(() => _liquifyMix = clamped);
+    final AppPreferences prefs = AppPreferences.instance;
+    prefs.liquifyMix = clamped;
     unawaited(AppPreferences.save());
   }
 

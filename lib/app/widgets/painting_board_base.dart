@@ -2,10 +2,12 @@ part of 'painting_board.dart';
 
 abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
   late final _CanvasBackendFacade _backend = _CanvasBackendFacade(this);
-  bool get canUndo =>
-      _useCombinedHistory ? _historyUndoStack.isNotEmpty : _undoStack.isNotEmpty;
-  bool get canRedo =>
-      _useCombinedHistory ? _historyRedoStack.isNotEmpty : _redoStack.isNotEmpty;
+  bool get canUndo => _useCombinedHistory
+      ? _historyUndoStack.isNotEmpty
+      : _undoStack.isNotEmpty;
+  bool get canRedo => _useCombinedHistory
+      ? _historyRedoStack.isNotEmpty
+      : _redoStack.isNotEmpty;
   bool get hasSelection =>
       selectionMaskSnapshot != null ||
       selectionPathSnapshot != null ||
@@ -101,9 +103,11 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
     if (!_backend.isReady) {
       return;
     }
-    double radius = (_activeTool == CanvasTool.eraser
-        ? _eraserStrokeWidth
-        : _penStrokeWidth) / 2;
+    double radius =
+        (_activeTool == CanvasTool.eraser
+            ? _eraserStrokeWidth
+            : _penStrokeWidth) /
+        2;
     final Size engineSize = _backendCanvasEngineSize ?? _canvasSize;
     if (engineSize != _canvasSize &&
         _canvasSize.width > 0 &&
@@ -122,11 +126,12 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
     final double stabilizer = mapStrokeStabilizerStrength(
       stabilizerStrengthOverride ?? _strokeStabilizerStrength,
     );
-    final double streamline = (streamlineStrengthOverride ?? _streamlineStrength)
-        .clamp(0.0, 1.0);
+    final double streamline =
+        (streamlineStrengthOverride ?? _streamlineStrength).clamp(0.0, 1.0);
     final int smoothingMode =
         smoothingModeOverride ?? (stabilizer > 0.0001 ? 3 : 1);
-    final bool usePressure = usePressureOverride ??
+    final bool usePressure =
+        usePressureOverride ??
         (_stylusPressureEnabled ||
             _simulatePenPressure ||
             _autoSharpPeakEnabled);
@@ -180,6 +185,11 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
 
   void _updatePenStrokeWidth(double value);
   void _updateSprayStrokeWidth(double value);
+  void _updateEraserStrokeWidth(double value);
+  void _updateLiquifyStrokeWidth(double value);
+  void _updateLiquifyStrength(double value);
+  void _updateLiquifySoftness(double value);
+  void _updateLiquifyMix(double value);
   void _updateBucketSampleAllLayers(bool value);
   void _updateBucketContiguous(bool value);
 
@@ -222,8 +232,9 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
       return null;
     }
     final double curve = _stylusCurve.isFinite ? _stylusCurve : 1.0;
-    final double curved =
-        math.pow(normalized.clamp(0.0, 1.0), curve).toDouble();
+    final double curved = math
+        .pow(normalized.clamp(0.0, 1.0), curve)
+        .toDouble();
     return curved.clamp(0.0, 1.0);
   }
 
@@ -262,13 +273,15 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
     final double? stylusPressure = useStylus && rawEvent != null
         ? _normalizePointerPressureForBackend(rawEvent)
         : null;
-    final double stylusBlend =
-        useStylus && simulatePressure ? _kStylusSimulationBlend : 1.0;
+    final double stylusBlend = useStylus && simulatePressure
+        ? _kStylusSimulationBlend
+        : 1.0;
 
     final Offset startBoard = clamped.first;
     final Offset startEngine = _backendToEngineSpace(startBoard);
-    final double initialTimestamp =
-        initialTimestampMillis.isFinite ? initialTimestampMillis : 0.0;
+    final double initialTimestamp = initialTimestampMillis.isFinite
+        ? initialTimestampMillis
+        : 0.0;
     final double? initialPressure = simulator.beginStroke(
       position: startEngine,
       timestampMillis: initialTimestamp,
@@ -277,8 +290,10 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
       stylusPressureBlend: stylusBlend,
       stylusPressure: stylusPressure,
     );
-    double startPressure =
-        (initialPressure ?? stylusPressure ?? 1.0).clamp(0.0, 1.0);
+    double startPressure = (initialPressure ?? stylusPressure ?? 1.0).clamp(
+      0.0,
+      1.0,
+    );
     final int pointerId = rawEvent?.pointer ?? 0;
     buffer.add(
       x: startEngine.dx,
@@ -304,8 +319,8 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
         x: endEngine.dx,
         y: endEngine.dy,
         pressure: endPressure,
-        timestampUs:
-            ((initialTimestamp + _syntheticStrokeMinDeltaMs) * 1000.0).round(),
+        timestampUs: ((initialTimestamp + _syntheticStrokeMinDeltaMs) * 1000.0)
+            .round(),
         flags: _kBackendPointFlagUp,
         pointerId: pointerId,
       );
@@ -325,8 +340,10 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
             timestampMillis: timestamp,
             stylusPressure: stylusPressure,
           );
-          double pressure =
-              (simulated ?? stylusPressure ?? 1.0).clamp(0.0, 1.0);
+          double pressure = (simulated ?? stylusPressure ?? 1.0).clamp(
+            0.0,
+            1.0,
+          );
           final bool isLast = index == lastIndex;
           if (isLast && _autoSharpPeakEnabled && simulator.isSimulatingStroke) {
             pressure = 0.0;
@@ -356,8 +373,7 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
       setState(() {});
     }
     if (_brushRandomRotationEnabled) {
-      _brushRandomRotationPreviewSeed =
-          _brushRotationRandom.nextInt(1 << 31);
+      _brushRandomRotationPreviewSeed = _brushRotationRandom.nextInt(1 << 31);
     }
     _markDirty();
     return true;
@@ -664,10 +680,8 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
         final int srcIndex = (y * width + x) * 4;
-        final int destX =
-            flip == CanvasFlip.horizontal ? width - 1 - x : x;
-        final int destY =
-            flip == CanvasFlip.vertical ? height - 1 - y : y;
+        final int destX = flip == CanvasFlip.horizontal ? width - 1 - x : x;
+        final int destY = flip == CanvasFlip.vertical ? height - 1 - y : y;
         final int destIndex = (destY * width + destX) * 4;
         output[destIndex] = source[srcIndex];
         output[destIndex + 1] = source[srcIndex + 1];
@@ -1053,7 +1067,8 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
       return;
     }
     final _CanvasHistoryEntry snapshot =
-        entry ?? await _createHistoryEntry(backendPixelsSynced: backendPixelsSynced);
+        entry ??
+        await _createHistoryEntry(backendPixelsSynced: backendPixelsSynced);
     _undoStack.add(snapshot);
     _trimHistoryStacks();
     _redoStack.clear();
@@ -1296,8 +1311,7 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
   bool get isPerspectiveGuideVisible => _perspectiveVisible;
   PerspectiveGuideMode get perspectiveGuideMode => _perspectiveMode;
 
-  bool get isBoardReady =>
-      _controller.frame != null || _backend.isReady;
+  bool get isBoardReady => _controller.frame != null || _backend.isReady;
 
   void _handlePixelGridPreferenceChanged() {
     if (!mounted) {

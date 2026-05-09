@@ -52,7 +52,8 @@ class AppPreferences {
     this.primaryColor = _defaultPrimaryColor,
     this.hollowStrokeEnabled = _defaultHollowStrokeEnabled,
     this.hollowStrokeRatio = _defaultHollowStrokeRatio,
-    this.hollowStrokeEraseOccludedParts = _defaultHollowStrokeEraseOccludedParts,
+    this.hollowStrokeEraseOccludedParts =
+        _defaultHollowStrokeEraseOccludedParts,
     this.shapeToolFillEnabled = _defaultShapeToolFillEnabled,
     this.bucketAntialiasLevel = _defaultBucketAntialiasLevel,
     this.bucketTolerance = _defaultBucketTolerance,
@@ -70,6 +71,10 @@ class AppPreferences {
     this.sai2LayerPanelWidthSplit = _defaultSai2LayerPanelSplit,
     this.sprayStrokeWidth = _defaultSprayStrokeWidth,
     this.eraserStrokeWidth = _defaultEraserStrokeWidth,
+    this.liquifyStrokeWidth = _defaultLiquifyStrokeWidth,
+    this.liquifyStrength = _defaultLiquifyStrength,
+    this.liquifySoftness = _defaultLiquifySoftness,
+    this.liquifyMix = _defaultLiquifyMix,
     this.sprayMode = _defaultSprayMode,
     this.newCanvasWidth = _defaultNewCanvasWidth,
     this.newCanvasHeight = _defaultNewCanvasHeight,
@@ -105,6 +110,10 @@ class AppPreferences {
       _defaultHollowStrokeEraseOccludedParts;
   static const double defaultSprayStrokeWidth = _defaultSprayStrokeWidth;
   static const double defaultEraserStrokeWidth = _defaultEraserStrokeWidth;
+  static const double defaultLiquifyStrokeWidth = _defaultLiquifyStrokeWidth;
+  static const double defaultLiquifyStrength = _defaultLiquifyStrength;
+  static const double defaultLiquifySoftness = _defaultLiquifySoftness;
+  static const double defaultLiquifyMix = _defaultLiquifyMix;
   static const SprayMode defaultSprayMode = _defaultSprayMode;
   static const bool defaultLayerAdjustCropOutside = false;
   static const Color defaultColorLineColor = _defaultColorLineColor;
@@ -163,6 +172,10 @@ class AppPreferences {
   bool hollowStrokeEraseOccludedParts;
   double sprayStrokeWidth;
   double eraserStrokeWidth;
+  double liquifyStrokeWidth;
+  double liquifyStrength;
+  double liquifySoftness;
+  double liquifyMix;
   SprayMode sprayMode;
   int newCanvasWidth;
   int newCanvasHeight;
@@ -220,5 +233,4 @@ class AppPreferences {
   static ThemeMode get defaultThemeMode => _defaultThemeMode;
   static int get defaultHistoryLimit => _defaultHistoryLimit;
   static Locale? get defaultLocaleOverride => _defaultLocaleOverride;
-
 }

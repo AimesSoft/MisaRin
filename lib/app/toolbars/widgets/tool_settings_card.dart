@@ -31,6 +31,10 @@ class ToolSettingsCard extends StatefulWidget {
     required this.penStrokeWidth,
     required this.sprayStrokeWidth,
     required this.eraserStrokeWidth,
+    required this.liquifyStrokeWidth,
+    required this.liquifyStrength,
+    required this.liquifySoftness,
+    required this.liquifyMix,
     required this.sprayMode,
     required this.penStrokeSliderRange,
     required this.sprayStrokeSliderRange,
@@ -38,6 +42,10 @@ class ToolSettingsCard extends StatefulWidget {
     required this.onPenStrokeWidthChanged,
     required this.onSprayStrokeWidthChanged,
     required this.onEraserStrokeWidthChanged,
+    required this.onLiquifyStrokeWidthChanged,
+    required this.onLiquifyStrengthChanged,
+    required this.onLiquifySoftnessChanged,
+    required this.onLiquifyMixChanged,
     required this.onPenStrokeSliderRangeChanged,
     required this.onSprayStrokeSliderRangeChanged,
     required this.onEraserStrokeSliderRangeChanged,
@@ -120,6 +128,10 @@ class ToolSettingsCard extends StatefulWidget {
   final double penStrokeWidth;
   final double sprayStrokeWidth;
   final double eraserStrokeWidth;
+  final double liquifyStrokeWidth;
+  final double liquifyStrength;
+  final double liquifySoftness;
+  final double liquifyMix;
   final SprayMode sprayMode;
   final PenStrokeSliderRange penStrokeSliderRange;
   final PenStrokeSliderRange sprayStrokeSliderRange;
@@ -127,6 +139,10 @@ class ToolSettingsCard extends StatefulWidget {
   final ValueChanged<double> onPenStrokeWidthChanged;
   final ValueChanged<double> onSprayStrokeWidthChanged;
   final ValueChanged<double> onEraserStrokeWidthChanged;
+  final ValueChanged<double> onLiquifyStrokeWidthChanged;
+  final ValueChanged<double> onLiquifyStrengthChanged;
+  final ValueChanged<double> onLiquifySoftnessChanged;
+  final ValueChanged<double> onLiquifyMixChanged;
   final ValueChanged<PenStrokeSliderRange> onPenStrokeSliderRangeChanged;
   final ValueChanged<PenStrokeSliderRange> onSprayStrokeSliderRangeChanged;
   final ValueChanged<PenStrokeSliderRange> onEraserStrokeSliderRangeChanged;
@@ -223,6 +239,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
 
   bool get _isSprayTool => widget.activeTool == CanvasTool.spray;
   bool get _isEraserTool => widget.activeTool == CanvasTool.eraser;
+  bool get _isLiquifyTool => widget.activeTool == CanvasTool.liquify;
   PenStrokeSliderRange get _activeStrokeSliderRange => _isSprayTool
       ? widget.sprayStrokeSliderRange
       : _isEraserTool
@@ -242,6 +259,9 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     }
     if (tool == CanvasTool.eraser) {
       return widget.eraserStrokeSliderRange.clamp(widget.eraserStrokeWidth);
+    }
+    if (tool == CanvasTool.liquify) {
+      return widget.liquifyStrokeWidth.clamp(8.0, 500.0);
     }
     return widget.penStrokeSliderRange.clamp(widget.penStrokeWidth);
   }
@@ -304,6 +324,9 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
         break;
       case CanvasTool.spray:
         content = _buildSprayControls(theme);
+        break;
+      case CanvasTool.liquify:
+        content = _buildLiquifyControls(theme);
         break;
       case CanvasTool.eraser:
         content = _buildBrushControls(theme);
@@ -640,6 +663,51 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     final List<Widget> children = <Widget>[
       _buildBrushSizeRow(theme),
       _buildSprayModeSelector(theme),
+    ];
+    return _buildControlsGroup(
+      children,
+      spacing: 16,
+      runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.center,
+    );
+  }
+
+  Widget _buildLiquifyControls(FluentThemeData theme) {
+    final List<Widget> children = <Widget>[
+      _buildBrushSizeRow(theme),
+      _buildLabeledSlider(
+        theme: theme,
+        label: '强度',
+        detail: '控制每次拖动推拉画面的幅度',
+        value: widget.liquifyStrength,
+        min: 0.0,
+        max: 1.0,
+        divisions: 100,
+        formatter: _formatPercent,
+        onChanged: widget.onLiquifyStrengthChanged,
+      ),
+      _buildLabeledSlider(
+        theme: theme,
+        label: '柔边',
+        detail: '控制笔刷边缘过渡，数值越高边缘越柔和',
+        value: widget.liquifySoftness,
+        min: 0.0,
+        max: 1.0,
+        divisions: 100,
+        formatter: _formatPercent,
+        onChanged: widget.onLiquifySoftnessChanged,
+      ),
+      _buildLabeledSlider(
+        theme: theme,
+        label: '融色',
+        detail: '拖动时混合邻近颜色，数值越高颜色越容易融在一起',
+        value: widget.liquifyMix,
+        min: 0.0,
+        max: 1.0,
+        divisions: 100,
+        formatter: _formatPercent,
+        onChanged: widget.onLiquifyMixChanged,
+      ),
     ];
     return _buildControlsGroup(
       children,
@@ -1467,6 +1535,9 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
   }
 
   double _clampBrushValue(double value) {
+    if (_isLiquifyTool) {
+      return value.clamp(8.0, 500.0).roundToDouble();
+    }
     if (_isSprayTool) {
       final double clamped = _activeStrokeSliderRange.clamp(value);
       return clamped.roundToDouble();
@@ -1485,6 +1556,11 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
         return;
       }
       widget.onSprayStrokeWidthChanged(clamped);
+    } else if (_isLiquifyTool) {
+      if ((clamped - widget.liquifyStrokeWidth).abs() < 0.0005) {
+        return;
+      }
+      widget.onLiquifyStrokeWidthChanged(clamped);
     } else if (_isEraserTool) {
       if ((clamped - widget.eraserStrokeWidth).abs() < 0.0005) {
         return;
@@ -1499,7 +1575,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
   }
 
   String _formatBrushValue(double value) {
-    if (_isSprayTool || _isEraserTool) {
+    if (_isSprayTool || _isEraserTool || _isLiquifyTool) {
       return value.round().toString();
     }
     return _formatValue(value);
@@ -1618,24 +1694,32 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
   Widget _buildBrushSizeRow(FluentThemeData theme) {
     final l10n = context.l10n;
     final double brushSize = _clampBrushValue(_activeBrushValue);
-    final bool sliderUsesIntegers = _sliderUsesIntegers;
+    final bool sliderUsesIntegers = _sliderUsesIntegers || _isLiquifyTool;
+    final double sliderMin = _isLiquifyTool ? 8.0 : _activeSliderMin;
+    final double sliderMax = _isLiquifyTool ? 500.0 : _activeSliderMax;
     final double sliderValue = sliderUsesIntegers
         ? brushSize.roundToDouble()
         : brushSize;
     final int? sliderDivisions = sliderUsesIntegers
-        ? (_activeSliderMax - _activeSliderMin).round()
+        ? (sliderMax - sliderMin).round()
         : null;
     final String brushLabel = sliderUsesIntegers
         ? brushSize.round().toString()
         : _formatValue(brushSize);
-    final String labelText = _isSprayTool ? l10n.spraySize : l10n.brushSize;
+    final String labelText = _isSprayTool
+        ? l10n.spraySize
+        : _isLiquifyTool
+        ? '液化笔刷'
+        : l10n.brushSize;
     final String detailText = _isSprayTool
         ? l10n.spraySizeDesc
+        : _isLiquifyTool
+        ? '控制液化笔刷影响范围'
         : l10n.brushSizeDesc;
     final Widget slider = _buildPointerFriendlySlider(
       value: sliderValue,
-      min: _activeSliderMin,
-      max: _activeSliderMax,
+      min: sliderMin,
+      max: sliderMax,
       divisions: sliderDivisions,
       onChanged: (raw) {
         final double nextValue = sliderUsesIntegers ? raw.roundToDouble() : raw;
@@ -1724,7 +1808,9 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
         valueText: '$brushLabel px',
         child: SizedBox(width: _defaultSliderWidth, child: slider),
       );
-      final Widget rangeButton = _buildStrokeRangeToggleButton(theme);
+      final Widget? rangeButton = _isLiquifyTool
+          ? null
+          : _buildStrokeRangeToggleButton(theme);
       return Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1735,12 +1821,11 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
           const SizedBox(width: 8),
           buildStandardAdjustRow(),
           const SizedBox(width: 8),
-          rangeButton,
+          if (rangeButton != null) rangeButton,
         ],
       );
     }
 
-    final Widget rangeButton = _buildStrokeRangeToggleButton(theme);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1756,12 +1841,17 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
         LayoutBuilder(
           builder: (context, constraints) {
             final double maxWidth = constraints.maxWidth;
+            final Widget? rangeButton = _isLiquifyTool
+                ? null
+                : _buildStrokeRangeToggleButton(theme);
             if (!maxWidth.isFinite || maxWidth >= 230) {
               return Row(
                 children: [
                   Expanded(child: buildCompactAdjustRow()),
-                  const SizedBox(width: 8),
-                  rangeButton,
+                  if (rangeButton != null) ...[
+                    const SizedBox(width: 8),
+                    rangeButton,
+                  ],
                 ],
               );
             }
@@ -1769,8 +1859,10 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 buildCompactAdjustRow(),
-                const SizedBox(height: 6),
-                rangeButton,
+                if (rangeButton != null) ...[
+                  const SizedBox(height: 6),
+                  rangeButton,
+                ],
               ],
             );
           },

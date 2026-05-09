@@ -53,7 +53,6 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
     }
     _resetPerspectiveLock();
     final _CanvasRasterEditSession edit = await _backend.beginRasterEdit(
-      captureUndoOnFallback: false,
       warnIfFailed: true,
     );
     if (!edit.ok) {
@@ -88,9 +87,7 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
       );
       current = _clampToCanvas(current);
     }
-    current = _clampToCanvas(
-      _maybeSnapToPerspective(current, anchor: start),
-    );
+    current = _clampToCanvas(_maybeSnapToPerspective(current, anchor: start));
 
     if (_shapeDragCurrent != null &&
         (_shapeDragCurrent! - current).distanceSquared < 0.25) {
@@ -138,8 +135,10 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
       _clearShapePreviewOverlay();
     }
     // Keep segments short to avoid sparse stamps on long edges.
-    final double maxSegmentLength =
-        math.min(6.0, math.max(2.0, _penStrokeWidth * 0.5));
+    final double maxSegmentLength = math.min(
+      6.0,
+      math.max(2.0, _penStrokeWidth * 0.5),
+    );
     final List<Offset> effectivePoints = _densifyStrokePolyline(
       strokePoints,
       maxSegmentLength: maxSegmentLength,
@@ -162,7 +161,10 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
     if (handle != null) {
       _applyBackendBrushOverride(handle);
     }
-    _disposeShapeRasterPreview(restoreLayer: !backendOk, clearPreviewImage: true);
+    _disposeShapeRasterPreview(
+      restoreLayer: !backendOk,
+      clearPreviewImage: true,
+    );
     if (!backendOk) {
       _showBackendCanvasMessage('画布后端尚未准备好。');
     }
