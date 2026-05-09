@@ -496,6 +496,35 @@ typedef _EngineLiquifyDrawDart =
 typedef _EngineLiquifyEndNative = ffi.Void Function(ffi.Uint64 handle);
 typedef _EngineLiquifyEndDart = void Function(int handle);
 
+typedef _EngineSmudgeBeginNative = ffi.Void Function(ffi.Uint64 handle);
+typedef _EngineSmudgeBeginDart = void Function(int handle);
+
+typedef _EngineSmudgeDrawNative =
+    ffi.Void Function(
+      ffi.Uint64 handle,
+      ffi.Float fromX,
+      ffi.Float fromY,
+      ffi.Float toX,
+      ffi.Float toY,
+      ffi.Float radius,
+      ffi.Float strength,
+      ffi.Float softness,
+    );
+typedef _EngineSmudgeDrawDart =
+    void Function(
+      int handle,
+      double fromX,
+      double fromY,
+      double toX,
+      double toY,
+      double radius,
+      double strength,
+      double softness,
+    );
+
+typedef _EngineSmudgeEndNative = ffi.Void Function(ffi.Uint64 handle);
+typedef _EngineSmudgeEndDart = void Function(int handle);
+
 typedef _EngineApplyFilterNative =
     ffi.Uint8 Function(
       ffi.Uint64 handle,
@@ -869,6 +898,30 @@ class CanvasEngineFfi {
         _liquifyEnd = null;
       }
       try {
+        _smudgeBegin = _lib
+            .lookupFunction<_EngineSmudgeBeginNative, _EngineSmudgeBeginDart>(
+              'engine_smudge_begin',
+            );
+      } catch (_) {
+        _smudgeBegin = null;
+      }
+      try {
+        _smudgeDraw = _lib
+            .lookupFunction<_EngineSmudgeDrawNative, _EngineSmudgeDrawDart>(
+              'engine_smudge_draw',
+            );
+      } catch (_) {
+        _smudgeDraw = null;
+      }
+      try {
+        _smudgeEnd = _lib
+            .lookupFunction<_EngineSmudgeEndNative, _EngineSmudgeEndDart>(
+              'engine_smudge_end',
+            );
+      } catch (_) {
+        _smudgeEnd = null;
+      }
+      try {
         _applyFilter = _lib
             .lookupFunction<_EngineApplyFilterNative, _EngineApplyFilterDart>(
               'engine_apply_filter',
@@ -950,6 +1003,9 @@ class CanvasEngineFfi {
   late final _EngineLiquifyBeginDart? _liquifyBegin;
   late final _EngineLiquifyDrawDart? _liquifyDraw;
   late final _EngineLiquifyEndDart? _liquifyEnd;
+  late final _EngineSmudgeBeginDart? _smudgeBegin;
+  late final _EngineSmudgeDrawDart? _smudgeDraw;
+  late final _EngineSmudgeEndDart? _smudgeEnd;
   late final _EngineApplyFilterDart? _applyFilter;
   late final _EngineApplyAntialiasDart? _applyAntialias;
   late final _EngineLogPopDart? _logPop;
@@ -962,6 +1018,12 @@ class CanvasEngineFfi {
 
   bool get canCreateEngine =>
       isSupported && _createEngine != null && _disposeEngine != null;
+
+  bool get supportsSmudge =>
+      isSupported &&
+      _smudgeBegin != null &&
+      _smudgeDraw != null &&
+      _smudgeEnd != null;
 
   int createEngine({required int width, required int height}) {
     final fn = _createEngine;
@@ -1885,6 +1947,63 @@ class CanvasEngineFfi {
   void endLiquify({required int handle}) {
     final fn = _liquifyEnd;
     if (!isSupported || fn == null || handle == 0) {
+      return;
+    }
+    fn(handle);
+  }
+
+  void beginSmudge({required int handle}) {
+    final fn = _smudgeBegin;
+    if (!supportsSmudge || fn == null || handle == 0) {
+      return;
+    }
+    fn(handle);
+  }
+
+  void drawSmudge({
+    required int handle,
+    required double fromX,
+    required double fromY,
+    required double toX,
+    required double toY,
+    required double radius,
+    required double strength,
+    required double softness,
+  }) {
+    final fn = _smudgeDraw;
+    if (!supportsSmudge || fn == null || handle == 0) {
+      return;
+    }
+    double safeRadius = radius;
+    if (!safeRadius.isFinite) {
+      safeRadius = 1.0;
+    }
+    safeRadius = safeRadius.clamp(1.0, 4096.0);
+    double safeStrength = strength;
+    if (!safeStrength.isFinite) {
+      safeStrength = 0.0;
+    }
+    safeStrength = safeStrength.clamp(0.0, 1.0);
+    double safeSoftness = softness;
+    if (!safeSoftness.isFinite) {
+      safeSoftness = 0.78;
+    }
+    safeSoftness = safeSoftness.clamp(0.0, 1.0);
+    fn(
+      handle,
+      fromX.isFinite ? fromX : 0.0,
+      fromY.isFinite ? fromY : 0.0,
+      toX.isFinite ? toX : 0.0,
+      toY.isFinite ? toY : 0.0,
+      safeRadius,
+      safeStrength,
+      safeSoftness,
+    );
+  }
+
+  void endSmudge({required int handle}) {
+    final fn = _smudgeEnd;
+    if (!supportsSmudge || fn == null || handle == 0) {
       return;
     }
     fn(handle);

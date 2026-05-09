@@ -603,6 +603,7 @@ mixin _PaintingBoardTextMixin on _PaintingBoardBase {
       case CanvasTool.perspectivePen:
       case CanvasTool.shape:
       case CanvasTool.spray:
+      case CanvasTool.smudge:
       case CanvasTool.liquify:
       case CanvasTool.bucket:
       case CanvasTool.magicWand:

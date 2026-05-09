@@ -87,6 +87,10 @@ extension _PaintingBoardBuildShortcutsExtension on _PaintingBoardBuildMixin {
             ).shortcuts)
               key: const SelectToolIntent(CanvasTool.spray),
             for (final key in ToolbarShortcuts.of(
+              ToolbarAction.smudgeTool,
+            ).shortcuts)
+              key: const SelectToolIntent(CanvasTool.smudge),
+            for (final key in ToolbarShortcuts.of(
               ToolbarAction.curvePenTool,
             ).shortcuts)
               key: const SelectToolIntent(CanvasTool.curvePen),

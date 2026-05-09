@@ -1247,6 +1247,102 @@ pub extern "C" fn engine_liquify_end(_handle: u64) {}
     target_os = "android"
 ))]
 #[no_mangle]
+pub extern "C" fn engine_smudge_begin(handle: u64) {
+    let Some(entry) = lookup_engine(handle) else {
+        return;
+    };
+    let _ = entry.cmd_tx.send(EngineCommand::BeginSmudge);
+}
+
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
+#[no_mangle]
+pub extern "C" fn engine_smudge_begin(_handle: u64) {}
+
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+#[no_mangle]
+pub extern "C" fn engine_smudge_draw(
+    handle: u64,
+    from_x: f32,
+    from_y: f32,
+    to_x: f32,
+    to_y: f32,
+    radius: f32,
+    strength: f32,
+    softness: f32,
+) {
+    let Some(entry) = lookup_engine(handle) else {
+        return;
+    };
+    let _ = entry.cmd_tx.send(EngineCommand::DrawSmudge {
+        from_x,
+        from_y,
+        to_x,
+        to_y,
+        radius,
+        strength,
+        softness,
+    });
+}
+
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
+#[no_mangle]
+pub extern "C" fn engine_smudge_draw(
+    _handle: u64,
+    _from_x: f32,
+    _from_y: f32,
+    _to_x: f32,
+    _to_y: f32,
+    _radius: f32,
+    _strength: f32,
+    _softness: f32,
+) {
+}
+
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+#[no_mangle]
+pub extern "C" fn engine_smudge_end(handle: u64) {
+    let Some(entry) = lookup_engine(handle) else {
+        return;
+    };
+    let _ = entry.cmd_tx.send(EngineCommand::EndSmudge);
+}
+
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
+#[no_mangle]
+pub extern "C" fn engine_smudge_end(_handle: u64) {}
+
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+#[no_mangle]
 pub extern "C" fn engine_apply_filter(
     handle: u64,
     layer_index: u32,

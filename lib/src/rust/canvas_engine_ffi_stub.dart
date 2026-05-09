@@ -7,6 +7,7 @@ class CanvasEngineFfi {
 
   bool get isSupported => false;
   bool get canCreateEngine => false;
+  bool get supportsSmudge => false;
 
   int createEngine({required int width, required int height}) => 0;
 
@@ -101,6 +102,21 @@ class CanvasEngineFfi {
   }) {}
 
   void endLiquify({required int handle}) {}
+
+  void beginSmudge({required int handle}) {}
+
+  void drawSmudge({
+    required int handle,
+    required double fromX,
+    required double fromY,
+    required double toX,
+    required double toY,
+    required double radius,
+    required double strength,
+    required double softness,
+  }) {}
+
+  void endSmudge({required int handle}) {}
 
   bool applyFilter({
     required int handle,

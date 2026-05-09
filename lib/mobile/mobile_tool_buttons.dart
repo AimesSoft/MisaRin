@@ -91,6 +91,8 @@ class MobileToolButtons extends StatelessWidget {
         return FluentIcons.pencil_reply;
       case CanvasTool.spray:
         return 'icons/spray.svg';
+      case CanvasTool.smudge:
+        return FluentIcons.line_style;
       case CanvasTool.liquify:
         return FluentIcons.processing;
       case CanvasTool.curvePen:

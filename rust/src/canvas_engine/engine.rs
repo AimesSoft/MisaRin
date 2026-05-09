@@ -213,6 +213,17 @@ pub(crate) enum EngineCommand {
         mix: f32,
     },
     EndLiquify,
+    BeginSmudge,
+    DrawSmudge {
+        from_x: f32,
+        from_y: f32,
+        to_x: f32,
+        to_y: f32,
+        radius: f32,
+        strength: f32,
+        softness: f32,
+    },
+    EndSmudge,
     ApplyFilter {
         layer_index: u32,
         filter_type: u32,
@@ -1322,6 +1333,7 @@ fn render_thread_main(
     let mut selection_mask_active = false;
     let mut spray_active_layer: Option<u32> = None;
     let mut liquify_active_layer: Option<u32> = None;
+    let mut smudge_active_layer: Option<u32> = None;
     let mut pending_present = false;
     let mut pending_present_since: Option<Instant> = None;
     let mut presented_once = false;
@@ -1424,6 +1436,7 @@ fn render_thread_main(
                 &mut selection_mask_active,
                 &mut spray_active_layer,
                 &mut liquify_active_layer,
+                &mut smudge_active_layer,
                 &mut undo_manager,
                 canvas_width,
                 canvas_height,
@@ -1559,6 +1572,7 @@ fn render_thread_main(
                     &mut selection_mask_active,
                     &mut spray_active_layer,
                     &mut liquify_active_layer,
+                    &mut smudge_active_layer,
                     &mut undo_manager,
                     canvas_width,
                     canvas_height,
@@ -2149,6 +2163,7 @@ fn render_thread_main(
                     &mut selection_mask_active,
                     &mut spray_active_layer,
                     &mut liquify_active_layer,
+                    &mut smudge_active_layer,
                     &mut undo_manager,
                     canvas_width,
                     canvas_height,
@@ -2490,6 +2505,7 @@ fn handle_engine_command(
     selection_mask_active: &mut bool,
     spray_active_layer: &mut Option<u32>,
     liquify_active_layer: &mut Option<u32>,
+    smudge_active_layer: &mut Option<u32>,
     undo: &mut UndoManager,
     canvas_width: u32,
     canvas_height: u32,
@@ -3811,6 +3827,174 @@ fn handle_engine_command(
                 undo.end_stroke(device.as_ref(), queue.as_ref(), layers.texture());
             }
             *liquify_active_layer = None;
+        }
+        EngineCommand::BeginSmudge => {
+            let layer_idx = *active_layer_index as u32;
+            *smudge_active_layer = Some(layer_idx);
+            undo.begin_stroke(layer_idx);
+        }
+        EngineCommand::DrawSmudge {
+            from_x,
+            from_y,
+            to_x,
+            to_y,
+            radius,
+            strength,
+            softness,
+        } => {
+            let layer_idx = match *smudge_active_layer {
+                Some(layer) => layer,
+                None => *active_layer_index as u32,
+            };
+            let idx = layer_idx as usize;
+            if !ensure_layer_index(layer_count, idx, *transform_layer_index, *transform_flags) {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+            if canvas_width == 0 || canvas_height == 0 {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+
+            let smudge_radius = finite_or(radius, 0.0).clamp(1.0, 4096.0);
+            let smudge_strength = finite_or(strength, 0.0).clamp(0.0, 1.0);
+            let smudge_softness = finite_or(softness, 0.78).clamp(0.0, 1.0);
+            if smudge_strength <= 0.0001 {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+
+            let from = (finite_or(from_x, 0.0), finite_or(from_y, 0.0));
+            let to = (finite_or(to_x, from.0), finite_or(to_y, from.1));
+            let blur_radius = smudge_blur_radius(smudge_radius, smudge_strength, smudge_softness);
+            let padding = (smudge_radius + blur_radius + 4.0).ceil() as i32;
+            let dirty = compute_segment_dirty_rect(from, to, padding, canvas_width, canvas_height);
+            if dirty.2 <= 0 || dirty.3 <= 0 {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+
+            let pixels = match read_r32uint_layer(
+                device,
+                queue,
+                layers.texture(),
+                canvas_width,
+                canvas_height,
+                layer_idx,
+            ) {
+                Ok(pixels) => pixels,
+                Err(err) => {
+                    debug::log(
+                        LogLevel::Warn,
+                        format_args!("smudge readback failed: {err}"),
+                    );
+                    return EngineCommandOutcome {
+                        stop: false,
+                        needs_render: false,
+                        new_canvas_size: None,
+                    };
+                }
+            };
+            if pixels.len() != (canvas_width as usize).saturating_mul(canvas_height as usize) {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            }
+
+            undo.begin_stroke_if_needed(layer_idx);
+            undo.capture_before_for_dirty_rect(
+                device.as_ref(),
+                queue.as_ref(),
+                layers.texture(),
+                layer_idx,
+                dirty,
+            );
+
+            let Some((left, top, width, height, region_pixels)) = apply_smudge_region(
+                &pixels,
+                canvas_width,
+                canvas_height,
+                from,
+                to,
+                smudge_radius,
+                smudge_strength,
+                smudge_softness,
+                dirty,
+            ) else {
+                return EngineCommandOutcome {
+                    stop: false,
+                    needs_render: false,
+                    new_canvas_size: None,
+                };
+            };
+
+            let bytes_per_row_unpadded = match width.checked_mul(4) {
+                Some(value) => value,
+                None => {
+                    return EngineCommandOutcome {
+                        stop: false,
+                        needs_render: false,
+                        new_canvas_size: None,
+                    };
+                }
+            };
+            let bytes_per_row_padded = align_up_u32(bytes_per_row_unpadded, 256);
+            let packed = match pack_u32_rows_with_padding(
+                &region_pixels,
+                width,
+                height,
+                bytes_per_row_padded,
+            ) {
+                Ok(data) => data,
+                Err(err) => {
+                    debug::log(LogLevel::Warn, format_args!("smudge pack failed: {err}"));
+                    return EngineCommandOutcome {
+                        stop: false,
+                        needs_render: false,
+                        new_canvas_size: None,
+                    };
+                }
+            };
+            write_r32uint_region(
+                device.as_ref(),
+                queue,
+                layers.texture(),
+                left,
+                top,
+                width,
+                height,
+                layer_idx,
+                bytes_per_row_padded,
+                &packed,
+            );
+            if let Some(entry) = layer_uniform.get_mut(idx) {
+                *entry = None;
+            }
+            return EngineCommandOutcome {
+                stop: false,
+                needs_render: present.is_some(),
+                new_canvas_size: None,
+            };
+        }
+        EngineCommand::EndSmudge => {
+            if smudge_active_layer.is_some() {
+                undo.end_stroke(device.as_ref(), queue.as_ref(), layers.texture());
+            }
+            *smudge_active_layer = None;
         }
         EngineCommand::ApplyFilter {
             layer_index,
@@ -6120,6 +6304,97 @@ fn compute_segment_dirty_rect(
     (left, top, right - left, bottom - top)
 }
 
+fn apply_smudge_region(
+    pixels: &[u32],
+    canvas_width: u32,
+    canvas_height: u32,
+    from: (f32, f32),
+    to: (f32, f32),
+    radius: f32,
+    strength: f32,
+    softness: f32,
+    dirty: (i32, i32, i32, i32),
+) -> Option<(u32, u32, u32, u32, Vec<u32>)> {
+    let (left_i, top_i, width_i, height_i) = dirty;
+    if width_i <= 0 || height_i <= 0 || canvas_width == 0 || canvas_height == 0 {
+        return None;
+    }
+    let left = left_i.max(0) as u32;
+    let top = top_i.max(0) as u32;
+    let width = (width_i as u32).min(canvas_width.saturating_sub(left));
+    let height = (height_i as u32).min(canvas_height.saturating_sub(top));
+    if width == 0 || height == 0 {
+        return None;
+    }
+
+    let radius = radius.max(1.0);
+    let radius_sq = radius * radius;
+    let dx = to.0 - from.0;
+    let dy = to.1 - from.1;
+    let segment_len_sq = dx * dx + dy * dy;
+    let point_mode = segment_len_sq <= 1e-6;
+    let softness = softness.clamp(0.0, 1.0);
+    let falloff_power = 0.9 + (1.0 - softness) * 3.2;
+    let amount = strength.clamp(0.0, 1.0);
+    let blur_radius = smudge_blur_radius(radius, amount, softness);
+    let mut out = Vec::with_capacity((width as usize).saturating_mul(height as usize));
+    let mut changed = false;
+
+    for local_y in 0..height {
+        let y = top + local_y;
+        let fy = y as f32 + 0.5;
+        for local_x in 0..width {
+            let x = left + local_x;
+            let fx = x as f32 + 0.5;
+            let current = pixels[(y as usize) * (canvas_width as usize) + x as usize];
+            let (cx, cy) = if point_mode {
+                (to.0, to.1)
+            } else {
+                let vx = fx - from.0;
+                let vy = fy - from.1;
+                let projection = ((vx * dx + vy * dy) / segment_len_sq).clamp(0.0, 1.0);
+                (from.0 + dx * projection, from.1 + dy * projection)
+            };
+            let dist_x = fx - cx;
+            let dist_y = fy - cy;
+            let dist_sq = dist_x * dist_x + dist_y * dist_y;
+            if dist_sq >= radius_sq {
+                out.push(current);
+                continue;
+            }
+
+            let normalized = (dist_sq.sqrt() / radius).clamp(0.0, 1.0);
+            let falloff = (1.0 - normalized).powf(falloff_power);
+            let softened = softened_argb_alpha_aware(
+                pixels,
+                canvas_width,
+                canvas_height,
+                fx - 0.5,
+                fy - 0.5,
+                blur_radius,
+            );
+            let next = lerp_argb_alpha_aware(current, softened, amount * falloff);
+            if next != current {
+                changed = true;
+            }
+            out.push(next);
+        }
+    }
+
+    if changed {
+        Some((left, top, width, height, out))
+    } else {
+        None
+    }
+}
+
+fn smudge_blur_radius(radius: f32, strength: f32, softness: f32) -> f32 {
+    let radius = finite_or(radius, 1.0).max(1.0);
+    let strength = finite_or(strength, 0.0).clamp(0.0, 1.0);
+    let softness = finite_or(softness, 0.78).clamp(0.0, 1.0);
+    (1.0 + radius * (0.05 + softness * 0.1) * (0.55 + strength * 0.75)).clamp(1.0, 24.0)
+}
+
 fn apply_liquify_region(
     pixels: &[u32],
     canvas_width: u32,
@@ -6279,6 +6554,174 @@ fn neighborhood_argb(pixels: &[u32], width: u32, height: u32, x: f32, y: f32) ->
         (g / total).round(),
         (b / total).round(),
     )
+}
+
+fn softened_argb_alpha_aware(
+    pixels: &[u32],
+    width: u32,
+    height: u32,
+    x: f32,
+    y: f32,
+    blur_radius: f32,
+) -> u32 {
+    if width == 0 || height == 0 {
+        return 0;
+    }
+    let outer = finite_or(blur_radius, 1.0).clamp(0.75, 24.0);
+    let inner = (outer * 0.45).max(0.75);
+    let diag = 0.70710677f32;
+    let mut acc = ArgbAccumulator::new();
+    acc.add_sample(
+        sample_argb_bilinear_alpha_aware(pixels, width, height, x, y),
+        2.5,
+    );
+
+    for (ox, oy) in [
+        (inner, 0.0),
+        (-inner, 0.0),
+        (0.0, inner),
+        (0.0, -inner),
+        (inner * diag, inner * diag),
+        (-inner * diag, inner * diag),
+        (inner * diag, -inner * diag),
+        (-inner * diag, -inner * diag),
+    ] {
+        acc.add_sample(
+            sample_argb_bilinear_alpha_aware(pixels, width, height, x + ox, y + oy),
+            1.8,
+        );
+    }
+
+    for (ox, oy) in [
+        (outer, 0.0),
+        (-outer, 0.0),
+        (0.0, outer),
+        (0.0, -outer),
+        (outer * diag, outer * diag),
+        (-outer * diag, outer * diag),
+        (outer * diag, -outer * diag),
+        (-outer * diag, -outer * diag),
+    ] {
+        acc.add_sample(
+            sample_argb_bilinear_alpha_aware(pixels, width, height, x + ox, y + oy),
+            1.0,
+        );
+    }
+
+    acc.finish()
+}
+
+fn sample_argb_bilinear_alpha_aware(
+    pixels: &[u32],
+    width: u32,
+    height: u32,
+    x: f32,
+    y: f32,
+) -> u32 {
+    if width == 0 || height == 0 {
+        return 0;
+    }
+    let max_x = width.saturating_sub(1) as f32;
+    let max_y = height.saturating_sub(1) as f32;
+    let sx = x.clamp(0.0, max_x);
+    let sy = y.clamp(0.0, max_y);
+    let x0 = sx.floor() as u32;
+    let y0 = sy.floor() as u32;
+    let x1 = (x0 + 1).min(width - 1);
+    let y1 = (y0 + 1).min(height - 1);
+    let tx = sx - x0 as f32;
+    let ty = sy - y0 as f32;
+    let row = width as usize;
+    let c00 = pixels[y0 as usize * row + x0 as usize];
+    let c10 = pixels[y0 as usize * row + x1 as usize];
+    let c01 = pixels[y1 as usize * row + x0 as usize];
+    let c11 = pixels[y1 as usize * row + x1 as usize];
+    let mut acc = ArgbAccumulator::new();
+    acc.add_sample(c00, (1.0 - tx) * (1.0 - ty));
+    acc.add_sample(c10, tx * (1.0 - ty));
+    acc.add_sample(c01, (1.0 - tx) * ty);
+    acc.add_sample(c11, tx * ty);
+    acc.finish()
+}
+
+fn lerp_argb_alpha_aware(from: u32, to: u32, t: f32) -> u32 {
+    let t = t.clamp(0.0, 1.0);
+    if t <= 0.0 {
+        return from;
+    }
+    if t >= 1.0 {
+        return to;
+    }
+    let inv = 1.0 - t;
+    let from_a = ((from >> 24) & 0xff) as f32 / 255.0;
+    let to_a = ((to >> 24) & 0xff) as f32 / 255.0;
+    let out_a = from_a * inv + to_a * t;
+    if out_a <= 0.000001 {
+        return 0;
+    }
+    let from_r = ((from >> 16) & 0xff) as f32;
+    let from_g = ((from >> 8) & 0xff) as f32;
+    let from_b = (from & 0xff) as f32;
+    let to_r = ((to >> 16) & 0xff) as f32;
+    let to_g = ((to >> 8) & 0xff) as f32;
+    let to_b = (to & 0xff) as f32;
+    let out_r = (from_r * from_a * inv + to_r * to_a * t) / out_a;
+    let out_g = (from_g * from_a * inv + to_g * to_a * t) / out_a;
+    let out_b = (from_b * from_a * inv + to_b * to_a * t) / out_a;
+    pack_argb(
+        (out_a * 255.0).round(),
+        out_r.round(),
+        out_g.round(),
+        out_b.round(),
+    )
+}
+
+struct ArgbAccumulator {
+    alpha: f32,
+    premul_r: f32,
+    premul_g: f32,
+    premul_b: f32,
+    weight: f32,
+}
+
+impl ArgbAccumulator {
+    fn new() -> Self {
+        Self {
+            alpha: 0.0,
+            premul_r: 0.0,
+            premul_g: 0.0,
+            premul_b: 0.0,
+            weight: 0.0,
+        }
+    }
+
+    fn add_sample(&mut self, argb: u32, weight: f32) {
+        if weight <= 0.0 {
+            return;
+        }
+        let alpha = ((argb >> 24) & 0xff) as f32 / 255.0;
+        self.alpha += alpha * weight;
+        self.premul_r += ((argb >> 16) & 0xff) as f32 * alpha * weight;
+        self.premul_g += ((argb >> 8) & 0xff) as f32 * alpha * weight;
+        self.premul_b += (argb & 0xff) as f32 * alpha * weight;
+        self.weight += weight;
+    }
+
+    fn finish(self) -> u32 {
+        if self.weight <= 0.0 {
+            return 0;
+        }
+        let out_a = self.alpha / self.weight;
+        if out_a <= 0.000001 || self.alpha <= 0.000001 {
+            return 0;
+        }
+        pack_argb(
+            (out_a * 255.0).round(),
+            (self.premul_r / self.alpha).round(),
+            (self.premul_g / self.alpha).round(),
+            (self.premul_b / self.alpha).round(),
+        )
+    }
 }
 
 fn lerp_argb(from: u32, to: u32, t: f32) -> u32 {

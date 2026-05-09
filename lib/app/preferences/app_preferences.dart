@@ -75,6 +75,9 @@ class AppPreferences {
     this.liquifyStrength = _defaultLiquifyStrength,
     this.liquifySoftness = _defaultLiquifySoftness,
     this.liquifyMix = _defaultLiquifyMix,
+    this.smudgeStrokeWidth = _defaultSmudgeStrokeWidth,
+    this.smudgeStrength = _defaultSmudgeStrength,
+    this.smudgeSoftness = _defaultSmudgeSoftness,
     this.sprayMode = _defaultSprayMode,
     this.newCanvasWidth = _defaultNewCanvasWidth,
     this.newCanvasHeight = _defaultNewCanvasHeight,
@@ -114,6 +117,9 @@ class AppPreferences {
   static const double defaultLiquifyStrength = _defaultLiquifyStrength;
   static const double defaultLiquifySoftness = _defaultLiquifySoftness;
   static const double defaultLiquifyMix = _defaultLiquifyMix;
+  static const double defaultSmudgeStrokeWidth = _defaultSmudgeStrokeWidth;
+  static const double defaultSmudgeStrength = _defaultSmudgeStrength;
+  static const double defaultSmudgeSoftness = _defaultSmudgeSoftness;
   static const SprayMode defaultSprayMode = _defaultSprayMode;
   static const bool defaultLayerAdjustCropOutside = false;
   static const Color defaultColorLineColor = _defaultColorLineColor;
@@ -176,6 +182,9 @@ class AppPreferences {
   double liquifyStrength;
   double liquifySoftness;
   double liquifyMix;
+  double smudgeStrokeWidth;
+  double smudgeStrength;
+  double smudgeSoftness;
   SprayMode sprayMode;
   int newCanvasWidth;
   int newCanvasHeight;

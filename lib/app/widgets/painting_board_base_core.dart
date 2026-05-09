@@ -69,6 +69,9 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   double _liquifyStrength = AppPreferences.defaultLiquifyStrength;
   double _liquifySoftness = AppPreferences.defaultLiquifySoftness;
   double _liquifyMix = AppPreferences.defaultLiquifyMix;
+  double _smudgeStrokeWidth = AppPreferences.defaultSmudgeStrokeWidth;
+  double _smudgeStrength = AppPreferences.defaultSmudgeStrength;
+  double _smudgeSoftness = AppPreferences.defaultSmudgeSoftness;
   SprayMode _sprayMode = AppPreferences.defaultSprayMode;
   double _strokeStabilizerStrength =
       AppPreferences.defaultStrokeStabilizerStrength;
@@ -212,6 +215,10 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   bool _backendLiquifyHasDrawn = false;
   Offset? _liquifyLastEnginePoint;
   double _liquifyResidual = 0.0;
+  bool _isSmudging = false;
+  bool _backendSmudgeHasDrawn = false;
+  Offset? _smudgeLastEnginePoint;
+  double _smudgeResidual = 0.0;
   Size _toolSettingsCardSize = const Size(320, _toolbarButtonSize);
   CanvasToolbarLayout _toolbarLayout = const CanvasToolbarLayout(
     columns: 1,
@@ -1754,6 +1761,7 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   bool get _penRequiresOverlay =>
       _effectiveActiveTool == CanvasTool.pen ||
       _effectiveActiveTool == CanvasTool.spray ||
+      _effectiveActiveTool == CanvasTool.smudge ||
       _effectiveActiveTool == CanvasTool.liquify ||
       _effectiveActiveTool == CanvasTool.curvePen ||
       _effectiveActiveTool == CanvasTool.shape ||
@@ -1842,6 +1850,8 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       capabilities.isAvailable && capabilities.supportsInputQueue;
   bool get supportsSpray =>
       capabilities.isAvailable && capabilities.supportsSpray;
+  bool get supportsSmudge =>
+      capabilities.isAvailable && capabilities.supportsSmudge;
   bool get supportsLiquify =>
       capabilities.isAvailable && capabilities.supportsLiquify;
 
@@ -1858,6 +1868,7 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
     supportsStrokeStream: _backendSupported,
     supportsInputQueue: _backendSupported,
     supportsSpray: _backendSupported,
+    supportsSmudge: _backendSupported && _ffi.supportsSmudge,
     supportsLiquify: _backendSupported,
   );
 
@@ -2324,6 +2335,45 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       return false;
     }
     _ffi.endLiquify(handle: _owner._backendCanvasEngineHandle!);
+    return true;
+  }
+
+  bool beginSmudge() {
+    if (!_backendReady || !_ffi.supportsSmudge) {
+      return false;
+    }
+    _ffi.beginSmudge(handle: _owner._backendCanvasEngineHandle!);
+    return true;
+  }
+
+  bool endSmudge() {
+    if (!_backendReady || !_ffi.supportsSmudge) {
+      return false;
+    }
+    _ffi.endSmudge(handle: _owner._backendCanvasEngineHandle!);
+    return true;
+  }
+
+  bool drawSmudge({
+    required Offset from,
+    required Offset to,
+    required double radius,
+    required double strength,
+    required double softness,
+  }) {
+    if (!_backendReady || !_ffi.supportsSmudge) {
+      return false;
+    }
+    _ffi.drawSmudge(
+      handle: _owner._backendCanvasEngineHandle!,
+      fromX: from.dx,
+      fromY: from.dy,
+      toX: to.dx,
+      toY: to.dy,
+      radius: radius,
+      strength: strength,
+      softness: softness,
+    );
     return true;
   }
 

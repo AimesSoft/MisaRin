@@ -91,6 +91,8 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
         final double overlayBrushDiameter =
             _effectiveActiveTool == CanvasTool.spray
             ? _sprayStrokeWidth
+            : _effectiveActiveTool == CanvasTool.smudge
+            ? _smudgeStrokeWidth
             : _effectiveActiveTool == CanvasTool.liquify
             ? _liquifyStrokeWidth
             : _effectiveActiveTool == CanvasTool.eraser
@@ -101,12 +103,14 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
         );
         final BrushShape overlayBrushShape =
             _effectiveActiveTool == CanvasTool.spray ||
+                _effectiveActiveTool == CanvasTool.smudge ||
                 _effectiveActiveTool == CanvasTool.liquify ||
                 _effectiveActiveTool == CanvasTool.selectionPen
             ? BrushShape.circle
             : _brushShape;
         final BrushShapeRaster? overlayBrushRaster =
             _effectiveActiveTool == CanvasTool.spray ||
+                _effectiveActiveTool == CanvasTool.smudge ||
                 _effectiveActiveTool == CanvasTool.liquify ||
                 _effectiveActiveTool == CanvasTool.selectionPen
             ? null
@@ -174,6 +178,9 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
               case CanvasTool.liquify:
                 workspaceCursor = SystemMouseCursors.precise;
                 break;
+              case CanvasTool.smudge:
+                workspaceCursor = SystemMouseCursors.precise;
+                break;
               case CanvasTool.selectionPen:
                 workspaceCursor = SystemMouseCursors.precise;
                 break;
@@ -239,6 +246,9 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
           liquifyStrength: _liquifyStrength,
           liquifySoftness: _liquifySoftness,
           liquifyMix: _liquifyMix,
+          smudgeStrokeWidth: _smudgeStrokeWidth,
+          smudgeStrength: _smudgeStrength,
+          smudgeSoftness: _smudgeSoftness,
           sprayMode: _sprayMode,
           penStrokeSliderRange: _penStrokeSliderRange,
           sprayStrokeSliderRange: _sprayStrokeSliderRange,
@@ -250,6 +260,9 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
           onLiquifyStrengthChanged: _updateLiquifyStrength,
           onLiquifySoftnessChanged: _updateLiquifySoftness,
           onLiquifyMixChanged: _updateLiquifyMix,
+          onSmudgeStrokeWidthChanged: _updateSmudgeStrokeWidth,
+          onSmudgeStrengthChanged: _updateSmudgeStrength,
+          onSmudgeSoftnessChanged: _updateSmudgeSoftness,
           onPenStrokeSliderRangeChanged: _updatePenStrokeSliderRange,
           onSprayStrokeSliderRangeChanged: _updateSprayStrokeSliderRange,
           onEraserStrokeSliderRangeChanged: _updateEraserStrokeSliderRange,
@@ -1260,6 +1273,9 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                                       liquifyStrength: _liquifyStrength,
                                       liquifySoftness: _liquifySoftness,
                                       liquifyMix: _liquifyMix,
+                                      smudgeStrokeWidth: _smudgeStrokeWidth,
+                                      smudgeStrength: _smudgeStrength,
+                                      smudgeSoftness: _smudgeSoftness,
                                       sprayMode: _sprayMode,
                                       penStrokeSliderRange:
                                           _penStrokeSliderRange,
@@ -1280,6 +1296,12 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                                       onLiquifySoftnessChanged:
                                           _updateLiquifySoftness,
                                       onLiquifyMixChanged: _updateLiquifyMix,
+                                      onSmudgeStrokeWidthChanged:
+                                          _updateSmudgeStrokeWidth,
+                                      onSmudgeStrengthChanged:
+                                          _updateSmudgeStrength,
+                                      onSmudgeSoftnessChanged:
+                                          _updateSmudgeSoftness,
                                       onPenStrokeSliderRangeChanged:
                                           _updatePenStrokeSliderRange,
                                       onSprayStrokeSliderRangeChanged:

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../src/rust/api/selection_path.dart' as rust_selection_path;
 import '../src/rust/canvas_engine_ffi.dart' as rust_wgpu_engine;
@@ -29,6 +29,7 @@ class CanvasEngineFfi {
   bool get _useRustWgpu => CanvasBackendState.backend == CanvasBackend.rustWgpu;
 
   bool get isSupported => _useRustWgpu && _rustWgpu.isSupported;
+  bool get supportsSmudge => isSupported && _rustWgpu.supportsSmudge;
 
   void pushPointsPacked({
     required int handle,
@@ -249,6 +250,45 @@ class CanvasEngineFfi {
       return;
     }
     _rustWgpu.endLiquify(handle: handle);
+  }
+
+  void beginSmudge({required int handle}) {
+    if (!supportsSmudge) {
+      return;
+    }
+    _rustWgpu.beginSmudge(handle: handle);
+  }
+
+  void drawSmudge({
+    required int handle,
+    required double fromX,
+    required double fromY,
+    required double toX,
+    required double toY,
+    required double radius,
+    required double strength,
+    required double softness,
+  }) {
+    if (!supportsSmudge) {
+      return;
+    }
+    _rustWgpu.drawSmudge(
+      handle: handle,
+      fromX: fromX,
+      fromY: fromY,
+      toX: toX,
+      toY: toY,
+      radius: radius,
+      strength: strength,
+      softness: softness,
+    );
+  }
+
+  void endSmudge({required int handle}) {
+    if (!supportsSmudge) {
+      return;
+    }
+    _rustWgpu.endSmudge(handle: handle);
   }
 
   bool applyFilter({
@@ -666,6 +706,7 @@ class CanvasBackendFacade {
   }
 
   bool get isSupported => _ffi.isSupported;
+  bool get supportsSmudge => _ffi.supportsSmudge;
 
   bool isHandleReady(int? handle) => isSupported && handle != null;
 
@@ -874,6 +915,36 @@ class CanvasBackendFacade {
 
   void endLiquify({required int handle}) {
     _ffi.endLiquify(handle: handle);
+  }
+
+  void beginSmudge({required int handle}) {
+    _ffi.beginSmudge(handle: handle);
+  }
+
+  void drawSmudge({
+    required int handle,
+    required double fromX,
+    required double fromY,
+    required double toX,
+    required double toY,
+    required double radius,
+    required double strength,
+    required double softness,
+  }) {
+    _ffi.drawSmudge(
+      handle: handle,
+      fromX: fromX,
+      fromY: fromY,
+      toX: toX,
+      toY: toY,
+      radius: radius,
+      strength: strength,
+      softness: softness,
+    );
+  }
+
+  void endSmudge({required int handle}) {
+    _ffi.endSmudge(handle: handle);
   }
 
   void setLayerClippingMask({

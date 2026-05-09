@@ -36,6 +36,21 @@ Future<void> _saveAppPreferences() async {
   final int liquifyStrengthEncoded = _encodeRatioByte(prefs.liquifyStrength);
   final int liquifySoftnessEncoded = _encodeRatioByte(prefs.liquifySoftness);
   final int liquifyMixEncoded = _encodeRatioByte(prefs.liquifyMix);
+  final double smudgeWidthValue = _clampSmudgeStrokeWidth(
+    prefs.smudgeStrokeWidth,
+  );
+  prefs.smudgeStrokeWidth = smudgeWidthValue;
+  final int smudgeWidth = _encodeSmudgeStrokeWidth(smudgeWidthValue);
+  prefs.smudgeStrength = _clampSmudgeRatio(
+    prefs.smudgeStrength,
+    _defaultSmudgeStrength,
+  );
+  prefs.smudgeSoftness = _clampSmudgeRatio(
+    prefs.smudgeSoftness,
+    _defaultSmudgeSoftness,
+  );
+  final int smudgeStrengthEncoded = _encodeRatioByte(prefs.smudgeStrength);
+  final int smudgeSoftnessEncoded = _encodeRatioByte(prefs.smudgeSoftness);
   final double stylusCurve = _clampStylusFactor(
     prefs.stylusPressureCurve,
     lower: _stylusCurveLowerBound,
@@ -179,6 +194,10 @@ Future<void> _saveAppPreferences() async {
     liquifyStrengthEncoded,
     liquifySoftnessEncoded,
     liquifyMixEncoded,
+    smudgeWidth & 0xff,
+    (smudgeWidth >> 8) & 0xff,
+    smudgeStrengthEncoded,
+    smudgeSoftnessEncoded,
   ]);
   await _writePreferencesPayload(payload);
 }

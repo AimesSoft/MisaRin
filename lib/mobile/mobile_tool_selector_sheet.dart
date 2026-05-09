@@ -22,6 +22,7 @@ class MobileToolSelectorSheet extends StatelessWidget {
       _ToolItem(CanvasTool.pen, FluentIcons.edit, '画笔'),
       _ToolItem(CanvasTool.eraser, FluentIcons.erase_tool, '橡皮擦'),
       _ToolItem(CanvasTool.spray, 'icons/spray.svg', '喷枪'),
+      _ToolItem(CanvasTool.smudge, FluentIcons.line_style, '涂抹'),
       _ToolItem(CanvasTool.liquify, FluentIcons.processing, '液化'),
       _ToolItem(CanvasTool.bucket, FluentIcons.bucket_color, '油漆桶'),
       _ToolItem(CanvasTool.eyedropper, FluentIcons.eyedropper, '吸管'),

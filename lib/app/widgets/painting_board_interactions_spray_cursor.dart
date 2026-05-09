@@ -37,7 +37,8 @@ extension _PaintingBoardInteractionSprayCursorExtension
     final bool drawingTool =
         tool == CanvasTool.pen ||
         tool == CanvasTool.eraser ||
-        tool == CanvasTool.spray;
+        tool == CanvasTool.spray ||
+        tool == CanvasTool.smudge;
     if (!drawingTool) {
       return false;
     }
@@ -688,7 +689,8 @@ extension _PaintingBoardInteractionSprayCursorExtension
         tool == CanvasTool.curvePen ||
         tool == CanvasTool.shape ||
         tool == CanvasTool.eraser ||
-        tool == CanvasTool.spray;
+        tool == CanvasTool.spray ||
+        tool == CanvasTool.smudge;
     if (_isReferenceCardResizing) {
       if (_toolCursorPosition != null || _penCursorWorkspacePosition != null) {
         setState(() {

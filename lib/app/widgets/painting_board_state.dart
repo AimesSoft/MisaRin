@@ -114,6 +114,9 @@ class PaintingBoardState extends _PaintingBoardBase
     _liquifyStrength = prefs.liquifyStrength.clamp(0.0, 1.0);
     _liquifySoftness = prefs.liquifySoftness.clamp(0.0, 1.0);
     _liquifyMix = prefs.liquifyMix.clamp(0.0, 1.0);
+    _smudgeStrokeWidth = prefs.smudgeStrokeWidth.clamp(8.0, 500.0);
+    _smudgeStrength = prefs.smudgeStrength.clamp(0.0, 1.0);
+    _smudgeSoftness = prefs.smudgeSoftness.clamp(0.0, 1.0);
     _sprayMode = prefs.sprayMode;
     _strokeStabilizerStrength = prefs.strokeStabilizerStrength;
     _streamlineStrength = prefs.streamlineStrength;
@@ -1166,6 +1169,9 @@ class PaintingBoardState extends _PaintingBoardBase
       liquifyStrength: _liquifyStrength,
       liquifySoftness: _liquifySoftness,
       liquifyMix: _liquifyMix,
+      smudgeStrokeWidth: _smudgeStrokeWidth,
+      smudgeStrength: _smudgeStrength,
+      smudgeSoftness: _smudgeSoftness,
       sprayMode: _sprayMode,
       penStrokeSliderRange: _penStrokeSliderRange,
       sprayStrokeSliderRange: _sprayStrokeSliderRange,
@@ -1225,6 +1231,9 @@ class PaintingBoardState extends _PaintingBoardBase
     _updateLiquifyStrength(snapshot.liquifyStrength);
     _updateLiquifySoftness(snapshot.liquifySoftness);
     _updateLiquifyMix(snapshot.liquifyMix);
+    _updateSmudgeStrokeWidth(snapshot.smudgeStrokeWidth);
+    _updateSmudgeStrength(snapshot.smudgeStrength);
+    _updateSmudgeSoftness(snapshot.smudgeSoftness);
     _updateSprayMode(snapshot.sprayMode);
     _updatePenStrokeSliderRange(snapshot.penStrokeSliderRange);
     _updateSprayStrokeSliderRange(snapshot.sprayStrokeSliderRange);

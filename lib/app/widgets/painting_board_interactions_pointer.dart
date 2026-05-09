@@ -233,6 +233,7 @@ extension _PaintingBoardInteractionPointerImpl
         tool == CanvasTool.selection ||
         tool == CanvasTool.selectionPen ||
         tool == CanvasTool.spray ||
+        tool == CanvasTool.smudge ||
         tool == CanvasTool.liquify ||
         tool == CanvasTool.pen ||
         tool == CanvasTool.eraser ||
@@ -349,6 +350,13 @@ extension _PaintingBoardInteractionPointerImpl
           return;
         }
         await _startSprayStroke(boardLocal, event);
+        break;
+      case CanvasTool.smudge:
+        _focusNode.requestFocus();
+        if (!isPointInsideSelection(boardLocal)) {
+          return;
+        }
+        await _startSmudgeStroke(boardLocal, event);
         break;
       case CanvasTool.liquify:
         _focusNode.requestFocus();
@@ -591,6 +599,12 @@ extension _PaintingBoardInteractionPointerImpl
           _updateSprayStroke(boardLocal, event);
         }
         break;
+      case CanvasTool.smudge:
+        if (_isSmudging) {
+          final Offset boardLocal = _toBoardLocal(event.localPosition);
+          _updateSmudgeStroke(boardLocal, event);
+        }
+        break;
       case CanvasTool.liquify:
         if (_isLiquifying) {
           final Offset boardLocal = _toBoardLocal(event.localPosition);
@@ -701,6 +715,11 @@ extension _PaintingBoardInteractionPointerImpl
           _finishSprayStroke();
         }
         break;
+      case CanvasTool.smudge:
+        if (_isSmudging) {
+          _finishSmudgeStroke();
+        }
+        break;
       case CanvasTool.liquify:
         if (_isLiquifying) {
           _finishLiquifyStroke();
@@ -784,6 +803,11 @@ extension _PaintingBoardInteractionPointerImpl
       case CanvasTool.spray:
         if (_isSpraying) {
           _finishSprayStroke();
+        }
+        break;
+      case CanvasTool.smudge:
+        if (_isSmudging) {
+          _finishSmudgeStroke();
         }
         break;
       case CanvasTool.liquify:
@@ -1061,6 +1085,9 @@ extension _PaintingBoardInteractionPointerImpl
     }
     if (_isSpraying) {
       _finishSprayStroke();
+    }
+    if (_isSmudging) {
+      _finishSmudgeStroke();
     }
     if (_isLiquifying) {
       _finishLiquifyStroke();

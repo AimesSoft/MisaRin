@@ -24,6 +24,7 @@ class CanvasBackendCapabilities {
     this.supportsStrokeStream = false,
     this.supportsInputQueue = false,
     this.supportsSpray = false,
+    this.supportsSmudge = false,
     this.supportsLiquify = false,
   });
 
@@ -36,6 +37,7 @@ class CanvasBackendCapabilities {
   final bool supportsStrokeStream;
   final bool supportsInputQueue;
   final bool supportsSpray;
+  final bool supportsSmudge;
   final bool supportsLiquify;
 
   bool get isAvailable => isSupported && isReady;

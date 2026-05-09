@@ -190,6 +190,9 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
   void _updateLiquifyStrength(double value);
   void _updateLiquifySoftness(double value);
   void _updateLiquifyMix(double value);
+  void _updateSmudgeStrokeWidth(double value);
+  void _updateSmudgeStrength(double value);
+  void _updateSmudgeSoftness(double value);
   void _updateBucketSampleAllLayers(bool value);
   void _updateBucketContiguous(bool value);
 

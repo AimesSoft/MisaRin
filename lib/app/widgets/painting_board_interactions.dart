@@ -515,14 +515,6 @@ mixin _PaintingBoardInteractionMixin
       return;
     }
     _debugPredictedOverlayLogAt = now;
-    debugPrint(
-      '[pencil_prediction/overlay] '
-      'frames=$_debugPredictedOverlayFrames '
-      'points=$_debugPredictedOverlayPoints '
-      'backendFrames=$_debugPredictedOverlayBackendFrames '
-      'overlayVisible=$_showBackendPredictedOverlay '
-      'backendPointer=$_backendActivePointer',
-    );
     _debugPredictedOverlayFrames = 0;
     _debugPredictedOverlayPoints = 0;
     _debugPredictedOverlayBackendFrames = 0;
@@ -578,6 +570,9 @@ mixin _PaintingBoardInteractionMixin
     }
     if (_activeTool == CanvasTool.spray && _isSpraying) {
       _finishSprayStroke();
+    }
+    if (_activeTool == CanvasTool.smudge && _isSmudging) {
+      _finishSmudgeStroke();
     }
     if (_activeTool == CanvasTool.liquify && _isLiquifying) {
       _finishLiquifyStroke();
@@ -738,6 +733,42 @@ mixin _PaintingBoardInteractionMixin
     setState(() => _liquifyMix = clamped);
     final AppPreferences prefs = AppPreferences.instance;
     prefs.liquifyMix = clamped;
+    unawaited(AppPreferences.save());
+  }
+
+  @override
+  void _updateSmudgeStrokeWidth(double value) {
+    final double clamped = value.clamp(8.0, 500.0).roundToDouble();
+    if ((_smudgeStrokeWidth - clamped).abs() < 0.0005) {
+      return;
+    }
+    setState(() => _smudgeStrokeWidth = clamped);
+    final AppPreferences prefs = AppPreferences.instance;
+    prefs.smudgeStrokeWidth = clamped;
+    unawaited(AppPreferences.save());
+  }
+
+  @override
+  void _updateSmudgeStrength(double value) {
+    final double clamped = value.clamp(0.0, 1.0);
+    if ((_smudgeStrength - clamped).abs() < 0.0005) {
+      return;
+    }
+    setState(() => _smudgeStrength = clamped);
+    final AppPreferences prefs = AppPreferences.instance;
+    prefs.smudgeStrength = clamped;
+    unawaited(AppPreferences.save());
+  }
+
+  @override
+  void _updateSmudgeSoftness(double value) {
+    final double clamped = value.clamp(0.0, 1.0);
+    if ((_smudgeSoftness - clamped).abs() < 0.0005) {
+      return;
+    }
+    setState(() => _smudgeSoftness = clamped);
+    final AppPreferences prefs = AppPreferences.instance;
+    prefs.smudgeSoftness = clamped;
     unawaited(AppPreferences.save());
   }
 

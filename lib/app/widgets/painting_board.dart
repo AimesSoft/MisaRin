@@ -187,6 +187,7 @@ part 'painting_board_interactions_backend.dart';
 part 'painting_board_interactions_pointer.dart';
 part 'painting_board_interactions_preferences.dart';
 part 'painting_board_interactions_stroke.dart';
+part 'painting_board_interactions_smudge.dart';
 part 'painting_board_interactions_spray_cursor.dart';
 part 'painting_board_interactions_layer_curve.dart';
 part 'painting_board_interactions_stabilizers.dart';

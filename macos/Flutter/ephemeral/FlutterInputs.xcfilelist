@@ -795,6 +795,7 @@
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/selection_shape_icon.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/selection_tool_button.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/shape_tool_button.dart
+/Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/smudge_tool_button.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/spray_tool_button.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/text_tool_button.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/toolbars/widgets/tool_settings_card.dart
@@ -849,6 +850,7 @@
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/painting_board_interactions_layer_curve.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/painting_board_interactions_pointer.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/painting_board_interactions_preferences.dart
+/Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/painting_board_interactions_smudge.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/painting_board_interactions_spray_cursor.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/painting_board_interactions_stabilizers.dart
 /Library/Afolder/FlutterProject/misa-rin/lib/app/widgets/painting_board_interactions_stroke.dart

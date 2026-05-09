@@ -3,6 +3,7 @@ enum CanvasTool {
   pen,
   perspectivePen,
   spray,
+  smudge,
   liquify,
   curvePen,
   shape,

@@ -308,6 +308,32 @@ int _encodeLiquifyStrokeWidth(double value) {
   return clamped.round().clamp(8, 500);
 }
 
+double _clampSmudgeStrokeWidth(double value) {
+  if (!value.isFinite) {
+    return _defaultSmudgeStrokeWidth;
+  }
+  return value.clamp(8.0, 500.0);
+}
+
+double _decodeSmudgeStrokeWidth(int value) {
+  if (value <= 0) {
+    return _defaultSmudgeStrokeWidth;
+  }
+  return value.clamp(8, 500).toDouble();
+}
+
+int _encodeSmudgeStrokeWidth(double value) {
+  final double clamped = _clampSmudgeStrokeWidth(value);
+  return clamped.round().clamp(8, 500);
+}
+
+double _clampSmudgeRatio(double value, double fallback) {
+  if (!value.isFinite) {
+    return fallback;
+  }
+  return value.clamp(0.0, 1.0);
+}
+
 double _clampLiquifyRatio(double value, double fallback) {
   if (!value.isFinite) {
     return fallback;

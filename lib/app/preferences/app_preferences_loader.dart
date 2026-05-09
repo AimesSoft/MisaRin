@@ -147,6 +147,18 @@ Future<AppPreferences> _loadAppPreferences() async {
             final double decodedLiquifyMix = version >= 44 && bytes.length >= 71
                 ? _decodeRatioByte(bytes[70])
                 : _defaultLiquifyMix;
+            final double decodedSmudgeStrokeWidth =
+                version >= 45 && bytes.length >= 75
+                ? _decodeSmudgeStrokeWidth(bytes[71] | (bytes[72] << 8))
+                : _defaultSmudgeStrokeWidth;
+            final double decodedSmudgeStrength =
+                version >= 45 && bytes.length >= 75
+                ? _decodeRatioByte(bytes[73])
+                : _defaultSmudgeStrength;
+            final double decodedSmudgeSoftness =
+                version >= 45 && bytes.length >= 75
+                ? _decodeRatioByte(bytes[74])
+                : _defaultSmudgeSoftness;
             final bool decodedHollowStrokeEnabled;
             final double decodedHollowStrokeRatio;
             final bool decodedHollowStrokeEraseOccludedParts;
@@ -216,6 +228,9 @@ Future<AppPreferences> _loadAppPreferences() async {
               liquifyStrength: decodedLiquifyStrength,
               liquifySoftness: decodedLiquifySoftness,
               liquifyMix: decodedLiquifyMix,
+              smudgeStrokeWidth: decodedSmudgeStrokeWidth,
+              smudgeStrength: decodedSmudgeStrength,
+              smudgeSoftness: decodedSmudgeSoftness,
               sprayStrokeSliderRange: decodedSprayStrokeSliderRange,
               eraserStrokeSliderRange: decodedEraserStrokeSliderRange,
               sprayMode: decodedSprayMode,

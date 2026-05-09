@@ -41,6 +41,9 @@ extension _PaintingBoardInteractionLayerCurveExtension
     if (_isSpraying) {
       _finishSprayStroke();
     }
+    if (_isSmudging) {
+      _finishSmudgeStroke();
+    }
     if (_isLayerDragging) {
       _finishLayerAdjustDrag();
     }
