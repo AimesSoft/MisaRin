@@ -70,7 +70,7 @@ extension _PaintingBoardInteractionSmudgeExtension
       return;
     }
     final double radius = _resolveSmudgeRadius();
-    final double spacing = math.max(0.5, radius * 0.07);
+    final double spacing = math.max(1.5, radius * 0.14);
     final double available = _smudgeResidual + distance;
     if (available < spacing) {
       _smudgeResidual = available;
