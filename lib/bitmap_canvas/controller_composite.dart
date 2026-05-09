@@ -29,8 +29,8 @@ void _compositeScheduleRefresh(BitmapCanvasController controller) {
       controller._webCompositeTimer?.cancel();
       controller._webCompositeTimer = Timer(
         Duration(
-          milliseconds: BitmapCanvasController._kWebCompositeMinIntervalMs -
-              elapsed,
+          milliseconds:
+              BitmapCanvasController._kWebCompositeMinIntervalMs - elapsed,
         ),
         () {
           controller._refreshScheduled = false;
@@ -55,7 +55,9 @@ void _compositeScheduleRefresh(BitmapCanvasController controller) {
     controller._notify();
     return;
   }
-  scheduler.scheduleFrameCallback((_) => _compositeProcessScheduled(controller));
+  scheduler.scheduleFrameCallback(
+    (_) => _compositeProcessScheduled(controller),
+  );
   scheduler.ensureVisualUpdate();
   controller._notify();
 }
@@ -91,10 +93,7 @@ Future<void> _compositeProcessPending(BitmapCanvasController controller) async {
       regions: work.regions,
     );
     final int compositeDone = sw.elapsedMilliseconds;
-    final String backendLabel =
-        controller._rasterBackend.backend == CanvasBackend.rustWgpu
-            ? 'rustWgpu'
-            : 'rustCpu';
+    const String backendLabel = 'rustWgpu';
     BackendCanvasTimeline.mark(
       'composite: $backendLabel composite took ${compositeDone - startComposite}ms',
     );
@@ -102,7 +101,7 @@ Future<void> _compositeProcessPending(BitmapCanvasController controller) async {
     final List<RasterIntRect> dirtyRegions = work.requiresFullSurface
         ? controller._rasterBackend.fullSurfaceTileRects()
         : (work.regions ?? const <RasterIntRect>[]);
-    
+
     final int startTiles = sw.elapsedMilliseconds;
     final CanvasFrame? frame = await controller._tileCache.updateTiles(
       backend: controller._rasterBackend,
@@ -110,19 +109,22 @@ Future<void> _compositeProcessPending(BitmapCanvasController controller) async {
       fullSurface: work.requiresFullSurface,
     );
     final int tilesDone = sw.elapsedMilliseconds;
-    BackendCanvasTimeline.mark('composite: Tile update took ${tilesDone - startTiles}ms (count: ${dirtyRegions.length})');
+    BackendCanvasTimeline.mark(
+      'composite: Tile update took ${tilesDone - startTiles}ms (count: ${dirtyRegions.length})',
+    );
 
     if (frame != null) {
       controller._currentFrame = frame;
     }
-    
-    if (controller._nextFrameCompleter != null && !controller._nextFrameCompleter!.isCompleted) {
+
+    if (controller._nextFrameCompleter != null &&
+        !controller._nextFrameCompleter!.isCompleted) {
       controller._nextFrameCompleter!.complete();
       controller._nextFrameCompleter = null;
     }
 
-    final List<ui.Image> pendingDisposals =
-        controller._tileCache.takePendingDisposals();
+    final List<ui.Image> pendingDisposals = controller._tileCache
+        .takePendingDisposals();
     if (pendingDisposals.isNotEmpty) {
       controller._pendingTileDisposals.addAll(pendingDisposals);
       controller._scheduleTileImageDisposal();
@@ -133,7 +135,9 @@ Future<void> _compositeProcessPending(BitmapCanvasController controller) async {
     }
     controller._rasterBackend.completeCompositePass();
     controller._notify();
-    BackendCanvasTimeline.mark('composite: Total pass took ${sw.elapsedMilliseconds}ms');
+    BackendCanvasTimeline.mark(
+      'composite: Total pass took ${sw.elapsedMilliseconds}ms',
+    );
   } finally {
     controller._compositeProcessing = false;
     if (controller._rasterBackend.isCompositeDirty &&

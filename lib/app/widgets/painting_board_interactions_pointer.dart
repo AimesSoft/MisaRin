@@ -91,34 +91,16 @@ extension _PaintingBoardInteractionPointerImpl
     if (!isPointInsideSelection(start)) {
       return true;
     }
-    final bool useBackendCanvas =
-        _backend.isSupported && _brushShapeSupportsBackend;
-    if (useBackendCanvas) {
-      if (!_canStartBackendStroke()) {
-        _showBackendCanvasMessage('画布后端尚未准备好。');
-        return true;
-      }
-      _focusNode.requestFocus();
-      _beginBackendStroke(downEvent);
-      return false;
+    if (!_backend.isSupported || !_brushShapeSupportsBackend) {
+      return true;
     }
-    if (!_canStartBitmapStroke()) {
+    if (!_canStartBackendStroke()) {
+      _showBackendCanvasMessage('画布后端尚未准备好。');
       return true;
     }
     _focusNode.requestFocus();
-    _enqueueCpuStrokeEvent(
-      type: _CpuStrokeEventType.down,
-      boardLocal: start,
-      timestamp: startTimestamp,
-      event: downEvent,
-    );
-    _enqueueCpuStrokeEvent(
-      type: _CpuStrokeEventType.move,
-      boardLocal: _toBoardLocal(event.localPosition),
-      timestamp: event.timeStamp,
-      event: event,
-    );
-    return true;
+    _beginBackendStroke(downEvent);
+    return false;
   }
 
   Future<void> _handlePointerDownImpl(PointerDownEvent event) async {
@@ -284,68 +266,9 @@ extension _PaintingBoardInteractionPointerImpl
       case CanvasTool.pen:
       case CanvasTool.eraser:
         _focusNode.requestFocus();
-        final bool useBackendCanvas =
-            _backend.isSupported && _brushShapeSupportsBackend;
-        if (!useBackendCanvas) {
-          if (!_canStartBitmapStroke()) {
-            _debugPointerInput('down ignored: cannot start bitmap stroke');
-            return;
-          }
-          if (!isPointInsideSelection(boardLocal)) {
-            _debugPointerInput('down ignored: outside selection');
-            return;
-          }
-          if (shiftPressed) {
-            final Offset? anchor = _lastBrushLineAnchor;
-            if (anchor != null) {
-              final bool? snapToPixelOverride = _brushSnapToPixel
-                  ? false
-                  : null;
-              if (_useCpuStrokeQueue) {
-                _enqueueCpuStrokeEvent(
-                  type: _CpuStrokeEventType.down,
-                  boardLocal: anchor,
-                  timestamp: event.timeStamp,
-                  event: event,
-                  snapToPixelOverride: snapToPixelOverride,
-                );
-                _enqueueCpuStrokeEvent(
-                  type: _CpuStrokeEventType.move,
-                  boardLocal: boardLocal,
-                  timestamp: event.timeStamp,
-                  event: event,
-                );
-                _enqueueCpuStrokeEvent(
-                  type: _CpuStrokeEventType.up,
-                  boardLocal: boardLocal,
-                  timestamp: event.timeStamp,
-                  event: event,
-                );
-                return;
-              }
-              await _startStroke(
-                anchor,
-                event.timeStamp,
-                event,
-                snapToPixelOverride: snapToPixelOverride,
-              );
-              _appendPoint(boardLocal, event.timeStamp, event);
-              _finishStroke(event.timeStamp);
-              return;
-            }
-          }
-          if (_useCpuStrokeQueue) {
-            _enqueueCpuStrokeEvent(
-              type: _CpuStrokeEventType.down,
-              boardLocal: boardLocal,
-              timestamp: event.timeStamp,
-              event: event,
-            );
-            _debugPointerInput('down queued: cpu stroke');
-            return;
-          }
-          await _startStroke(boardLocal, event.timeStamp, event);
-          _debugPointerInput('down handled: cpu stroke start');
+        if (!_backend.isSupported || !_brushShapeSupportsBackend) {
+          _showBackendCanvasMessage('画布后端不可用。');
+          _debugPointerInput('down ignored: backend unavailable');
           return;
         }
         if (!_canStartBackendStroke()) {
@@ -607,63 +530,7 @@ extension _PaintingBoardInteractionPointerImpl
           }
           break;
         }
-        if (_useCpuStrokeQueue) {
-          final dynamic dyn = event;
-          bool enqueuedCpuCoalesced = false;
-          try {
-            final List<dynamic>? coalesced =
-                dyn.coalescedEvents as List<dynamic>?;
-            if (coalesced != null && coalesced.isNotEmpty) {
-              for (final dynamic e in coalesced) {
-                if (e is PointerEvent) {
-                  if (!e.down && !_isDrawing && _cpuStrokeQueue.isEmpty) {
-                    continue;
-                  }
-                  final Offset boardLocal = _toBoardLocal(e.localPosition);
-                  _enqueueCpuStrokeEvent(
-                    type: _CpuStrokeEventType.move,
-                    boardLocal: boardLocal,
-                    timestamp: e.timeStamp,
-                    event: e,
-                  );
-                }
-              }
-              enqueuedCpuCoalesced = true;
-            }
-          } catch (_) {}
-          if (!enqueuedCpuCoalesced &&
-              (event.down || _isDrawing || _cpuStrokeQueue.isNotEmpty)) {
-            final Offset boardLocal = _toBoardLocal(event.localPosition);
-            _enqueueCpuStrokeEvent(
-              type: _CpuStrokeEventType.move,
-              boardLocal: boardLocal,
-              timestamp: event.timeStamp,
-              event: event,
-            );
-          }
-          if (predictedEvents.isNotEmpty &&
-              (event.down || _isDrawing || _cpuStrokeQueue.isNotEmpty)) {
-            _updateBackendPredictedOverlay(
-              event,
-              predictedEvents,
-              requireBackendPointer: false,
-              anchorOverride: _toBoardLocal(event.localPosition),
-              pressureOverride: _stylusPressureValue(event),
-            );
-            _debugRecordPredictedOverlaySample(
-              predictedPoints: predictedEvents.length,
-              backendStrokeActive: false,
-            );
-          } else {
-            _clearBackendPredictedOverlay();
-          }
-          break;
-        }
         _clearBackendPredictedOverlay();
-        if (_isDrawing) {
-          final Offset boardLocal = _toBoardLocal(event.localPosition);
-          _appendPoint(boardLocal, event.timeStamp, event);
-        }
         break;
       case CanvasTool.perspectivePen:
         if (_perspectivePenAnchor != null) {
@@ -750,35 +617,16 @@ extension _PaintingBoardInteractionPointerImpl
         if (!isPointInsideSelection(start)) {
           return;
         }
-        final bool useBackendCanvas =
-            _backend.isSupported && _brushShapeSupportsBackend;
+        if (!_backend.isSupported || !_brushShapeSupportsBackend) {
+          return;
+        }
         _focusNode.requestFocus();
-        if (useBackendCanvas) {
-          if (!_canStartBackendStroke()) {
-            _showBackendCanvasMessage('画布后端尚未准备好。');
-            return;
-          }
-          _beginBackendStroke(downEvent);
-          _endBackendStroke(event);
+        if (!_canStartBackendStroke()) {
+          _showBackendCanvasMessage('画布后端尚未准备好。');
           return;
         }
-        if (_useCpuStrokeQueue) {
-          _enqueueCpuStrokeEvent(
-            type: _CpuStrokeEventType.down,
-            boardLocal: start,
-            timestamp: startTimestamp,
-            event: downEvent,
-          );
-          _enqueueCpuStrokeEvent(
-            type: _CpuStrokeEventType.up,
-            boardLocal: start,
-            timestamp: event.timeStamp,
-            event: event,
-          );
-          return;
-        }
-        await _startStroke(start, startTimestamp, downEvent);
-        _finishStroke(event.timeStamp);
+        _beginBackendStroke(downEvent);
+        _endBackendStroke(event);
         return;
       }
     }
@@ -799,32 +647,6 @@ extension _PaintingBoardInteractionPointerImpl
         if (_backendActivePointer == event.pointer) {
           _endBackendStroke(event);
           break;
-        }
-        if (_useCpuStrokeQueue) {
-          final Offset boardLocal = _toBoardLocal(event.localPosition);
-          _enqueueCpuStrokeEvent(
-            type: _CpuStrokeEventType.up,
-            boardLocal: boardLocal,
-            timestamp: event.timeStamp,
-            event: event,
-          );
-          break;
-        }
-        if (_isDrawing) {
-          final Offset boardLocal = _toBoardLocal(event.localPosition);
-          final double? releasePressure = _stylusPressureValue(event);
-          if (_activeStrokeUsesStylus) {
-            _appendStylusReleaseSample(
-              boardLocal,
-              event.timeStamp,
-              releasePressure,
-            );
-          }
-          if (_activeStrokeUsesStylus) {
-            _finishStroke();
-          } else {
-            _finishStroke(event.timeStamp);
-          }
         }
         break;
       case CanvasTool.layerAdjust:
@@ -908,19 +730,6 @@ extension _PaintingBoardInteractionPointerImpl
         if (_backendActivePointer == event.pointer) {
           _endBackendStroke(event);
           break;
-        }
-        if (_useCpuStrokeQueue) {
-          final Offset boardLocal = _toBoardLocal(event.localPosition);
-          _enqueueCpuStrokeEvent(
-            type: _CpuStrokeEventType.cancel,
-            boardLocal: boardLocal,
-            timestamp: event.timeStamp,
-            event: event,
-          );
-          break;
-        }
-        if (_isDrawing) {
-          _finishStroke(event.timeStamp);
         }
         break;
       case CanvasTool.layerAdjust:
@@ -1208,7 +1017,6 @@ extension _PaintingBoardInteractionPointerImpl
       );
     }
     if (_isDrawing) {
-      _controller.cancelStroke();
       setState(() {
         _isDrawing = false;
         if (_brushRandomRotationEnabled) {
@@ -1226,9 +1034,6 @@ extension _PaintingBoardInteractionPointerImpl
       _lastStrokeBoardPosition = null;
       _lastStylusDirection = null;
       _strokeStabilizer.reset();
-    }
-    if (_cpuStrokeQueue.isNotEmpty) {
-      _cpuStrokeQueue.clear();
     }
     if (_isSpraying) {
       _finishSprayStroke();

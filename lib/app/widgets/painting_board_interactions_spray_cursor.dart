@@ -296,9 +296,7 @@ extension _PaintingBoardInteractionSprayCursorExtension
     final bool erase = _isBrushEraserEnabled;
     final Color color =
         _activeSprayColor ?? (erase ? const Color(0xFFFFFFFF) : _primaryColor);
-    if (_backendSprayActive &&
-        _backend.supportsSpray &&
-        !engine.sampleInputColor) {
+    if (_backendSprayActive && _backend.supportsSpray) {
       final Size engineSize = _backendCanvasEngineSize ?? _canvasSize;
       double sx = 1.0;
       double sy = 1.0;
@@ -346,48 +344,6 @@ extension _PaintingBoardInteractionSprayCursorExtension
       }
       return;
     }
-    if (!engine.sampleInputColor) {
-      final List<double> packed = <double>[];
-      engine.forEachParticle(
-        center: center,
-        particleBudget: count,
-        pressure: _sprayCurrentPressure,
-        baseColor: color,
-        onParticle: (position, particleRadius, opacityScale, baseColor) {
-          if (opacityScale <= 0.0) {
-            return;
-          }
-          packed.add(position.dx);
-          packed.add(position.dy);
-          packed.add(particleRadius);
-          packed.add(opacityScale);
-        },
-      );
-      final int pointCount = packed.length ~/ 4;
-      if (pointCount > 0 &&
-          _controller.drawSprayPoints(
-            points: Float32List.fromList(packed),
-            pointCount: pointCount,
-            color: color,
-            brushShape: BrushShape.circle,
-            antialiasLevel: _penAntialiasLevel,
-            erase: erase,
-            softness: 0.0,
-            accumulate: true,
-          )) {
-        _markDirty();
-        return;
-      }
-    }
-    engine.paintParticles(
-      center: center,
-      particleBudget: count,
-      pressure: _sprayCurrentPressure,
-      baseColor: color,
-      erase: erase,
-      antialiasLevel: _penAntialiasLevel,
-    );
-    _markDirty();
   }
 
   void _extendSoftSprayStroke(Offset boardLocal) {
@@ -506,137 +462,12 @@ extension _PaintingBoardInteractionSprayCursorExtension
       }
       return;
     }
-    if (positions.isNotEmpty) {
-      final int pointCount = positions.length;
-      final Float32List packed = Float32List(pointCount * 4);
-      int offset = 0;
-      for (final Offset position in positions) {
-        packed[offset] = position.dx;
-        packed[offset + 1] = position.dy;
-        packed[offset + 2] = radius;
-        packed[offset + 3] = opacityScale;
-        offset += 4;
-      }
-      if (_controller.drawSprayPoints(
-        points: packed,
-        pointCount: pointCount,
-        color: baseColor,
-        brushShape: BrushShape.circle,
-        antialiasLevel: 3,
-        erase: erase,
-        softness: 1.0,
-        accumulate: true,
-      )) {
-        return;
-      }
-    }
-    final Color color = baseColor.withOpacity(opacityScale);
-    for (final Offset position in positions) {
-      _controller.drawBrushStamp(
-        center: position,
-        radius: radius,
-        color: color,
-        brushShape: BrushShape.circle,
-        antialiasLevel: 3,
-        erase: erase,
-        softness: 1.0,
-      );
-    }
+    return;
   }
 
   double _softSpraySpacingForRadius(double radius) {
     final double scaled = radius * 0.28;
     return scaled.clamp(0.45, math.max(0.45, radius * 0.55));
-  }
-
-  void _emitReleaseSamples({
-    required Offset anchor,
-    Offset? direction,
-    required double timestampMillis,
-    double? initialDeltaMillis,
-    required double pressure,
-    required bool enableSharpPeak,
-  }) {
-    const int kTailSteps = 5;
-    const double kTailDeltaMs = 6.0;
-    final double clampedPressure = pressure.clamp(0.0, 1.0);
-
-    final Offset dir = (direction != null && direction.distanceSquared > 1e-5)
-        ? (direction / direction.distance)
-        : Offset.zero;
-    final double strokeWidth = _activeTool == CanvasTool.eraser
-        ? _eraserStrokeWidth
-        : _penStrokeWidth;
-    final double stepDistance = math.max(strokeWidth * 0.35, 3.0);
-    Offset currentPoint = anchor;
-
-    setState(() {
-      _controller.extendStroke(
-        currentPoint,
-        deltaTimeMillis: initialDeltaMillis,
-        timestampMillis: timestampMillis,
-        pressure: clampedPressure,
-        pressureMin: _activeStylusPressureMin,
-        pressureMax: _activeStylusPressureMax,
-      );
-
-      if (!enableSharpPeak) {
-        return;
-      }
-
-      double nextTimestamp = timestampMillis + (initialDeltaMillis ?? 0.0);
-      if (clampedPressure <= 0.0001) {
-        nextTimestamp += kTailDeltaMs;
-        if (dir != Offset.zero) {
-          currentPoint = currentPoint + dir * stepDistance;
-        }
-        _controller.extendStroke(
-          currentPoint,
-          deltaTimeMillis: kTailDeltaMs,
-          timestampMillis: nextTimestamp,
-          pressure: 0.0,
-          pressureMin: _activeStylusPressureMin,
-          pressureMax: _activeStylusPressureMax,
-        );
-        return;
-      }
-
-      for (int i = 0; i < kTailSteps; i++) {
-        final double t = (i + 1) / (kTailSteps + 1);
-        final double virtualPressure = (clampedPressure * (1.0 - t)).clamp(
-          0.0,
-          1.0,
-        );
-        if (virtualPressure <= 0.0001) {
-          break;
-        }
-        nextTimestamp += kTailDeltaMs;
-        if (dir != Offset.zero) {
-          currentPoint = currentPoint + dir * stepDistance;
-        }
-        _controller.extendStroke(
-          currentPoint,
-          deltaTimeMillis: kTailDeltaMs,
-          timestampMillis: nextTimestamp,
-          pressure: virtualPressure,
-          pressureMin: _activeStylusPressureMin,
-          pressureMax: _activeStylusPressureMax,
-        );
-      }
-
-      nextTimestamp += kTailDeltaMs;
-      if (dir != Offset.zero) {
-        currentPoint = currentPoint + dir * stepDistance;
-      }
-      _controller.extendStroke(
-        currentPoint,
-        deltaTimeMillis: kTailDeltaMs,
-        timestampMillis: nextTimestamp,
-        pressure: 0.0,
-        pressureMin: _activeStylusPressureMin,
-        pressureMax: _activeStylusPressureMax,
-      );
-    });
   }
 
   Offset _sanitizeStrokePosition(

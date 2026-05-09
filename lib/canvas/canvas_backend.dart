@@ -1,7 +1,4 @@
-enum CanvasBackend {
-  rustWgpu,
-  rustCpu,
-}
+enum CanvasBackend { rustWgpu }
 
 enum CanvasFilterType {
   hueSaturation,
@@ -52,9 +49,6 @@ extension CanvasBackendId on CanvasBackend {
   int get id => index;
 
   static CanvasBackend fromId(int id) {
-    if (id == CanvasBackend.rustCpu.index) {
-      return CanvasBackend.rustCpu;
-    }
     return CanvasBackend.rustWgpu;
   }
 }

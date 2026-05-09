@@ -331,6 +331,9 @@ class PaintingBoardState extends _PaintingBoardBase
     if (!isBoardReady) {
       throw StateError('Board not ready.');
     }
+    if (!_backend.supportsInputQueue || _backendCanvasEngineHandle == null) {
+      throw StateError('Perf stress test requires the Rust/WGPU canvas backend.');
+    }
 
     _perfStressCancelRequested = false;
     _perfStressRunning = true;
@@ -384,20 +387,7 @@ class PaintingBoardState extends _PaintingBoardBase
 
     try {
       _controller.setActiveLayer(editableLayers.first);
-      _controller.beginStroke(
-        Offset(cx, cy),
-        color: const Color(0xFF000000),
-        radius: 3.0,
-        simulatePressure: false,
-        useDevicePressure: false,
-        profile: StrokePressureProfile.auto,
-        timestampMillis: startTimestampMs,
-        antialiasLevel: 0,
-        brushShape: BrushShape.circle,
-        screentoneShape: _brushScreentoneShape,
-        randomRotation: false,
-        erase: false,
-      );
+      _backend.setBackendActiveLayerById(editableLayers.first);
 
       double backlog = 0.0;
       const int maxPointsPerFrame = 96;
@@ -434,18 +424,15 @@ class PaintingBoardState extends _PaintingBoardBase
           backlog = 0.0;
         }
 
-        final int layerIndex =
-            (elapsed.inMilliseconds ~/ 750) % editableLayers.length;
-        final String targetLayerId = editableLayers[layerIndex];
-        if (_controller.activeLayerId != targetLayerId) {
-          _controller.setActiveLayer(targetLayerId);
-        }
-
         final int batchStartMicros = DateTime.now().microsecondsSinceEpoch;
-        _perfStressPendingBatchMicros.add(batchStartMicros);
+        final _BackendPointBuffer buffer = _BackendPointBuffer(
+          initialCapacityPoints: math.max(2, pointsThisFrame),
+        );
 
         final double elapsedSeconds = elapsed.inMicroseconds / 1e6;
         final double perPointDt = dtSeconds / pointsThisFrame;
+        Offset? lastEnginePoint;
+        int? lastTimestampUs;
         for (int i = 0; i < pointsThisFrame; i++) {
           final double t = elapsedSeconds + (i * perPointDt);
           double x =
@@ -460,12 +447,45 @@ class PaintingBoardState extends _PaintingBoardBase
           y = y.clamp(0.0, h);
           final double timestampMs =
               startTimestampMs + (elapsed.inMicroseconds / 1000.0);
-          _controller.extendStroke(
-            Offset(x, y),
-            deltaTimeMillis: perPointDt * 1000.0,
-            timestampMillis: timestampMs,
+          final Offset enginePoint = _backendToEngineSpace(Offset(x, y));
+          final int timestampUs = (timestampMs * 1000.0).round();
+          lastEnginePoint = enginePoint;
+          lastTimestampUs = timestampUs;
+          final int flags = i == 0
+              ? _kBackendPointFlagDown
+              : (i == pointsThisFrame - 1
+                    ? _kBackendPointFlagUp
+                    : _kBackendPointFlagMove);
+          buffer.add(
+            x: enginePoint.dx,
+            y: enginePoint.dy,
+            pressure: 1.0,
+            timestampUs: timestampUs,
+            flags: flags,
+            pointerId: 0,
           );
           pointsGenerated++;
+        }
+        if (pointsThisFrame == 1 && lastEnginePoint != null) {
+          buffer.add(
+            x: lastEnginePoint.dx,
+            y: lastEnginePoint.dy,
+            pressure: 1.0,
+            timestampUs: (lastTimestampUs ?? 0) + 1000,
+            flags: _kBackendPointFlagUp,
+            pointerId: 0,
+          );
+        }
+        final bool pushed = _backend.pushPointsPacked(
+          bytes: buffer.bytes,
+          pointCount: buffer.length,
+        );
+        if (pushed) {
+          final int nowMicros = DateTime.now().microsecondsSinceEpoch;
+          _perfStressLatencySamplesMs.add(
+            (nowMicros - batchStartMicros) / 1000.0,
+          );
+          _markDirty();
         }
       });
       _perfStressTicker!.start();
@@ -478,9 +498,6 @@ class PaintingBoardState extends _PaintingBoardBase
         actualDuration = stopwatch.elapsed;
       }
       stopTicker();
-      try {
-        _controller.endStroke();
-      } catch (_) {}
 
       if (_perfStressTimingsAttached) {
         SchedulerBinding.instance.removeTimingsCallback(_perfStressOnTimings);

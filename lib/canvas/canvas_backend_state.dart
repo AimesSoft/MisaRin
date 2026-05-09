@@ -12,11 +12,11 @@ class CanvasBackendState {
     if (_initialized) {
       return;
     }
-    _backend = backend;
+    _backend = CanvasBackend.rustWgpu;
     _initialized = true;
   }
 
   static CanvasBackend resolveRasterBackend({required bool useBackendCanvas}) {
-    return useBackendCanvas ? CanvasBackend.rustWgpu : CanvasBackend.rustCpu;
+    return CanvasBackend.rustWgpu;
   }
 }

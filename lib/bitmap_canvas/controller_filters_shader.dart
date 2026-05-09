@@ -1,6 +1,6 @@
 part of 'controller.dart';
 
-/// Shader 加速版的图层边缘柔化，失败时回退到 rustCpu。
+/// Shader 加速版的图层边缘柔化；不再回退到 CPU 画布路径。
 Future<bool> _controllerApplyAntialiasToActiveLayer(
   BitmapCanvasController controller,
   int level, {
@@ -11,17 +11,15 @@ Future<bool> _controllerApplyAntialiasToActiveLayer(
     return _canApplyAntialias(controller, clamped);
   }
   if (_shaderAntialiasSupported()) {
-    final bool shaderApplied =
-        await _shaderApplyAntialiasToActiveLayer(controller, clamped);
+    final bool shaderApplied = await _shaderApplyAntialiasToActiveLayer(
+      controller,
+      clamped,
+    );
     if (shaderApplied) {
       return true;
     }
   }
-  return _controllerApplyAntialiasToActiveLayerRustCpu(
-    controller,
-    clamped,
-    previewOnly: previewOnly,
-  );
+  return false;
 }
 
 bool _canApplyAntialias(BitmapCanvasController controller, int level) {
@@ -37,7 +35,9 @@ bool _canApplyAntialias(BitmapCanvasController controller, int level) {
   }
   final List<double>? profile =
       BitmapCanvasController._kAntialiasBlendProfiles[level];
-  if (profile == null || profile.isEmpty || profile.every((double f) => f <= 0)) {
+  if (profile == null ||
+      profile.isEmpty ||
+      profile.every((double f) => f <= 0)) {
     return false;
   }
   final Uint32List pixels = layer.surface.pixels;
@@ -75,7 +75,7 @@ Future<bool> _shaderApplyAntialiasToActiveLayer(
     ui.Image working = initial;
     final List<double> profile =
         BitmapCanvasController._kAntialiasBlendProfiles[level] ??
-            const <double>[];
+        const <double>[];
     for (final double factor in profile) {
       if (factor <= 0) {
         continue;
@@ -108,7 +108,7 @@ Future<bool> _shaderApplyAntialiasToActiveLayer(
     controller._notify();
     return true;
   } on Object catch (error, stack) {
-    debugPrint('Shader antialias failed, falling back to rustCpu: $error\n$stack');
+    debugPrint('Shader antialias failed: $error\n$stack');
     return false;
   }
 }
@@ -145,7 +145,8 @@ Future<ui.Image> _shaderRunAlphaPass(
   int height,
   double blendFactor,
 ) async {
-  final ui.FragmentProgram program = await _ShaderAntialiasPrograms.alphaProgram;
+  final ui.FragmentProgram program =
+      await _ShaderAntialiasPrograms.alphaProgram;
   final ui.FragmentShader shader = program.fragmentShader()
     ..setFloat(0, width.toDouble())
     ..setFloat(1, height.toDouble())
@@ -213,15 +214,11 @@ Future<bool> _shaderWriteBackToLayer(
 }
 
 class _ShaderAntialiasPrograms {
-  static Future<ui.FragmentProgram> get alphaProgram =>
-      _alphaProgram ??= ui.FragmentProgram.fromAsset(
-        'shaders/antialias_alpha.frag',
-      );
+  static Future<ui.FragmentProgram> get alphaProgram => _alphaProgram ??=
+      ui.FragmentProgram.fromAsset('shaders/antialias_alpha.frag');
 
-  static Future<ui.FragmentProgram> get edgeProgram =>
-      _edgeProgram ??= ui.FragmentProgram.fromAsset(
-        'shaders/antialias_edge.frag',
-      );
+  static Future<ui.FragmentProgram> get edgeProgram => _edgeProgram ??=
+      ui.FragmentProgram.fromAsset('shaders/antialias_edge.frag');
 
   static Future<ui.FragmentProgram>? _alphaProgram;
   static Future<ui.FragmentProgram>? _edgeProgram;

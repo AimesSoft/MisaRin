@@ -19,30 +19,27 @@ Future<AppPreferences> _loadAppPreferences() async {
             : _defaultBucketSwallowColorLine;
         final BucketSwallowColorLineMode decodedBucketSwallowColorLineMode =
             version >= 33 && bytes.length >= 49
-                ? _decodeBucketSwallowColorLineMode(bytes[48])
-                : _defaultBucketSwallowColorLineMode;
-        final int decodedBucketFillGap =
-            version >= 34 && bytes.length >= 50
-                ? _clampFillGapValue(bytes[49])
-                : _defaultBucketFillGap;
+            ? _decodeBucketSwallowColorLineMode(bytes[48])
+            : _defaultBucketSwallowColorLineMode;
+        final int decodedBucketFillGap = version >= 34 && bytes.length >= 50
+            ? _clampFillGapValue(bytes[49])
+            : _defaultBucketFillGap;
         final bool decodedBrushRandomRotationEnabled =
             version >= 35 && bytes.length >= 51
-                ? bytes[50] != 0
-                : _defaultBrushRandomRotationEnabled;
+            ? bytes[50] != 0
+            : _defaultBrushRandomRotationEnabled;
         final double decodedStreamlineStrength =
             version >= 38 && bytes.length >= 52
-                ? _decodeStreamlineStrength(bytes[51])
-                : _defaultStreamlineStrength;
+            ? _decodeStreamlineStrength(bytes[51])
+            : _defaultStreamlineStrength;
         final CanvasBackend decodedCanvasBackend =
             version >= 40 && bytes.length >= 53
-                ? _decodeCanvasBackend(bytes[52])
-                : _defaultCanvasBackend;
+            ? _decodeCanvasBackend(bytes[52])
+            : _defaultCanvasBackend;
         final int decodedAutoSaveCleanupThresholdMb =
             version >= 41 && bytes.length >= 63
-                ? _clampAutoSaveCleanupThresholdMb(
-                    bytes[61] | (bytes[62] << 8),
-                  )
-                : _defaultAutoSaveCleanupThresholdMb;
+            ? _clampAutoSaveCleanupThresholdMb(bytes[61] | (bytes[62] << 8))
+            : _defaultAutoSaveCleanupThresholdMb;
         if (version >= 20 && bytes.length >= 26) {
           final bool hasWorkspaceSplitPayload =
               version >= 21 && bytes.length >= 32;
@@ -60,18 +57,18 @@ Future<AppPreferences> _loadAppPreferences() async {
               : _defaultSai2LayerPanelSplit;
           final PenStrokeSliderRange decodedSprayStrokeSliderRange =
               version >= 28 && bytes.length >= 35
-                  ? _decodeOptionalStrokeSliderRange(
-                      bytes[32],
-                      _defaultSprayStrokeSliderRange,
-                    )
-                  : _defaultSprayStrokeSliderRange;
+              ? _decodeOptionalStrokeSliderRange(
+                  bytes[32],
+                  _defaultSprayStrokeSliderRange,
+                )
+              : _defaultSprayStrokeSliderRange;
           final PenStrokeSliderRange decodedEraserStrokeSliderRange =
               version >= 28 && bytes.length >= 35
-                  ? _decodeOptionalStrokeSliderRange(
-                      bytes[33],
-                      _defaultEraserStrokeSliderRange,
-                    )
-                  : _defaultEraserStrokeSliderRange;
+              ? _decodeOptionalStrokeSliderRange(
+                  bytes[33],
+                  _defaultEraserStrokeSliderRange,
+                )
+              : _defaultEraserStrokeSliderRange;
           final bool decodedShapeToolFillEnabled =
               version >= 23 &&
                   ((version >= 28 && bytes.length >= 35) ||
@@ -98,14 +95,13 @@ Future<AppPreferences> _loadAppPreferences() async {
             final Color decodedPrimaryColor = Color(primaryColorValue);
             final int rawHistory = bytes[3] | (bytes[4] << 8);
             final int rawStroke = bytes[6] | (bytes[7] << 8);
-            final double decodedPenStrokeWidth =
-                _decodePenStrokeWidthV10(rawStroke);
+            final double decodedPenStrokeWidth = _decodePenStrokeWidthV10(
+              rawStroke,
+            );
             final double decodedEraserStrokeWidth =
                 version >= 42 && bytes.length >= 65
-                    ? _decodeEraserStrokeWidth(
-                        bytes[63] | (bytes[64] << 8),
-                      )
-                    : _clampEraserStrokeWidth(decodedPenStrokeWidth);
+                ? _decodeEraserStrokeWidth(bytes[63] | (bytes[64] << 8))
+                : _clampEraserStrokeWidth(decodedPenStrokeWidth);
             final Locale? decodedLocaleOverride =
                 version >= 30 && bytes.length >= 45
                 ? _decodeLocaleOverride(bytes[44])
@@ -224,10 +220,12 @@ Future<AppPreferences> _loadAppPreferences() async {
             final Color decodedPrimaryColor = Color(primaryColorValue);
             final int rawHistory = bytes[3] | (bytes[4] << 8);
             final int rawStroke = bytes[6] | (bytes[7] << 8);
-            final double decodedPenStrokeWidth =
-                _decodePenStrokeWidthV10(rawStroke);
-            final double decodedEraserStrokeWidth =
-                _clampEraserStrokeWidth(decodedPenStrokeWidth);
+            final double decodedPenStrokeWidth = _decodePenStrokeWidthV10(
+              rawStroke,
+            );
+            final double decodedEraserStrokeWidth = _clampEraserStrokeWidth(
+              decodedPenStrokeWidth,
+            );
             AppPreferences._instance = AppPreferences._(
               bucketSampleAllLayers: bytes[1] != 0,
               bucketContiguous: bytes[2] != 0,
@@ -987,11 +985,7 @@ Future<AppPreferences> _loadAppPreferences() async {
 
 AppPreferences _finalizeLoadedPreferences() {
   final AppPreferences prefs = AppPreferences._instance!;
-  if (kIsWeb) {
-    prefs.canvasBackend = CanvasBackend.rustCpu;
-  } else {
-    prefs.canvasBackend = CanvasBackend.rustWgpu;
-  }
+  prefs.canvasBackend = CanvasBackend.rustWgpu;
   CanvasBackendState.initialize(prefs.canvasBackend);
   AppPreferences.fpsOverlayEnabledNotifier.value = prefs.showFpsOverlay;
   AppPreferences.pixelGridVisibleNotifier.value = prefs.pixelGridVisible;

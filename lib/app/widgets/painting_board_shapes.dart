@@ -128,71 +128,44 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
         _backend.supportsInputQueue && _brushShapeSupportsBackend;
     final bool requiresCpuFill =
         _shapeFillEnabled && _shapeToolVariant != ShapeToolVariant.line;
-    if (canUseBackendStroke && !requiresCpuFill) {
-      if (_shapeRasterPreviewSnapshot != null) {
-        _clearShapePreviewOverlay();
-      }
-      // Keep segments short to avoid sparse stamps on long edges.
-      final double maxSegmentLength =
-          math.min(6.0, math.max(2.0, _penStrokeWidth * 0.5));
-      final List<Offset> effectivePoints = _densifyStrokePolyline(
-        strokePoints,
-        maxSegmentLength: maxSegmentLength,
-      );
-      final int? handle = _backendCanvasEngineHandle;
-      if (handle != null) {
-        // Disable smoothing/streamline for crisp geometric shapes.
-        _applyBackendBrushOverride(
-          handle,
-          streamlineStrengthOverride: 0.0,
-          smoothingModeOverride: 0,
-          stabilizerStrengthOverride: 0.0,
-        );
-      }
-      final bool backendOk = _drawBackendStrokeFromPoints(
-        points: effectivePoints,
-        initialTimestampMillis: 0.0,
-        simulatePressure: _simulatePenPressure,
-      );
-      if (handle != null) {
-        _applyBackendBrushOverride(handle);
-      }
-      if (backendOk) {
-        _disposeShapeRasterPreview(
-          restoreLayer: false,
-          clearPreviewImage: true,
-        );
-        setState(_resetShapeDrawingState);
-        return;
-      }
-    }
-
-    final _CanvasRasterEditSession edit = await _backend.beginRasterEdit(
-      captureUndoOnFallback: !_shapeUndoCapturedForPreview,
-      warnIfFailed: true,
-    );
-    if (!edit.ok) {
+    if (!canUseBackendStroke || requiresCpuFill) {
       _disposeShapeRasterPreview(restoreLayer: true);
+      _showBackendCanvasMessage('图形工具需要画布后端支持。');
       setState(_resetShapeDrawingState);
       return;
     }
-    const double initialTimestamp = 0.0;
-    _clearShapePreviewOverlay();
-    _controller.runSynchronousRasterization(() {
-      _paintShapeStroke(strokePoints, initialTimestamp);
-    });
-    _disposeShapeRasterPreview(
-      restoreLayer: false,
-      clearPreviewImage: !edit.useBackend,
-    );
-    if (edit.useBackend) {
-      await edit.commit(
-        waitForPending: true,
-        warnIfFailed: true,
-      );
-      _clearShapePreviewRasterImage(notify: false);
+    if (_shapeRasterPreviewSnapshot != null) {
+      _clearShapePreviewOverlay();
     }
-
+    // Keep segments short to avoid sparse stamps on long edges.
+    final double maxSegmentLength =
+        math.min(6.0, math.max(2.0, _penStrokeWidth * 0.5));
+    final List<Offset> effectivePoints = _densifyStrokePolyline(
+      strokePoints,
+      maxSegmentLength: maxSegmentLength,
+    );
+    final int? handle = _backendCanvasEngineHandle;
+    if (handle != null) {
+      // Disable smoothing/streamline for crisp geometric shapes.
+      _applyBackendBrushOverride(
+        handle,
+        streamlineStrengthOverride: 0.0,
+        smoothingModeOverride: 0,
+        stabilizerStrengthOverride: 0.0,
+      );
+    }
+    final bool backendOk = _drawBackendStrokeFromPoints(
+      points: effectivePoints,
+      initialTimestampMillis: 0.0,
+      simulatePressure: _simulatePenPressure,
+    );
+    if (handle != null) {
+      _applyBackendBrushOverride(handle);
+    }
+    _disposeShapeRasterPreview(restoreLayer: !backendOk, clearPreviewImage: true);
+    if (!backendOk) {
+      _showBackendCanvasMessage('画布后端尚未准备好。');
+    }
     setState(_resetShapeDrawingState);
   }
 
@@ -432,9 +405,6 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
       return;
     }
     _shapePreviewDirtyRect = dirty;
-    _controller.runSynchronousRasterization(() {
-      _paintShapeStroke(strokePoints, 0.0);
-    });
     if (restoredRegion != null) {
       _controller.markLayerRegionDirty(snapshot.id, restoredRegion);
     }
@@ -531,118 +501,6 @@ mixin _PaintingBoardShapeMixin on _PaintingBoardBase {
     if (notify && hadImage && mounted) {
       setState(() {});
     }
-  }
-
-  void _paintShapeStroke(List<Offset> strokePoints, double initialTimestamp) {
-    final bool simulatePressure = _simulatePenPressure;
-    final List<Offset> effectivePoints = simulatePressure
-        ? _densifyStrokePolyline(strokePoints)
-        : strokePoints;
-    if (effectivePoints.length < 2) {
-      return;
-    }
-    final Offset strokeStart = effectivePoints.first;
-    final bool erase = _isBrushEraserEnabled;
-    final Color strokeColor = erase ? const Color(0xFFFFFFFF) : _primaryColor;
-    if (_shapeFillEnabled && _shapeToolVariant != ShapeToolVariant.line) {
-      _paintShapeFill(strokePoints, strokeColor, erase);
-    }
-    _controller.beginStroke(
-      strokeStart,
-      color: strokeColor,
-      radius: _penStrokeWidth / 2,
-      simulatePressure: simulatePressure,
-      profile: _penPressureProfile,
-      timestampMillis: initialTimestamp,
-      antialiasLevel: _penAntialiasLevel,
-      brushShape: _brushShape,
-      randomRotation: _brushRandomRotationEnabled,
-      smoothRotation: _brushSmoothRotationEnabled,
-      rotationSeed: _brushRandomRotationPreviewSeed,
-      spacing: _brushSpacing,
-      hardness: _brushHardness,
-      flow: _brushFlow,
-      scatter: _brushScatter,
-      rotationJitter: _brushRotationJitter,
-      snapToPixel: _brushSnapToPixel,
-      screentoneEnabled: _brushScreentoneEnabled,
-      screentoneSpacing: _brushScreentoneSpacing,
-      screentoneDotSize: _brushScreentoneDotSize,
-      screentoneRotation: _brushScreentoneRotation,
-      screentoneSoftness: _brushScreentoneSoftness,
-      screentoneShape: _brushScreentoneShape,
-      erase: erase,
-    );
-    if (simulatePressure) {
-      final List<Offset> samplePoints = effectivePoints.length > 1
-          ? effectivePoints.sublist(1)
-          : const <Offset>[];
-      final List<_SyntheticStrokeSample> samples = _buildSyntheticStrokeSamples(
-        samplePoints,
-        strokeStart,
-      );
-      final double totalDistance = _syntheticStrokeTotalDistance(samples);
-      _simulateStrokeWithSyntheticTimeline(
-        samples,
-        totalDistance: totalDistance,
-        initialTimestamp: initialTimestamp,
-      );
-    } else {
-      for (int i = 1; i < effectivePoints.length; i++) {
-        _controller.extendStroke(effectivePoints[i]);
-      }
-    }
-    _controller.endStroke();
-    if (_brushRandomRotationEnabled) {
-      _brushRandomRotationPreviewSeed = _brushRotationRandom.nextInt(1 << 31);
-    }
-    _markDirty();
-  }
-
-  void _paintShapeFill(
-    List<Offset> strokePoints,
-    Color strokeColor,
-    bool erase,
-  ) {
-    if (strokePoints.length < 3) {
-      return;
-    }
-    final List<Offset> polygon = _buildShapeFillPolygon(strokePoints);
-    if (polygon.length < 3) {
-      return;
-    }
-    void drawFill() {
-      _controller.drawFilledPolygon(
-        points: polygon,
-        color: strokeColor,
-        antialiasLevel: _penAntialiasLevel,
-        erase: erase,
-      );
-    }
-    drawFill();
-  }
-
-  List<Offset> _buildShapeFillPolygon(List<Offset> strokePoints) {
-    final List<Offset> polygon = <Offset>[];
-    Offset? previous;
-    for (final Offset point in strokePoints) {
-      if (previous != null &&
-          (point.dx - previous.dx).abs() < 1e-4 &&
-          (point.dy - previous.dy).abs() < 1e-4) {
-        continue;
-      }
-      polygon.add(point);
-      previous = point;
-    }
-    if (polygon.length >= 3) {
-      final Offset first = polygon.first;
-      final Offset last = polygon.last;
-      if ((first.dx - last.dx).abs() < 1e-4 &&
-          (first.dy - last.dy).abs() < 1e-4) {
-        polygon.removeLast();
-      }
-    }
-    return polygon;
   }
 
   Rect? _shapePreviewBoundsForPoints(List<Offset> strokePoints) {

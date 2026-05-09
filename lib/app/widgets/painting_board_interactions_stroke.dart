@@ -80,169 +80,6 @@ extension _PaintingBoardInteractionStrokeExtension on _PaintingBoardInteractionM
     return bound;
   }
 
-  Future<void> _startStroke(
-    Offset position,
-    Duration timestamp,
-    PointerEvent? rawEvent, {
-    bool skipUndo = false,
-    bool? snapToPixelOverride,
-  }) async {
-    _resetPerspectiveLock();
-    final Offset start = _sanitizeStrokePosition(
-      position,
-      isInitialSample: true,
-      anchor: _lastStrokeBoardPosition,
-    );
-    _activeStrokeUsesStylus =
-        rawEvent != null && _stylusPressureEnabled && _isStylusEvent(rawEvent);
-    final bool combineStylusAndSimulation =
-        _simulatePenPressure && _activeStrokeUsesStylus;
-    final double stylusBlend = combineStylusAndSimulation
-        ? _kStylusSimulationBlend
-        : 1.0;
-    final double? stylusPressure = _stylusPressureValue(rawEvent);
-    if (_activeStrokeUsesStylus) {
-      _activeStylusPressureMin = _stylusPressureBound(rawEvent?.pressureMin);
-      _activeStylusPressureMax = _stylusPressureBound(rawEvent?.pressureMax);
-    } else {
-      _activeStylusPressureMin = null;
-      _activeStylusPressureMax = null;
-    }
-    final bool erase = _isBrushEraserEnabled;
-    final double strokeWidth =
-        _activeTool == CanvasTool.eraser ? _eraserStrokeWidth : _penStrokeWidth;
-    final Color strokeColor = erase ? const Color(0xFFFFFFFF) : _primaryColor;
-    final bool hollow = _hollowStrokeEnabled && !erase;
-    _lastStrokeBoardPosition = start;
-    _lastStylusDirection = null;
-    _lastStylusPressureValue = stylusPressure?.clamp(0.0, 1.0);
-    _lastStylusPressureValue = stylusPressure?.clamp(0.0, 1.0);
-    if (!skipUndo) {
-      await _pushUndoSnapshot();
-    }
-    StrokeLatencyMonitor.instance.recordStrokeStart();
-    _lastPenSampleTimestamp = timestamp;
-    setState(() {
-      _isDrawing = true;
-      _controller.beginStroke(
-        start,
-        color: strokeColor,
-        radius: strokeWidth / 2,
-        simulatePressure: _simulatePenPressure,
-        useDevicePressure: _activeStrokeUsesStylus,
-        stylusPressureBlend: stylusBlend,
-        pressure: stylusPressure,
-        pressureMin: _activeStylusPressureMin,
-        pressureMax: _activeStylusPressureMax,
-        profile: _penPressureProfile,
-        timestampMillis: timestamp.inMicroseconds / 1000.0,
-        antialiasLevel: _penAntialiasLevel,
-        brushShape: _brushShape,
-        randomRotation: _brushRandomRotationEnabled,
-        smoothRotation: _brushSmoothRotationEnabled,
-        rotationSeed: _brushRandomRotationPreviewSeed,
-        spacing: _brushSpacing,
-        hardness: _brushHardness,
-        flow: _brushFlow,
-        scatter: _brushScatter,
-        rotationJitter: _brushRotationJitter,
-        snapToPixel: snapToPixelOverride ?? _brushSnapToPixel,
-        screentoneEnabled: _brushScreentoneEnabled,
-        screentoneSpacing: _brushScreentoneSpacing,
-        screentoneDotSize: _brushScreentoneDotSize,
-        screentoneRotation: _brushScreentoneRotation,
-        screentoneSoftness: _brushScreentoneSoftness,
-        screentoneShape: _brushScreentoneShape,
-        streamlineStrength: _streamlineStrength,
-        erase: erase,
-        hollow: hollow,
-        hollowRatio: _hollowStrokeRatio,
-        eraseOccludedParts: _hollowStrokeEraseOccludedParts,
-      );
-    });
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      StrokeLatencyMonitor.instance.recordFramePresented();
-    });
-    _markDirty();
-  }
-
-  void _appendPoint(
-    Offset position,
-    Duration timestamp,
-    PointerEvent? rawEvent,
-  ) {
-    if (!_isDrawing) {
-      return;
-    }
-    final double? deltaMillis = _registerPenSample(timestamp);
-    final Offset clamped = _sanitizeStrokePosition(
-      position,
-      anchor: _lastStrokeBoardPosition,
-    );
-    double? stylusPressure = _stylusPressureValue(rawEvent);
-    if (_activeStrokeUsesStylus &&
-        rawEvent != null &&
-        _isStylusEvent(rawEvent)) {
-      final double? candidateMin = _stylusPressureBound(rawEvent.pressureMin);
-      final double? candidateMax = _stylusPressureBound(rawEvent.pressureMax);
-      if (candidateMin != null) {
-        _activeStylusPressureMin = candidateMin;
-      }
-      if (candidateMax != null) {
-        _activeStylusPressureMax = candidateMax;
-      }
-    }
-    final Offset? previousPoint = _lastStrokeBoardPosition;
-    if (previousPoint != null) {
-      final Offset delta = clamped - previousPoint;
-      if (delta.distanceSquared > 1e-5) {
-        _lastStylusDirection = delta / delta.distance;
-      }
-    }
-    _lastStrokeBoardPosition = clamped;
-    if (stylusPressure != null && stylusPressure.isFinite) {
-      _lastStylusPressureValue = stylusPressure.clamp(0.0, 1.0);
-    }
-    setState(() {
-      _controller.extendStroke(
-        clamped,
-        deltaTimeMillis: deltaMillis,
-        timestampMillis: timestamp.inMicroseconds / 1000.0,
-        pressure: stylusPressure,
-        pressureMin: _activeStylusPressureMin,
-        pressureMax: _activeStylusPressureMax,
-      );
-    });
-  }
-
-  void _appendStylusReleaseSample(
-    Offset boardLocal,
-    Duration timestamp,
-    double? pressure,
-  ) {
-    if (!_activeStrokeUsesStylus) {
-      return;
-    }
-    double targetPressure = (pressure ?? 0.0).clamp(0.0, 1.0);
-    const double kMinPressure = 0.0001;
-    if ((targetPressure <= kMinPressure || !targetPressure.isFinite) &&
-        (_lastStylusPressureValue ?? 0.0) > kMinPressure) {
-      targetPressure = _lastStylusPressureValue!.clamp(0.0, 1.0);
-    } else if (targetPressure > kMinPressure) {
-      _lastStylusPressureValue = targetPressure;
-    }
-    final double? deltaMillis = _registerPenSample(timestamp);
-    _emitReleaseSamples(
-      anchor: boardLocal,
-      direction: _lastStylusDirection,
-      timestampMillis: timestamp.inMicroseconds / 1000.0,
-      initialDeltaMillis: deltaMillis,
-      pressure: targetPressure,
-      enableSharpPeak: _autoSharpPeakEnabled,
-    );
-    _lastStylusPressureValue = 0.0;
-  }
-
   Future<void> _commitPerspectivePenStroke(
     Offset boardLocal,
     Duration timestamp, {
@@ -253,55 +90,20 @@ extension _PaintingBoardInteractionStrokeExtension on _PaintingBoardInteractionM
     if (anchor == null || snapped == null) {
       return;
     }
-    final bool useBackendCanvas =
-        _backend.supportsInputQueue && _brushShapeSupportsBackend;
-    if (useBackendCanvas) {
-      final bool backendOk = _drawBackendStrokeFromPoints(
-        points: <Offset>[anchor, snapped],
-        initialTimestampMillis: timestamp.inMicroseconds / 1000.0,
-        simulatePressure: _simulatePenPressure,
-        rawEvent: rawEvent,
-      );
-      _clearPerspectivePenPreview();
-      if (backendOk) {
-        return;
-      }
-    }
-    await _startStroke(anchor, timestamp, rawEvent);
-    _appendPoint(snapped, timestamp, rawEvent);
-    _finishStroke(timestamp);
+    final bool backendOk =
+        _backend.supportsInputQueue &&
+        _brushShapeSupportsBackend &&
+        _drawBackendStrokeFromPoints(
+          points: <Offset>[anchor, snapped],
+          initialTimestampMillis: timestamp.inMicroseconds / 1000.0,
+          simulatePressure: _simulatePenPressure,
+          rawEvent: rawEvent,
+        );
     _clearPerspectivePenPreview();
-  }
-
-  void _finishStroke([Duration? timestamp]) {
-    if (!_isDrawing) {
+    if (backendOk) {
       return;
     }
-    if (timestamp != null) {
-      _registerPenSample(timestamp);
-    }
-    _controller.endStroke();
-    setState(() {
-      _isDrawing = false;
-      if (_brushRandomRotationEnabled) {
-        _brushRandomRotationPreviewSeed = _brushRotationRandom.nextInt(1 << 31);
-      }
-    });
-    _resetPerspectiveLock();
-    _lastPenSampleTimestamp = null;
-    _activeStrokeUsesStylus = false;
-    _activeStylusPressureMin = null;
-    _activeStylusPressureMax = null;
-    _lastStylusPressureValue = null;
-    final Offset? lastPoint = _lastStrokeBoardPosition;
-    if (lastPoint != null &&
-        (_effectiveActiveTool == CanvasTool.pen ||
-            _effectiveActiveTool == CanvasTool.eraser)) {
-      _lastBrushLineAnchor = lastPoint;
-    }
-    _lastStrokeBoardPosition = null;
-    _lastStylusDirection = null;
-    _strokeStabilizer.reset();
+    _showBackendCanvasMessage('透视画笔需要画布后端支持。');
   }
 
   double _resolveSprayPressure(PointerEvent? event) {
@@ -339,8 +141,6 @@ extension _PaintingBoardInteractionStrokeExtension on _PaintingBoardInteractionM
       minParticleRadius: 0.32,
       minParticleOpacity: 1.0,
       maxParticleOpacity: 1.0,
-      sampleInputColor: false,
-      sampleBlend: 0.5,
       shape: BrushShape.circle,
       minAntialiasLevel: _penAntialiasLevel.clamp(0, 9),
     );
@@ -348,7 +148,6 @@ extension _PaintingBoardInteractionStrokeExtension on _PaintingBoardInteractionM
 
   KritaSprayEngine _ensureKritaSprayEngine() {
     final KritaSprayEngine engine = _kritaSprayEngine ??= KritaSprayEngine(
-      controller: _controller,
       clampToCanvas: (offset) => offset,
       random: _syntheticStrokeRandom,
     );
@@ -368,15 +167,16 @@ extension _PaintingBoardInteractionStrokeExtension on _PaintingBoardInteractionM
       return;
     }
     _focusNode.requestFocus();
-    final bool useBackendSpray = _backend.supportsSpray;
-    if (!useBackendSpray) {
-      await _pushUndoSnapshot();
-    } else if (_backend.beginSpray()) {
-      _backendSprayActive = true;
-      _backendSprayHasDrawn = false;
-    } else {
-      await _pushUndoSnapshot();
+    if (!_backend.supportsSpray) {
+      _showBackendCanvasMessage('喷枪需要画布后端支持。');
+      return;
     }
+    if (!_backend.beginSpray()) {
+      _showBackendCanvasMessage('画布后端尚未准备好。');
+      return;
+    }
+    _backendSprayActive = true;
+    _backendSprayHasDrawn = false;
     _sprayBoardPosition = boardLocal;
     _sprayCurrentPressure = _resolveSprayPressure(event);
     _sprayEmissionAccumulator = 0.0;

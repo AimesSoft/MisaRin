@@ -659,27 +659,6 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
     }
   }
 
-  void _simulateStrokeWithSyntheticTimeline(
-    List<_SyntheticStrokeSample> samples, {
-    required double totalDistance,
-    required double initialTimestamp,
-    _SyntheticStrokeTimelineStyle style = _SyntheticStrokeTimelineStyle.natural,
-  }) {
-    _emitSyntheticStrokeTimeline(
-      samples,
-      totalDistance: totalDistance,
-      initialTimestamp: initialTimestamp,
-      style: style,
-      onSample: (sample, timestamp, deltaTime) {
-        _controller.extendStroke(
-          sample.point,
-          deltaTimeMillis: deltaTime,
-          timestampMillis: timestamp,
-        );
-      },
-    );
-  }
-
   double _syntheticStrokeTotalDistance(List<_SyntheticStrokeSample> samples) {
     double total = 0.0;
     for (final _SyntheticStrokeSample sample in samples) {
@@ -2345,25 +2324,11 @@ final class _CanvasBackendFacade implements CanvasBackendInterface {
       );
     }
     if (!_backendSupported) {
-      await _owner._pushUndoSnapshot();
-      _owner._controller.floodFill(
-        position,
-        color: color,
-        contiguous: contiguous,
-        sampleAllLayers: sampleAllLayers,
-        swallowColors: swallowColors,
-        tolerance: tolerance,
-        fillGap: fillGap,
-        antialiasLevel: antialiasLevel,
-      );
-      if (_owner.mounted) {
-        _owner.setState(() {});
-      }
-      _owner._markDirty();
       if (kDebugMode) {
-        debugPrint('[bucket] backend skipped: not supported');
+        debugPrint('[bucket] backend unavailable: not supported');
       }
-      return true;
+      _owner._showBackendCanvasMessage('填充工具需要画布后端支持。');
+      return false;
     }
 
     if (!_backendReady) {

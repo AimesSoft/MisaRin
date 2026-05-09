@@ -19,15 +19,3 @@ Future<Uint32List> rustWgpuCompositeLayers({
     height: height,
   );
 }
-
-Future<Uint32List> rustCpuCompositeLayers({
-  required List<RustWgpuLayerData> layers,
-  required int width,
-  required int height,
-}) {
-  return rust_gpu.cpuCompositeLayers(
-    layers: layers,
-    width: width,
-    height: height,
-  );
-}

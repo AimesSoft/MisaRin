@@ -727,7 +727,7 @@ class BitmapSurface {
     if (!_loggedRustCpuBrushUnsupported) {
       _loggedRustCpuBrushUnsupported = true;
       print(
-        'RustCpuBrushFfi unsupported: rustCpu brush symbols not available '
+        'RustCpuBrushFfi unsupported: brush symbols not available '
         '(library missing or failed to load).',
       );
     }

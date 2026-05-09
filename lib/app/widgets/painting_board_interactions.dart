@@ -277,24 +277,6 @@ final class _BackendPressureSimulator {
   }
 }
 
-enum _CpuStrokeEventType { down, move, up, cancel }
-
-class _CpuStrokeEvent {
-  const _CpuStrokeEvent({
-    required this.type,
-    required this.position,
-    required this.timestamp,
-    required this.event,
-    this.snapToPixelOverride,
-  });
-
-  final _CpuStrokeEventType type;
-  final Offset position;
-  final Duration timestamp;
-  final PointerEvent? event;
-  final bool? snapToPixelOverride;
-}
-
 class _CursorMotionSample {
   const _CursorMotionSample(this.position, this.timestampUs);
 
@@ -338,17 +320,12 @@ mixin _PaintingBoardInteractionMixin
   int _debugPredictedOverlayFrames = 0;
   int _debugPredictedOverlayPoints = 0;
   int _debugPredictedOverlayBackendFrames = 0;
-  int _debugPredictedOverlayCpuFrames = 0;
   DateTime? _debugPredictedOverlayLogAt;
   final List<_CursorMotionSample> _cursorLocateSamples =
       <_CursorMotionSample>[];
   AnimationController? _cursorLocateController;
   Timer? _cursorLocateCollapseTimer;
   int _lastCursorLocateTriggerUs = 0;
-
-  final List<_CpuStrokeEvent> _cpuStrokeQueue = <_CpuStrokeEvent>[];
-  bool _cpuStrokeFlushScheduled = false;
-  bool _cpuStrokeProcessing = false;
 
   bool get _showBackendPredictedOverlay =>
       _backendPredictedPoints.isNotEmpty &&
@@ -531,8 +508,6 @@ mixin _PaintingBoardInteractionMixin
     _debugPredictedOverlayPoints += predictedPoints;
     if (backendStrokeActive) {
       _debugPredictedOverlayBackendFrames += 1;
-    } else {
-      _debugPredictedOverlayCpuFrames += 1;
     }
     final DateTime now = DateTime.now();
     final DateTime? lastAt = _debugPredictedOverlayLogAt;
@@ -545,15 +520,12 @@ mixin _PaintingBoardInteractionMixin
       'frames=$_debugPredictedOverlayFrames '
       'points=$_debugPredictedOverlayPoints '
       'backendFrames=$_debugPredictedOverlayBackendFrames '
-      'cpuFrames=$_debugPredictedOverlayCpuFrames '
       'overlayVisible=$_showBackendPredictedOverlay '
-      'useCpuQueue=$_useCpuStrokeQueue '
       'backendPointer=$_backendActivePointer',
     );
     _debugPredictedOverlayFrames = 0;
     _debugPredictedOverlayPoints = 0;
     _debugPredictedOverlayBackendFrames = 0;
-    _debugPredictedOverlayCpuFrames = 0;
   }
 
   void _suppressRasterOutputForBackendStroke() {

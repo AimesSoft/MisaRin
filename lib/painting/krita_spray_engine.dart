@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import '../canvas/canvas_tool_host.dart';
 import '../canvas/canvas_tools.dart';
 
 typedef ClampToCanvas = Offset Function(Offset position);
@@ -34,8 +33,6 @@ class KritaSprayEngineSettings {
     this.minParticleRadius = 0.25,
     this.minParticleOpacity = 1.0,
     this.maxParticleOpacity = 1.0,
-    this.sampleInputColor = false,
-    this.sampleBlend = 0.5,
     this.shape = BrushShape.circle,
     this.minAntialiasLevel = 1,
   });
@@ -57,8 +54,6 @@ class KritaSprayEngineSettings {
   final double minParticleRadius;
   final double minParticleOpacity;
   final double maxParticleOpacity;
-  final bool sampleInputColor;
-  final double sampleBlend;
   final BrushShape shape;
   final int minAntialiasLevel;
 
@@ -76,7 +71,6 @@ class KritaSprayEngineSettings {
 /// color sampling.
 class KritaSprayEngine {
   KritaSprayEngine({
-    required this.controller,
     required ClampToCanvas clampToCanvas,
     KritaSprayEngineSettings? settings,
     math.Random? random,
@@ -85,13 +79,10 @@ class KritaSprayEngine {
             const KritaSprayEngineSettings(diameter: 120.0),
         _random = random ?? math.Random();
 
-  final CanvasToolHost controller;
   final ClampToCanvas _clampToCanvas;
   final math.Random _random;
   KritaSprayEngineSettings _settings;
   double? _cachedGaussian;
-
-  bool get sampleInputColor => _settings.sampleInputColor;
 
   void updateSettings(KritaSprayEngineSettings value) {
     _settings = value;
@@ -137,54 +128,15 @@ class KritaSprayEngine {
         radius * particleScale,
       );
       final double opacityScale = _resolveParticleOpacity();
-      final Color base = _resolveColor(position, baseColor);
-      final double baseAlpha = base.alpha / 255.0;
+      final double baseAlpha = baseColor.alpha / 255.0;
       final double finalAlpha = baseAlpha * opacityScale;
       if (finalAlpha <= 0.0) {
         continue;
       }
-      onParticle(position, particleRadius, opacityScale, base);
+      onParticle(position, particleRadius, opacityScale, baseColor);
       emitted++;
     }
     return emitted;
-  }
-
-  void paintParticles({
-    required Offset center,
-    required int particleBudget,
-    required double pressure,
-    required Color baseColor,
-    required bool erase,
-    required int antialiasLevel,
-  }) {
-    if (particleBudget <= 0) {
-      return;
-    }
-    controller.runSynchronousRasterization(() {
-      forEachParticle(
-        center: center,
-        particleBudget: particleBudget,
-        pressure: pressure,
-        baseColor: baseColor,
-        onParticle: (position, particleRadius, opacityScale, base) {
-          final int scaledAlpha =
-              (base.alpha * opacityScale).round().clamp(0, 255);
-          if (scaledAlpha <= 0) {
-            return;
-          }
-          final Color color = base.withAlpha(scaledAlpha);
-          controller.drawBrushStamp(
-            center: position,
-            radius: particleRadius,
-            color: color,
-            brushShape: _settings.shape,
-            antialiasLevel:
-                math.max(antialiasLevel, _settings.minAntialiasLevel),
-            erase: erase,
-          );
-        },
-      );
-    });
   }
 
   Offset _transformOffset({
@@ -271,16 +223,4 @@ class KritaSprayEngine {
     return value.clamp(0.0, 1.0);
   }
 
-  Color _resolveColor(Offset position, Color fallback) {
-    if (!_settings.sampleInputColor) {
-      return fallback;
-    }
-    final Color sampled =
-        controller.sampleColor(position, sampleAllLayers: true);
-    if (sampled.alpha == 0) {
-      return fallback;
-    }
-    final double blend = _settings.sampleBlend.clamp(0.0, 1.0);
-    return Color.lerp(fallback, sampled, blend) ?? fallback;
-  }
 }

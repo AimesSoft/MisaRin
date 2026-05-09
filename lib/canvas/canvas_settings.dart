@@ -1,8 +1,6 @@
 import 'dart:ui';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
-
-enum CanvasCreationLogic { singleThread, multiThread }
+enum CanvasCreationLogic { multiThread }
 
 class CanvasSettings {
   const CanvasSettings._({
@@ -31,14 +29,9 @@ class CanvasSettings {
   final Color backgroundColor;
   final CanvasCreationLogic creationLogic;
 
-  static bool get supportsMultithreadedCanvas => !kIsWeb;
+  static bool get supportsMultithreadedCanvas => true;
 
-  static CanvasCreationLogic _resolveCreationLogic(
-    CanvasCreationLogic _,
-  ) {
-    if (!supportsMultithreadedCanvas) {
-      return CanvasCreationLogic.singleThread;
-    }
+  static CanvasCreationLogic _resolveCreationLogic(CanvasCreationLogic _) {
     return CanvasCreationLogic.multiThread;
   }
 
@@ -54,8 +47,7 @@ class CanvasSettings {
       width: width ?? this.width,
       height: height ?? this.height,
       backgroundColor: backgroundColor ?? this.backgroundColor,
-      creationLogic:
-          _resolveCreationLogic(creationLogic ?? this.creationLogic),
+      creationLogic: _resolveCreationLogic(creationLogic ?? this.creationLogic),
     );
   }
 

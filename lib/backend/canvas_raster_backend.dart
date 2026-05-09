@@ -14,17 +14,13 @@ import '../canvas/canvas_composite_layer.dart';
 import 'rust_wgpu_composite.dart' as rust_wgpu_composite;
 import '../src/rust/api/image_ops.dart' as rust_image_ops;
 import '../src/rust/rust_init.dart';
-import 'rgba_utils.dart';
 
 const bool _kDebugRustWgpuComposite =
     bool.fromEnvironment(
       'MISA_RIN_DEBUG_RUST_WGPU_COMPOSITE',
       defaultValue: false,
     ) ||
-    bool.fromEnvironment(
-      'MISA_RIN_DEBUG_GPU_COMPOSITE',
-      defaultValue: false,
-    );
+    bool.fromEnvironment('MISA_RIN_DEBUG_GPU_COMPOSITE', defaultValue: false);
 
 class RasterCompositeWork {
   const RasterCompositeWork._({
@@ -244,18 +240,7 @@ class CanvasRasterBackend {
       return;
     }
 
-    final bool useRustWgpuComposite = backend == CanvasBackend.rustWgpu;
-    bool rustWgpuReady = false;
-    if (useRustWgpuComposite) {
-      try {
-        await initRustWgpu();
-        rustWgpuReady = true;
-      } catch (_) {
-        rustWgpuReady = false;
-      }
-    } else {
-      await ensureRustInitialized();
-    }
+    await initRustWgpu();
 
     await _runRustWgpuCompositeSerialized(() async {
       final List<CanvasCompositeLayer> effectiveLayers =
@@ -279,27 +264,31 @@ class CanvasRasterBackend {
       // cache as up-to-date and skip required uploads, leading to stale tiles
       // (visual "cuts" along tile boundaries).
       final List<int> revisionSnapshot = <int>[
-        for (final CanvasCompositeLayer layer in effectiveLayers) layer.revision,
+        for (final CanvasCompositeLayer layer in effectiveLayers)
+          layer.revision,
       ];
 
       final List<String> layerOrder = effectiveLayers
           .map((CanvasCompositeLayer layer) => layer.id)
           .toList(growable: false);
 
-      final bool sameEpoch = _rustWgpuLayerCacheInitialized &&
+      final bool sameEpoch =
+          _rustWgpuLayerCacheInitialized &&
           _knownRustWgpuCompositeEpoch == _rustWgpuCompositeEpoch;
       final bool sameCanvasSize =
           _cachedLayerWidth == _width && _cachedLayerHeight == _height;
       final bool sameOrder = _listEquals(_cachedLayerOrder, layerOrder);
 
       final bool allowIncrementalPixels =
-          useRustWgpuComposite && rustWgpuReady && sameEpoch && sameCanvasSize && sameOrder;
+          sameEpoch && sameCanvasSize && sameOrder;
 
       final bool debugComposite = kDebugMode && _kDebugRustWgpuComposite;
-      final List<bool>? uploadFlags =
-          debugComposite ? List<bool>.filled(effectiveLayers.length, false) : null;
-      final List<int?>? cachedRevisionsAtDecision =
-          debugComposite ? List<int?>.filled(effectiveLayers.length, null) : null;
+      final List<bool>? uploadFlags = debugComposite
+          ? List<bool>.filled(effectiveLayers.length, false)
+          : null;
+      final List<int?>? cachedRevisionsAtDecision = debugComposite
+          ? List<int?>.filled(effectiveLayers.length, null)
+          : null;
       bool lastForceFullPixels = false;
 
       Future<Uint32List> runComposite({required bool forceFullPixels}) {
@@ -322,9 +311,8 @@ class CanvasRasterBackend {
           cachedRevisionsAtDecision?[i] = cachedRevision;
           final bool pixelsUnchanged =
               cachedRevision != null && cachedRevision == layerRevision;
-          final Uint32List pixels = (!forceFullPixels &&
-                  allowIncrementalPixels &&
-                  pixelsUnchanged)
+          final Uint32List pixels =
+              (!forceFullPixels && allowIncrementalPixels && pixelsUnchanged)
               ? _emptyPixels
               : layer.pixels;
           uploadFlags?[i] = pixels.isNotEmpty;
@@ -349,17 +337,11 @@ class CanvasRasterBackend {
           );
         }
 
-        return useRustWgpuComposite
-            ? rust_wgpu_composite.rustWgpuCompositeLayers(
-                layers: rustWgpuLayers,
-                width: _width,
-                height: _height,
-              )
-            : rust_wgpu_composite.rustCpuCompositeLayers(
-                layers: rustWgpuLayers,
-                width: _width,
-                height: _height,
-              );
+        return rust_wgpu_composite.rustWgpuCompositeLayers(
+          layers: rustWgpuLayers,
+          width: _width,
+          height: _height,
+        );
       }
 
       Uint32List result;
@@ -389,7 +371,9 @@ class CanvasRasterBackend {
       Uint32List? composite = _compositePixels;
       if (composite == null) {
         if (kDebugMode) {
-          debugPrint('[rust-wgpu-composite] composite buffer cleared; skipping');
+          debugPrint(
+            '[rust-wgpu-composite] composite buffer cleared; skipping',
+          );
         }
         _invalidateRustWgpuLayerCache();
         _rustWgpuCompositeEpoch++;
@@ -412,10 +396,10 @@ class CanvasRasterBackend {
       _cachedLayerWidth = _width;
       _cachedLayerHeight = _height;
       _cachedLayerOrder = layerOrder;
-        for (int i = 0; i < effectiveLayers.length; i++) {
-          final CanvasCompositeLayer layer = effectiveLayers[i];
-          _cachedLayerRevisions[layer.id] = revisionSnapshot[i];
-        }
+      for (int i = 0; i < effectiveLayers.length; i++) {
+        final CanvasCompositeLayer layer = effectiveLayers[i];
+        _cachedLayerRevisions[layer.id] = revisionSnapshot[i];
+      }
 
       if (kDebugMode && _kDebugRustWgpuComposite) {
         for (int i = 0; i < effectiveLayers.length; i++) {
@@ -429,7 +413,9 @@ class CanvasRasterBackend {
               '[rust-wgpu-composite] layer ${layer.id} revision changed during composite: '
               '$before -> $now (will be handled next pass)',
             );
-            if (!lastForceFullPixels && allowIncrementalPixels && !wasUploaded) {
+            if (!lastForceFullPixels &&
+                allowIncrementalPixels &&
+                !wasUploaded) {
               debugPrint(
                 '[rust-wgpu-composite] layer ${layer.id} used cached pixels in this pass '
                 '(upload=false cached=${cached ?? -1} snapshot=$before now=$now)',
@@ -455,18 +441,7 @@ class CanvasRasterBackend {
       return;
     }
 
-    final bool useRustWgpuComposite = backend == CanvasBackend.rustWgpu;
-    bool rustWgpuReady = false;
-    if (useRustWgpuComposite) {
-      try {
-        await initRustWgpu();
-        rustWgpuReady = true;
-      } catch (_) {
-        rustWgpuReady = false;
-      }
-    } else {
-      await ensureRustInitialized();
-    }
+    await initRustWgpu();
 
     final List<RasterIntRect> targetTiles = requiresFullSurface
         ? fullSurfaceTileRects()
@@ -495,7 +470,6 @@ class CanvasRasterBackend {
         final Uint32List result = await _runTileComposite(
           layers: effectiveLayers,
           rect: rect,
-          useRustWgpuComposite: useRustWgpuComposite && rustWgpuReady,
         );
         _compositeTiles[_tileKeyForRect(rect)] = result;
       }
@@ -509,7 +483,6 @@ class CanvasRasterBackend {
   Future<Uint32List> _runTileComposite({
     required List<CanvasCompositeLayer> layers,
     required RasterIntRect rect,
-    required bool useRustWgpuComposite,
   }) async {
     if (layers.isEmpty) {
       return Uint32List(rect.width * rect.height);
@@ -530,17 +503,11 @@ class CanvasRasterBackend {
         ),
       );
     }
-    return useRustWgpuComposite
-        ? rust_wgpu_composite.rustWgpuCompositeLayers(
-            layers: rustLayers,
-            width: width,
-            height: height,
-          )
-        : rust_wgpu_composite.rustCpuCompositeLayers(
-            layers: rustLayers,
-            width: width,
-            height: height,
-          );
+    return rust_wgpu_composite.rustWgpuCompositeLayers(
+      layers: rustLayers,
+      width: width,
+      height: height,
+    );
   }
 
   Future<void> dispose() async {
@@ -635,8 +602,9 @@ class CanvasRasterBackend {
       if (tilePixels == null || tilePixels.isEmpty) {
         continue;
       }
-      final Uint8List tileRgba =
-          rust_image_ops.convertPixelsToRgba(pixels: tilePixels);
+      final Uint8List tileRgba = rust_image_ops.convertPixelsToRgba(
+        pixels: tilePixels,
+      );
       final int tileWidth = rect.width;
       final int rowBytes = tileWidth * 4;
       for (int row = 0; row < rect.height; row++) {
@@ -699,12 +667,7 @@ class CanvasRasterBackend {
               (top - tileTop + row) * tileWidth + (left - tileLeft);
           final int dstRow =
               (top - rect.top + row) * rectWidth + (left - rect.left);
-          buffer.setRange(
-            dstRow,
-            dstRow + copyWidth,
-            tilePixels,
-            srcRow,
-          );
+          buffer.setRange(dstRow, dstRow + copyWidth, tilePixels, srcRow);
         }
       }
     }
@@ -762,14 +725,21 @@ class CanvasRasterBackend {
         final int tileTop = ty * tileSize;
         final int tileRight = math.min(tileLeft + tileSize, _width);
         final int tileBottom = math.min(tileTop + tileSize, _height);
-        final RasterIntRect tileRect =
-            RasterIntRect(tileLeft, tileTop, tileRight, tileBottom);
-        final Uint32List? tilePixels = _compositeTiles[_tileKeyForRect(tileRect)];
+        final RasterIntRect tileRect = RasterIntRect(
+          tileLeft,
+          tileTop,
+          tileRight,
+          tileBottom,
+        );
+        final Uint32List? tilePixels =
+            _compositeTiles[_tileKeyForRect(tileRect)];
         if (tilePixels != null && tilePixels.isNotEmpty) {
           final int localX = x - tileRect.left;
           final int localY = y - tileRect.top;
-          if (localX >= 0 && localY >= 0 &&
-              localX < tileRect.width && localY < tileRect.height) {
+          if (localX >= 0 &&
+              localY >= 0 &&
+              localX < tileRect.width &&
+              localY < tileRect.height) {
             final int localIndex = localY * tileRect.width + localX;
             if (localIndex >= 0 && localIndex < tilePixels.length) {
               return BitmapSurface.decodeColor(tilePixels[localIndex]);
@@ -842,7 +812,9 @@ class CanvasRasterBackend {
     return _tileKey(tx, ty);
   }
 
-  static Future<T> _runRustWgpuCompositeSerialized<T>(Future<T> Function() action) async {
+  static Future<T> _runRustWgpuCompositeSerialized<T>(
+    Future<T> Function() action,
+  ) async {
     final Future<void> prev = _rustWgpuCompositeSerial;
     final Future<void> prevOk = prev.catchError((_) {});
     final Completer<void> gate = Completer<void>();

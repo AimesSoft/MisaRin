@@ -2,10 +2,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 
-import '../../canvas/canvas_engine_bridge.dart';
 import '../../canvas/canvas_frame.dart';
 import '../../canvas/canvas_tools.dart';
-import 'bitmap_canvas_surface.dart';
 import 'backend_canvas_surface.dart';
 
 class AdaptiveCanvasSurface extends StatelessWidget {
@@ -89,53 +87,46 @@ class AdaptiveCanvasSurface extends StatelessWidget {
     ui.Size? engineSize,
     bool isNewEngine,
     int? textureId,
-  )? onEngineInfoChanged;
+  )?
+  onEngineInfoChanged;
 
   @override
   Widget build(BuildContext context) {
-    final bool useBackendCanvas =
-        allowBackendCanvas && CanvasBackendFacade.instance.isSupported;
-    if (useBackendCanvas) {
-      return BackendCanvasSurface(
-        surfaceKey: surfaceKey,
-        canvasSize: canvasSize,
-        enableDrawing: enableDrawing,
-        layerCount: layerCount,
-        brushColorArgb: brushColorArgb,
-        brushRadius: brushRadius,
-        erase: erase,
-        brushShape: brushShape,
-        brushRandomRotationEnabled: brushRandomRotationEnabled,
-        brushSmoothRotationEnabled: brushSmoothRotationEnabled,
-        brushRotationSeed: brushRotationSeed,
-        brushSpacing: brushSpacing,
-        brushHardness: brushHardness,
-        brushFlow: brushFlow,
-        brushScatter: brushScatter,
-        brushRotationJitter: brushRotationJitter,
-        brushSnapToPixel: brushSnapToPixel,
-        brushScreentoneEnabled: brushScreentoneEnabled,
-        brushScreentoneSpacing: brushScreentoneSpacing,
-        brushScreentoneDotSize: brushScreentoneDotSize,
-        brushScreentoneRotation: brushScreentoneRotation,
-        brushScreentoneSoftness: brushScreentoneSoftness,
-        brushScreentoneShape: brushScreentoneShape,
-        hollowStrokeEnabled: hollowStrokeEnabled,
-        hollowStrokeRatio: hollowStrokeRatio,
-        hollowStrokeEraseOccludedParts: hollowStrokeEraseOccludedParts,
-        antialiasLevel: antialiasLevel,
-        backgroundColorArgb: backgroundColorArgb,
-        usePressure: usePressure,
-        stylusCurve: stylusCurve,
-        streamlineStrength: streamlineStrength,
-        strokeStabilizerStrength: strokeStabilizerStrength,
-        onStrokeBegin: onStrokeBegin,
-        onEngineInfoChanged: onEngineInfoChanged,
-      );
-    }
-    return BitmapCanvasSurface(
+    return BackendCanvasSurface(
+      surfaceKey: surfaceKey,
       canvasSize: canvasSize,
-      frame: frame,
+      enableDrawing: enableDrawing,
+      layerCount: layerCount,
+      brushColorArgb: brushColorArgb,
+      brushRadius: brushRadius,
+      erase: erase,
+      brushShape: brushShape,
+      brushRandomRotationEnabled: brushRandomRotationEnabled,
+      brushSmoothRotationEnabled: brushSmoothRotationEnabled,
+      brushRotationSeed: brushRotationSeed,
+      brushSpacing: brushSpacing,
+      brushHardness: brushHardness,
+      brushFlow: brushFlow,
+      brushScatter: brushScatter,
+      brushRotationJitter: brushRotationJitter,
+      brushSnapToPixel: brushSnapToPixel,
+      brushScreentoneEnabled: brushScreentoneEnabled,
+      brushScreentoneSpacing: brushScreentoneSpacing,
+      brushScreentoneDotSize: brushScreentoneDotSize,
+      brushScreentoneRotation: brushScreentoneRotation,
+      brushScreentoneSoftness: brushScreentoneSoftness,
+      brushScreentoneShape: brushScreentoneShape,
+      hollowStrokeEnabled: hollowStrokeEnabled,
+      hollowStrokeRatio: hollowStrokeRatio,
+      hollowStrokeEraseOccludedParts: hollowStrokeEraseOccludedParts,
+      antialiasLevel: antialiasLevel,
+      backgroundColorArgb: backgroundColorArgb,
+      usePressure: usePressure,
+      stylusCurve: stylusCurve,
+      streamlineStrength: streamlineStrength,
+      strokeStabilizerStrength: strokeStabilizerStrength,
+      onStrokeBegin: onStrokeBegin,
+      onEngineInfoChanged: onEngineInfoChanged,
     );
   }
 }

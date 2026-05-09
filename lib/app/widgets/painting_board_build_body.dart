@@ -658,20 +658,13 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                                             final int? backendTextureId =
                                                 _backendCanvasTextureId;
                                             final bool canRepeatSurface =
-                                                !_backend.isReady ||
                                                 backendTextureId != null;
 
                                             Widget buildRepeatSurface() {
-                                              if (_backend.isReady) {
-                                                return Texture(
-                                                  textureId: backendTextureId!,
-                                                  filterQuality:
-                                                      FilterQuality.none,
-                                                );
-                                              }
-                                              return BitmapCanvasSurface(
-                                                canvasSize: _canvasSize,
-                                                frame: _controller.frame,
+                                              return Texture(
+                                                textureId: backendTextureId!,
+                                                filterQuality:
+                                                    FilterQuality.none,
                                               );
                                             }
 
@@ -692,9 +685,6 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                                                   ],
                                                 ),
                                               );
-                                              if (!_backend.isReady) {
-                                                tile = applyViewOverlay(tile);
-                                              }
                                               return tile;
                                             }
 

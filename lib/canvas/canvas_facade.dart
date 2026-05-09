@@ -5,7 +5,6 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 
 import '../backend/canvas_painting_worker.dart';
-import '../bitmap_canvas/stroke_dynamics.dart';
 import 'canvas_backend.dart';
 import 'canvas_frame.dart';
 import 'canvas_layer.dart';
@@ -64,89 +63,11 @@ abstract class CanvasFacade extends Listenable implements CanvasToolHost {
 
   void configureSharpTips({required bool enabled});
 
-  void drawFilledPolygon({
-    required List<Offset> points,
-    required Color color,
-    int antialiasLevel = 0,
-    bool erase = false,
-  });
-
-  bool drawSprayPoints({
-    required Float32List points,
-    required int pointCount,
-    required Color color,
-    required BrushShape brushShape,
-    int antialiasLevel = 0,
-    bool erase = false,
-    double softness = 0.0,
-    bool accumulate = true,
-  });
-
-  void floodFill(
-    Offset position, {
-    required Color color,
-    bool contiguous = true,
-    bool sampleAllLayers = false,
-    List<Color>? swallowColors,
-    int tolerance = 0,
-    int fillGap = 0,
-    int antialiasLevel = 0,
-  });
-
   Future<Uint8List?> computeMagicWandMask(
     Offset position, {
     bool sampleAllLayers = true,
     int tolerance = 0,
   });
-
-  void beginStroke(
-    Offset position, {
-    required Color color,
-    required double radius,
-    bool simulatePressure = false,
-    bool useDevicePressure = false,
-    double stylusPressureBlend = 1.0,
-    double? pressure,
-    double? pressureMin,
-    double? pressureMax,
-    StrokePressureProfile profile = StrokePressureProfile.auto,
-    double? timestampMillis,
-    int antialiasLevel = 0,
-    BrushShape brushShape = BrushShape.circle,
-    bool enableNeedleTips = false,
-    bool randomRotation = false,
-    bool smoothRotation = false,
-    int? rotationSeed,
-    double spacing = 0.15,
-    double hardness = 0.8,
-    double flow = 1.0,
-    double scatter = 0.0,
-    double rotationJitter = 1.0,
-    bool snapToPixel = false,
-    bool screentoneEnabled = false,
-    double screentoneSpacing = 10.0,
-    double screentoneDotSize = 0.6,
-    double screentoneRotation = 45.0,
-    double screentoneSoftness = 0.0,
-    BrushShape screentoneShape = BrushShape.circle,
-    double streamlineStrength = 0.0,
-    bool erase = false,
-    bool hollow = false,
-    double hollowRatio = 0.0,
-    bool eraseOccludedParts = false,
-  });
-
-  void extendStroke(
-    Offset position, {
-    double? deltaTimeMillis,
-    double? timestampMillis,
-    double? pressure,
-    double? pressureMin,
-    double? pressureMax,
-  });
-
-  void endStroke();
-  void cancelStroke();
 
   void clear();
 

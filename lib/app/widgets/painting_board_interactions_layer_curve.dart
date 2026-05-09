@@ -34,7 +34,8 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
 
   void _interruptForEyedropperOverride() {
     if (_isDrawing) {
-      _finishStroke();
+      setState(() => _isDrawing = false);
+      _resetPerspectiveLock();
     }
     if (_isSpraying) {
       _finishSprayStroke();
@@ -297,66 +298,15 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
         return;
       }
       if (insideCanvas) {
-        bool handled = false;
-        if (_backend.supportsInputQueue && _brushShapeSupportsBackend) {
-          handled = _drawBackendStrokeFromPoints(
-            points: <Offset>[snapped, snapped],
-            initialTimestampMillis: 0.0,
-            simulatePressure: _simulatePenPressure,
-          );
-        }
-        if (!handled) {
-          final _CanvasRasterEditSession edit = await _backend.beginRasterEdit(
-            captureUndoOnFallback: true,
-            warnIfFailed: true,
-          );
-          if (!edit.ok) {
-            return;
-          }
-          final bool erase = _isBrushEraserEnabled;
-          final Color strokeColor = erase
-              ? const Color(0xFFFFFFFF)
-              : _primaryColor;
-          _controller.beginStroke(
-            snapped,
-            color: strokeColor,
-            radius: _penStrokeWidth / 2,
-            simulatePressure: _simulatePenPressure,
-            profile: _penPressureProfile,
-            antialiasLevel: _penAntialiasLevel,
-            brushShape: _brushShape,
-            randomRotation: _brushRandomRotationEnabled,
-            smoothRotation: _brushSmoothRotationEnabled,
-            rotationSeed: _brushRandomRotationPreviewSeed,
-            spacing: _brushSpacing,
-            hardness: _brushHardness,
-            flow: _brushFlow,
-            scatter: _brushScatter,
-            rotationJitter: _brushRotationJitter,
-            snapToPixel: _brushSnapToPixel,
-            screentoneEnabled: _brushScreentoneEnabled,
-            screentoneSpacing: _brushScreentoneSpacing,
-            screentoneDotSize: _brushScreentoneDotSize,
-            screentoneRotation: _brushScreentoneRotation,
-            screentoneSoftness: _brushScreentoneSoftness,
-            screentoneShape: _brushScreentoneShape,
-            erase: erase,
-            hollow: _hollowStrokeEnabled && !erase,
-            hollowRatio: _hollowStrokeRatio,
-            eraseOccludedParts: _hollowStrokeEraseOccludedParts,
-          );
-          _controller.endStroke();
-          if (_brushRandomRotationEnabled) {
-            _brushRandomRotationPreviewSeed =
-                _brushRotationRandom.nextInt(1 << 31);
-          }
-          if (edit.useBackend) {
-            await edit.commit(
-              waitForPending: true,
-              warnIfFailed: true,
-            );
-          }
-          _markDirty();
+        if (!_backend.supportsInputQueue ||
+            !_brushShapeSupportsBackend ||
+            !_drawBackendStrokeFromPoints(
+              points: <Offset>[snapped, snapped],
+              initialTimestampMillis: 0.0,
+              simulatePressure: _simulatePenPressure,
+            )) {
+          _showBackendCanvasMessage('曲线画笔需要画布后端支持。');
+          return;
         }
       }
       setState(() {
@@ -454,31 +404,17 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
       }
     }
 
-    final _CanvasRasterEditSession edit = await _backend.beginRasterEdit(
-      captureUndoOnFallback: !_curveUndoCapturedForPreview,
-      warnIfFailed: true,
-    );
-    if (!edit.ok) {
-      _cancelCurvePenSegment();
-      return;
-    }
     if (_curveRasterPreviewSnapshot != null) {
       _clearCurvePreviewOverlay();
     }
-    _controller.runSynchronousRasterization(() {
-      _drawQuadraticCurve(start, control, end);
-    });
-    _disposeCurveRasterPreview(
-      restoreLayer: false,
-      clearPreviewImage: !edit.useBackend,
-    );
-    if (edit.useBackend) {
-      await edit.commit(
-        waitForPending: true,
-        warnIfFailed: true,
-      );
-      _clearCurvePreviewRasterImage(notify: false);
+    final bool backendOk = _drawQuadraticCurve(start, control, end);
+    _disposeCurveRasterPreview(restoreLayer: !backendOk, clearPreviewImage: true);
+    if (!backendOk) {
+      _showBackendCanvasMessage('画布后端尚未准备好。');
+      _cancelCurvePenSegment();
+      return;
     }
+    _clearCurvePreviewRasterImage(notify: false);
     setState(() {
       _curveAnchor = end;
       _curvePendingEnd = null;
@@ -601,9 +537,6 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
       _curveDragDelta,
     );
     _curvePreviewDirtyRect = dirty;
-    _controller.runSynchronousRasterization(() {
-      _drawQuadraticCurve(start, control, end);
-    });
     if (restoredRegion != null) {
       _controller.markLayerRegionDirty(snapshot.id, restoredRegion);
     }
@@ -738,75 +671,31 @@ extension _PaintingBoardInteractionLayerCurveExtension on _PaintingBoardInteract
     return end - dragDelta;
   }
 
-  void _drawQuadraticCurve(Offset start, Offset control, Offset end) {
+  bool _drawQuadraticCurve(Offset start, Offset control, Offset end) {
     const double initialTimestamp = 0.0;
-    final bool simulatePressure = _simulatePenPressure;
-    final bool enableNeedleTips =
-        simulatePressure &&
-        _penPressureProfile == StrokePressureProfile.taperCenter;
-    final bool erase = _isBrushEraserEnabled;
-    final Color strokeColor = erase ? const Color(0xFFFFFFFF) : _primaryColor;
-    final bool hollow = _hollowStrokeEnabled && !erase;
     final Offset strokeStart = _clampToCanvas(start);
-    _controller.beginStroke(
-      strokeStart,
-      color: strokeColor,
-      radius: _penStrokeWidth / 2,
-      simulatePressure: simulatePressure,
-      profile: _penPressureProfile,
-      timestampMillis: initialTimestamp,
-      antialiasLevel: _penAntialiasLevel,
-      brushShape: _brushShape,
-      enableNeedleTips: enableNeedleTips,
-      randomRotation: _brushRandomRotationEnabled,
-      smoothRotation: _brushSmoothRotationEnabled,
-      rotationSeed: _brushRandomRotationPreviewSeed,
-      spacing: _brushSpacing,
-      hardness: _brushHardness,
-      flow: _brushFlow,
-      scatter: _brushScatter,
-      rotationJitter: _brushRotationJitter,
-      snapToPixel: _brushSnapToPixel,
-      screentoneEnabled: _brushScreentoneEnabled,
-      screentoneSpacing: _brushScreentoneSpacing,
-      screentoneDotSize: _brushScreentoneDotSize,
-      screentoneRotation: _brushScreentoneRotation,
-      screentoneSoftness: _brushScreentoneSoftness,
-      screentoneShape: _brushScreentoneShape,
-      erase: erase,
-      hollow: hollow,
-      hollowRatio: _hollowStrokeRatio,
-      eraseOccludedParts: _hollowStrokeEraseOccludedParts,
-    );
     final List<Offset> samplePoints = _sampleQuadraticCurvePoints(
       strokeStart,
       control,
       _clampToCanvas(end),
     );
     final List<Offset> polyline = <Offset>[strokeStart, ...samplePoints];
-    if (simulatePressure) {
-      final List<_SyntheticStrokeSample> samples = _buildSyntheticStrokeSamples(
-        polyline.length > 1 ? polyline.sublist(1) : const <Offset>[],
-        polyline.first,
-      );
-      final double totalDistance = _syntheticStrokeTotalDistance(samples);
-      _simulateStrokeWithSyntheticTimeline(
-        samples,
-        totalDistance: totalDistance,
-        initialTimestamp: initialTimestamp,
-        style: _SyntheticStrokeTimelineStyle.fastCurve,
-      );
-    } else {
-      for (int i = 1; i < polyline.length; i++) {
-        final Offset point = polyline[i];
-        _controller.extendStroke(point);
-      }
+    if (!_backend.supportsInputQueue || !_brushShapeSupportsBackend) {
+      return false;
     }
-    _controller.endStroke();
+    final bool backendOk = _drawBackendStrokeFromPoints(
+      points: polyline,
+      initialTimestampMillis: initialTimestamp,
+      simulatePressure: _simulatePenPressure,
+    );
+    if (!backendOk) {
+      return false;
+    }
     if (_brushRandomRotationEnabled) {
       _brushRandomRotationPreviewSeed = _brushRotationRandom.nextInt(1 << 31);
     }
     _markDirty();
+    return true;
   }
 
   List<Offset> _sampleQuadraticCurvePoints(
