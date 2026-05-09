@@ -221,13 +221,34 @@ mixin _PaintingBoardLayerMixin
   }
 
   void _handleAddLayer() async {
-    await _pushUndoSnapshot();
+    final bool backendReady = _backend.isReady;
+    if (backendReady &&
+        !await _backend.syncAllLayerPixelsFromBackend(
+          waitForPending: true,
+          warnIfFailed: true,
+          skipIfUnavailable: false,
+        )) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    await _pushUndoSnapshot(backendPixelsSynced: backendReady);
+    if (!mounted) {
+      return;
+    }
     final String? insertAbove =
         _activeLayerId ?? (_layers.isEmpty ? null : _layers.last.id);
     _controller.addLayer(aboveLayerId: insertAbove);
     setState(() {});
     _markDirty();
     _syncBackendCanvasLayersToEngine();
+    if (backendReady) {
+      await _backend.syncAllLayerPixelsToBackend(
+        warnIfFailed: true,
+        skipIfUnavailable: false,
+      );
+    }
   }
 
   void _handleRemoveLayer(String id) async {
