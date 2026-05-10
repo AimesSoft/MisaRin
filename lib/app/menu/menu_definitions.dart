@@ -480,10 +480,14 @@ class MenuDefinitionBuilder {
     }
 
     final List<MenuEntry> entries = <MenuEntry>[];
+    _addSection(entries, <MenuEntry>[
+      if (handler.generateArtText != null)
+        MenuActionEntry(label: '艺术字体生成器…', action: handler.generateArtText),
+    ]);
     if (paletteEntries.isNotEmpty) {
-      entries.add(
+      _addSection(entries, <MenuEntry>[
         MenuSubmenuEntry(label: l10n.menuPalette, entries: paletteEntries),
-      );
+      ]);
     }
     final List<MenuEntry> referenceEntries = <MenuEntry>[
       if (handler.createReferenceImage != null)
@@ -508,12 +512,12 @@ class MenuDefinitionBuilder {
         ),
     ];
     if (referenceEntries.isNotEmpty) {
-      entries.add(
+      _addSection(entries, <MenuEntry>[
         MenuSubmenuEntry(
           label: l10n.menuReferenceImage,
           entries: referenceEntries,
         ),
-      );
+      ]);
     }
     final List<MenuEntry> referenceModelEntries = <MenuEntry>[
       if (handler.showSteveReferenceModel != null)
@@ -538,12 +542,12 @@ class MenuDefinitionBuilder {
         ),
     ];
     if (referenceModelEntries.isNotEmpty) {
-      entries.add(
+      _addSection(entries, <MenuEntry>[
         MenuSubmenuEntry(
           label: l10n.menuReferenceModel,
           entries: referenceModelEntries,
         ),
-      );
+      ]);
     }
     if (entries.isEmpty) {
       return null;

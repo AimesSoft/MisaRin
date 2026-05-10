@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1127123029;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1855414712;
 
 // Section: executor
 
@@ -959,6 +959,425 @@ fn wire__crate__api__cpu_transform__cpu_transform_translate_layer_impl(
                     ))?;
                 Ok(output_ok)
             })())
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_build_scene_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_build_scene",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_fonts =
+                <Vec<crate::api::cube_text::CubeTextFontAsset>>::sse_decode(&mut deserializer);
+            let api_global_font_id = <String>::sse_decode(&mut deserializer);
+            let api_texts =
+                <Vec<crate::api::cube_text::CubeTextObject>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::cube_text::cube_text_build_scene(
+                        api_fonts,
+                        api_global_font_id,
+                        api_texts,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_convert_ttf_to_font_json_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_convert_ttf_to_font_json",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_bytes = <Vec<u8>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok =
+                        crate::api::cube_text::cube_text_convert_ttf_to_font_json(api_bytes)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_export_result_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_export_result_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::cube_text::CubeTextExportResult::default(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_export_scene_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_export_scene",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_fonts =
+                <Vec<crate::api::cube_text::CubeTextFontAsset>>::sse_decode(&mut deserializer);
+            let api_global_font_id = <String>::sse_decode(&mut deserializer);
+            let api_texts =
+                <Vec<crate::api::cube_text::CubeTextObject>>::sse_decode(&mut deserializer);
+            let api_format = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::cube_text::cube_text_export_scene(
+                        api_fonts,
+                        api_global_font_id,
+                        api_texts,
+                        api_format,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_font_asset_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_font_asset_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::cube_text::CubeTextFontAsset::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_font_convert_result_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_font_convert_result_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::cube_text::CubeTextFontConvertResult::default(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_material_option_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_material_option_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::cube_text::CubeTextMaterialOption::default(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_materials_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_materials_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::cube_text::CubeTextMaterials::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_object_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_object_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::cube_text::CubeTextObject::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_options_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_options_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::cube_text::CubeTextOptions::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_scene_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_scene_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::cube_text::CubeTextScene::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__cube_text__cube_text_scene_material_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "cube_text_scene_material_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::cube_text::CubeTextSceneMaterial::default(),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
         },
     )
 }
@@ -2228,6 +2647,195 @@ impl SseDecode for crate::api::cpu_transform::CpuTransformTranslateResult {
     }
 }
 
+impl SseDecode for crate::api::cube_text::CubeTextExportResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_fileName = <String>::sse_decode(deserializer);
+        let mut var_mimeType = <String>::sse_decode(deserializer);
+        let mut var_bytes = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_warnings = <Vec<String>>::sse_decode(deserializer);
+        return crate::api::cube_text::CubeTextExportResult {
+            file_name: var_fileName,
+            mime_type: var_mimeType,
+            bytes: var_bytes,
+            warnings: var_warnings,
+        };
+    }
+}
+
+impl SseDecode for crate::api::cube_text::CubeTextFontAsset {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_json = <String>::sse_decode(deserializer);
+        return crate::api::cube_text::CubeTextFontAsset {
+            id: var_id,
+            json: var_json,
+        };
+    }
+}
+
+impl SseDecode for crate::api::cube_text::CubeTextFontConvertResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_fontId = <String>::sse_decode(deserializer);
+        let mut var_json = <String>::sse_decode(deserializer);
+        return crate::api::cube_text::CubeTextFontConvertResult {
+            font_id: var_fontId,
+            json: var_json,
+        };
+    }
+}
+
+impl SseDecode for crate::api::cube_text::CubeTextMaterialOption {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_mode = <String>::sse_decode(deserializer);
+        let mut var_color = <String>::sse_decode(deserializer);
+        let mut var_colorGradualStart = <String>::sse_decode(deserializer);
+        let mut var_colorGradualEnd = <String>::sse_decode(deserializer);
+        let mut var_repeat = <f32>::sse_decode(deserializer);
+        let mut var_offset = <f32>::sse_decode(deserializer);
+        let mut var_image = <String>::sse_decode(deserializer);
+        let mut var_repeatX = <f32>::sse_decode(deserializer);
+        let mut var_repeatY = <f32>::sse_decode(deserializer);
+        let mut var_offsetX = <f32>::sse_decode(deserializer);
+        let mut var_offsetY = <f32>::sse_decode(deserializer);
+        return crate::api::cube_text::CubeTextMaterialOption {
+            mode: var_mode,
+            color: var_color,
+            color_gradual_start: var_colorGradualStart,
+            color_gradual_end: var_colorGradualEnd,
+            repeat: var_repeat,
+            offset: var_offset,
+            image: var_image,
+            repeat_x: var_repeatX,
+            repeat_y: var_repeatY,
+            offset_x: var_offsetX,
+            offset_y: var_offsetY,
+        };
+    }
+}
+
+impl SseDecode for crate::api::cube_text::CubeTextMaterials {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_front =
+            <crate::api::cube_text::CubeTextMaterialOption>::sse_decode(deserializer);
+        let mut var_back =
+            <crate::api::cube_text::CubeTextMaterialOption>::sse_decode(deserializer);
+        let mut var_up = <crate::api::cube_text::CubeTextMaterialOption>::sse_decode(deserializer);
+        let mut var_down =
+            <crate::api::cube_text::CubeTextMaterialOption>::sse_decode(deserializer);
+        let mut var_left =
+            <crate::api::cube_text::CubeTextMaterialOption>::sse_decode(deserializer);
+        let mut var_right =
+            <crate::api::cube_text::CubeTextMaterialOption>::sse_decode(deserializer);
+        let mut var_outline =
+            <crate::api::cube_text::CubeTextMaterialOption>::sse_decode(deserializer);
+        return crate::api::cube_text::CubeTextMaterials {
+            front: var_front,
+            back: var_back,
+            up: var_up,
+            down: var_down,
+            left: var_left,
+            right: var_right,
+            outline: var_outline,
+        };
+    }
+}
+
+impl SseDecode for crate::api::cube_text::CubeTextObject {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_content = <String>::sse_decode(deserializer);
+        let mut var_fontId = <String>::sse_decode(deserializer);
+        let mut var_opts = <crate::api::cube_text::CubeTextOptions>::sse_decode(deserializer);
+        return crate::api::cube_text::CubeTextObject {
+            content: var_content,
+            font_id: var_fontId,
+            opts: var_opts,
+        };
+    }
+}
+
+impl SseDecode for crate::api::cube_text::CubeTextOptions {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_size = <f32>::sse_decode(deserializer);
+        let mut var_depth = <f32>::sse_decode(deserializer);
+        let mut var_x = <f32>::sse_decode(deserializer);
+        let mut var_y = <f32>::sse_decode(deserializer);
+        let mut var_z = <f32>::sse_decode(deserializer);
+        let mut var_rotY = <f32>::sse_decode(deserializer);
+        let mut var_rotX = <f32>::sse_decode(deserializer);
+        let mut var_rotZ = <f32>::sse_decode(deserializer);
+        let mut var_outlineWidth = <f32>::sse_decode(deserializer);
+        let mut var_letterSpacing = <f32>::sse_decode(deserializer);
+        let mut var_spacingWidth = <f32>::sse_decode(deserializer);
+        let mut var_overlay = <String>::sse_decode(deserializer);
+        let mut var_materials =
+            <crate::api::cube_text::CubeTextMaterials>::sse_decode(deserializer);
+        return crate::api::cube_text::CubeTextOptions {
+            size: var_size,
+            depth: var_depth,
+            x: var_x,
+            y: var_y,
+            z: var_z,
+            rot_y: var_rotY,
+            rot_x: var_rotX,
+            rot_z: var_rotZ,
+            outline_width: var_outlineWidth,
+            letter_spacing: var_letterSpacing,
+            spacing_width: var_spacingWidth,
+            overlay: var_overlay,
+            materials: var_materials,
+        };
+    }
+}
+
+impl SseDecode for crate::api::cube_text::CubeTextScene {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_positions = <Vec<f32>>::sse_decode(deserializer);
+        let mut var_normals = <Vec<f32>>::sse_decode(deserializer);
+        let mut var_uvs = <Vec<f32>>::sse_decode(deserializer);
+        let mut var_indices = <Vec<u32>>::sse_decode(deserializer);
+        let mut var_materialIndices = <Vec<i32>>::sse_decode(deserializer);
+        let mut var_materials =
+            <Vec<crate::api::cube_text::CubeTextSceneMaterial>>::sse_decode(deserializer);
+        let mut var_boundsMin = <Vec<f32>>::sse_decode(deserializer);
+        let mut var_boundsMax = <Vec<f32>>::sse_decode(deserializer);
+        let mut var_warnings = <Vec<String>>::sse_decode(deserializer);
+        return crate::api::cube_text::CubeTextScene {
+            positions: var_positions,
+            normals: var_normals,
+            uvs: var_uvs,
+            indices: var_indices,
+            material_indices: var_materialIndices,
+            materials: var_materials,
+            bounds_min: var_boundsMin,
+            bounds_max: var_boundsMax,
+            warnings: var_warnings,
+        };
+    }
+}
+
+impl SseDecode for crate::api::cube_text::CubeTextSceneMaterial {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_slot = <String>::sse_decode(deserializer);
+        let mut var_option =
+            <crate::api::cube_text::CubeTextMaterialOption>::sse_decode(deserializer);
+        return crate::api::cube_text::CubeTextSceneMaterial {
+            name: var_name,
+            slot: var_slot,
+            option: var_option,
+        };
+    }
+}
+
 impl SseDecode for f32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2328,6 +2936,18 @@ impl SseDecode for i32 {
     }
 }
 
+impl SseDecode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<String>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::abr::AbrTip> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2347,6 +2967,48 @@ impl SseDecode for Vec<crate::api::cpu_brush::CpuBrushCommand> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<crate::api::cpu_brush::CpuBrushCommand>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::cube_text::CubeTextFontAsset> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::cube_text::CubeTextFontAsset>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::cube_text::CubeTextObject> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::cube_text::CubeTextObject>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::cube_text::CubeTextSceneMaterial> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::cube_text::CubeTextSceneMaterial>::sse_decode(
                 deserializer,
             ));
         }
@@ -2664,38 +3326,110 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__bucket_fill__flood_fill_in_place_impl(
+        19 => wire__crate__api__cube_text__cube_text_build_scene_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => {
+        20 => wire__crate__api__cube_text__cube_text_convert_ttf_to_font_json_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        21 => wire__crate__api__cube_text__cube_text_export_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        22 => wire__crate__api__cube_text__cube_text_export_scene_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        23 => wire__crate__api__cube_text__cube_text_font_asset_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        24 => wire__crate__api__cube_text__cube_text_font_convert_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        25 => wire__crate__api__cube_text__cube_text_material_option_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        26 => wire__crate__api__cube_text__cube_text_materials_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        27 => wire__crate__api__cube_text__cube_text_object_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        28 => wire__crate__api__cube_text__cube_text_options_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        29 => wire__crate__api__cube_text__cube_text_scene_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        30 => wire__crate__api__cube_text__cube_text_scene_material_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        31 => wire__crate__api__bucket_fill__flood_fill_in_place_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        32 => {
             wire__crate__api__bucket_fill__flood_fill_patch_impl(port, ptr, rust_vec_len, data_len)
         }
-        24 => wire__crate__api__gpu_composite__gpu_composite_layers_impl(
+        36 => wire__crate__api__gpu_composite__gpu_composite_layers_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        27 => {
+        39 => {
             wire__crate__api__gpu_brush__gpu_download_layer_impl(port, ptr, rust_vec_len, data_len)
         }
-        28 => wire__crate__api__gpu_brush__gpu_draw_stroke_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__gpu_brush__gpu_upload_layer_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__psd__import_psd_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
-        34 => {
+        40 => wire__crate__api__gpu_brush__gpu_draw_stroke_impl(port, ptr, rust_vec_len, data_len),
+        42 => wire__crate__api__gpu_brush__gpu_upload_layer_impl(port, ptr, rust_vec_len, data_len),
+        44 => wire__crate__api__psd__import_psd_impl(port, ptr, rust_vec_len, data_len),
+        45 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        46 => {
             wire__crate__api__bucket_fill__magic_wand_mask_impl(port, ptr, rust_vec_len, data_len)
         }
-        37 => wire__crate__api__workspace__workspace_entry_default_impl(
+        49 => wire__crate__api__workspace__workspace_entry_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        46 => wire__crate__api__workspace__workspace_state_default_impl(
+        58 => wire__crate__api__workspace__workspace_state_default_impl(
             port,
             ptr,
             rust_vec_len,
@@ -2771,33 +3505,33 @@ fn pde_ffi_dispatcher_sync_impl(
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__memory__free_pixel_buffer_impl(ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__gpu_brush__gpu_brush_dispose_impl(ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__gpu_brush__gpu_brush_init_impl(ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__gpu_composite__gpu_compositor_dispose_impl(
+        33 => wire__crate__api__memory__free_pixel_buffer_impl(ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__gpu_brush__gpu_brush_dispose_impl(ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__gpu_brush__gpu_brush_init_impl(ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__gpu_composite__gpu_compositor_dispose_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        26 => {
+        38 => {
             wire__crate__api__gpu_composite__gpu_compositor_init_impl(ptr, rust_vec_len, data_len)
         }
-        29 => wire__crate__api__gpu_brush__gpu_remove_layer_impl(ptr, rust_vec_len, data_len),
-        31 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
-        35 => wire__crate__api__memory__read_pixel_at_impl(ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__selection_path__selection_path_vertices_from_mask_impl(
+        41 => wire__crate__api__gpu_brush__gpu_remove_layer_impl(ptr, rust_vec_len, data_len),
+        43 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
+        47 => wire__crate__api__memory__read_pixel_at_impl(ptr, rust_vec_len, data_len),
+        48 => wire__crate__api__selection_path__selection_path_vertices_from_mask_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        38 => wire__crate__api__workspace__workspace_mark_dirty_impl(ptr, rust_vec_len, data_len),
-        39 => wire__crate__api__workspace__workspace_neighbor_impl(ptr, rust_vec_len, data_len),
-        40 => wire__crate__api__workspace__workspace_open_impl(ptr, rust_vec_len, data_len),
-        41 => wire__crate__api__workspace__workspace_remove_impl(ptr, rust_vec_len, data_len),
-        42 => wire__crate__api__workspace__workspace_reorder_impl(ptr, rust_vec_len, data_len),
-        43 => wire__crate__api__workspace__workspace_reset_impl(ptr, rust_vec_len, data_len),
-        44 => wire__crate__api__workspace__workspace_set_active_impl(ptr, rust_vec_len, data_len),
-        45 => wire__crate__api__workspace__workspace_state_impl(ptr, rust_vec_len, data_len),
+        50 => wire__crate__api__workspace__workspace_mark_dirty_impl(ptr, rust_vec_len, data_len),
+        51 => wire__crate__api__workspace__workspace_neighbor_impl(ptr, rust_vec_len, data_len),
+        52 => wire__crate__api__workspace__workspace_open_impl(ptr, rust_vec_len, data_len),
+        53 => wire__crate__api__workspace__workspace_remove_impl(ptr, rust_vec_len, data_len),
+        54 => wire__crate__api__workspace__workspace_reorder_impl(ptr, rust_vec_len, data_len),
+        55 => wire__crate__api__workspace__workspace_reset_impl(ptr, rust_vec_len, data_len),
+        56 => wire__crate__api__workspace__workspace_set_active_impl(ptr, rust_vec_len, data_len),
+        57 => wire__crate__api__workspace__workspace_state_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -3095,6 +3829,231 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::cpu_transform::CpuTransformTr
     for crate::api::cpu_transform::CpuTransformTranslateResult
 {
     fn into_into_dart(self) -> crate::api::cpu_transform::CpuTransformTranslateResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::cube_text::CubeTextExportResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.file_name.into_into_dart().into_dart(),
+            self.mime_type.into_into_dart().into_dart(),
+            self.bytes.into_into_dart().into_dart(),
+            self.warnings.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::cube_text::CubeTextExportResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::cube_text::CubeTextExportResult>
+    for crate::api::cube_text::CubeTextExportResult
+{
+    fn into_into_dart(self) -> crate::api::cube_text::CubeTextExportResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::cube_text::CubeTextFontAsset {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.json.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::cube_text::CubeTextFontAsset
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::cube_text::CubeTextFontAsset>
+    for crate::api::cube_text::CubeTextFontAsset
+{
+    fn into_into_dart(self) -> crate::api::cube_text::CubeTextFontAsset {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::cube_text::CubeTextFontConvertResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.font_id.into_into_dart().into_dart(),
+            self.json.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::cube_text::CubeTextFontConvertResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::cube_text::CubeTextFontConvertResult>
+    for crate::api::cube_text::CubeTextFontConvertResult
+{
+    fn into_into_dart(self) -> crate::api::cube_text::CubeTextFontConvertResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::cube_text::CubeTextMaterialOption {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.mode.into_into_dart().into_dart(),
+            self.color.into_into_dart().into_dart(),
+            self.color_gradual_start.into_into_dart().into_dart(),
+            self.color_gradual_end.into_into_dart().into_dart(),
+            self.repeat.into_into_dart().into_dart(),
+            self.offset.into_into_dart().into_dart(),
+            self.image.into_into_dart().into_dart(),
+            self.repeat_x.into_into_dart().into_dart(),
+            self.repeat_y.into_into_dart().into_dart(),
+            self.offset_x.into_into_dart().into_dart(),
+            self.offset_y.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::cube_text::CubeTextMaterialOption
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::cube_text::CubeTextMaterialOption>
+    for crate::api::cube_text::CubeTextMaterialOption
+{
+    fn into_into_dart(self) -> crate::api::cube_text::CubeTextMaterialOption {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::cube_text::CubeTextMaterials {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.front.into_into_dart().into_dart(),
+            self.back.into_into_dart().into_dart(),
+            self.up.into_into_dart().into_dart(),
+            self.down.into_into_dart().into_dart(),
+            self.left.into_into_dart().into_dart(),
+            self.right.into_into_dart().into_dart(),
+            self.outline.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::cube_text::CubeTextMaterials
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::cube_text::CubeTextMaterials>
+    for crate::api::cube_text::CubeTextMaterials
+{
+    fn into_into_dart(self) -> crate::api::cube_text::CubeTextMaterials {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::cube_text::CubeTextObject {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.content.into_into_dart().into_dart(),
+            self.font_id.into_into_dart().into_dart(),
+            self.opts.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::cube_text::CubeTextObject
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::cube_text::CubeTextObject>
+    for crate::api::cube_text::CubeTextObject
+{
+    fn into_into_dart(self) -> crate::api::cube_text::CubeTextObject {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::cube_text::CubeTextOptions {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.size.into_into_dart().into_dart(),
+            self.depth.into_into_dart().into_dart(),
+            self.x.into_into_dart().into_dart(),
+            self.y.into_into_dart().into_dart(),
+            self.z.into_into_dart().into_dart(),
+            self.rot_y.into_into_dart().into_dart(),
+            self.rot_x.into_into_dart().into_dart(),
+            self.rot_z.into_into_dart().into_dart(),
+            self.outline_width.into_into_dart().into_dart(),
+            self.letter_spacing.into_into_dart().into_dart(),
+            self.spacing_width.into_into_dart().into_dart(),
+            self.overlay.into_into_dart().into_dart(),
+            self.materials.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::cube_text::CubeTextOptions
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::cube_text::CubeTextOptions>
+    for crate::api::cube_text::CubeTextOptions
+{
+    fn into_into_dart(self) -> crate::api::cube_text::CubeTextOptions {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::cube_text::CubeTextScene {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.positions.into_into_dart().into_dart(),
+            self.normals.into_into_dart().into_dart(),
+            self.uvs.into_into_dart().into_dart(),
+            self.indices.into_into_dart().into_dart(),
+            self.material_indices.into_into_dart().into_dart(),
+            self.materials.into_into_dart().into_dart(),
+            self.bounds_min.into_into_dart().into_dart(),
+            self.bounds_max.into_into_dart().into_dart(),
+            self.warnings.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::cube_text::CubeTextScene
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::cube_text::CubeTextScene>
+    for crate::api::cube_text::CubeTextScene
+{
+    fn into_into_dart(self) -> crate::api::cube_text::CubeTextScene {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::cube_text::CubeTextSceneMaterial {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.name.into_into_dart().into_dart(),
+            self.slot.into_into_dart().into_dart(),
+            self.option.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::cube_text::CubeTextSceneMaterial
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::cube_text::CubeTextSceneMaterial>
+    for crate::api::cube_text::CubeTextSceneMaterial
+{
+    fn into_into_dart(self) -> crate::api::cube_text::CubeTextSceneMaterial {
         self
     }
 }
@@ -3463,6 +4422,114 @@ impl SseEncode for crate::api::cpu_transform::CpuTransformTranslateResult {
     }
 }
 
+impl SseEncode for crate::api::cube_text::CubeTextExportResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.file_name, serializer);
+        <String>::sse_encode(self.mime_type, serializer);
+        <Vec<u8>>::sse_encode(self.bytes, serializer);
+        <Vec<String>>::sse_encode(self.warnings, serializer);
+    }
+}
+
+impl SseEncode for crate::api::cube_text::CubeTextFontAsset {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.json, serializer);
+    }
+}
+
+impl SseEncode for crate::api::cube_text::CubeTextFontConvertResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.font_id, serializer);
+        <String>::sse_encode(self.json, serializer);
+    }
+}
+
+impl SseEncode for crate::api::cube_text::CubeTextMaterialOption {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.mode, serializer);
+        <String>::sse_encode(self.color, serializer);
+        <String>::sse_encode(self.color_gradual_start, serializer);
+        <String>::sse_encode(self.color_gradual_end, serializer);
+        <f32>::sse_encode(self.repeat, serializer);
+        <f32>::sse_encode(self.offset, serializer);
+        <String>::sse_encode(self.image, serializer);
+        <f32>::sse_encode(self.repeat_x, serializer);
+        <f32>::sse_encode(self.repeat_y, serializer);
+        <f32>::sse_encode(self.offset_x, serializer);
+        <f32>::sse_encode(self.offset_y, serializer);
+    }
+}
+
+impl SseEncode for crate::api::cube_text::CubeTextMaterials {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::api::cube_text::CubeTextMaterialOption>::sse_encode(self.front, serializer);
+        <crate::api::cube_text::CubeTextMaterialOption>::sse_encode(self.back, serializer);
+        <crate::api::cube_text::CubeTextMaterialOption>::sse_encode(self.up, serializer);
+        <crate::api::cube_text::CubeTextMaterialOption>::sse_encode(self.down, serializer);
+        <crate::api::cube_text::CubeTextMaterialOption>::sse_encode(self.left, serializer);
+        <crate::api::cube_text::CubeTextMaterialOption>::sse_encode(self.right, serializer);
+        <crate::api::cube_text::CubeTextMaterialOption>::sse_encode(self.outline, serializer);
+    }
+}
+
+impl SseEncode for crate::api::cube_text::CubeTextObject {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.content, serializer);
+        <String>::sse_encode(self.font_id, serializer);
+        <crate::api::cube_text::CubeTextOptions>::sse_encode(self.opts, serializer);
+    }
+}
+
+impl SseEncode for crate::api::cube_text::CubeTextOptions {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <f32>::sse_encode(self.size, serializer);
+        <f32>::sse_encode(self.depth, serializer);
+        <f32>::sse_encode(self.x, serializer);
+        <f32>::sse_encode(self.y, serializer);
+        <f32>::sse_encode(self.z, serializer);
+        <f32>::sse_encode(self.rot_y, serializer);
+        <f32>::sse_encode(self.rot_x, serializer);
+        <f32>::sse_encode(self.rot_z, serializer);
+        <f32>::sse_encode(self.outline_width, serializer);
+        <f32>::sse_encode(self.letter_spacing, serializer);
+        <f32>::sse_encode(self.spacing_width, serializer);
+        <String>::sse_encode(self.overlay, serializer);
+        <crate::api::cube_text::CubeTextMaterials>::sse_encode(self.materials, serializer);
+    }
+}
+
+impl SseEncode for crate::api::cube_text::CubeTextScene {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<f32>>::sse_encode(self.positions, serializer);
+        <Vec<f32>>::sse_encode(self.normals, serializer);
+        <Vec<f32>>::sse_encode(self.uvs, serializer);
+        <Vec<u32>>::sse_encode(self.indices, serializer);
+        <Vec<i32>>::sse_encode(self.material_indices, serializer);
+        <Vec<crate::api::cube_text::CubeTextSceneMaterial>>::sse_encode(self.materials, serializer);
+        <Vec<f32>>::sse_encode(self.bounds_min, serializer);
+        <Vec<f32>>::sse_encode(self.bounds_max, serializer);
+        <Vec<String>>::sse_encode(self.warnings, serializer);
+    }
+}
+
+impl SseEncode for crate::api::cube_text::CubeTextSceneMaterial {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.slot, serializer);
+        <crate::api::cube_text::CubeTextMaterialOption>::sse_encode(self.option, serializer);
+    }
+}
+
 impl SseEncode for f32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3535,6 +4602,16 @@ impl SseEncode for i32 {
     }
 }
 
+impl SseEncode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <String>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::abr::AbrTip> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3551,6 +4628,36 @@ impl SseEncode for Vec<crate::api::cpu_brush::CpuBrushCommand> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <crate::api::cpu_brush::CpuBrushCommand>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::cube_text::CubeTextFontAsset> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::cube_text::CubeTextFontAsset>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::cube_text::CubeTextObject> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::cube_text::CubeTextObject>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::cube_text::CubeTextSceneMaterial> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::cube_text::CubeTextSceneMaterial>::sse_encode(item, serializer);
         }
     }
 }

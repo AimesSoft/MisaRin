@@ -6,95 +6,77 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `snapshot`, `workspace_cell`
+
+            // These functions are ignored because they are not marked as `pub`: `snapshot`, `workspace_cell`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`
 
-WorkspaceState workspaceState() =>
-    RustLib.instance.api.crateApiWorkspaceWorkspaceState();
 
-WorkspaceState workspaceReset() =>
-    RustLib.instance.api.crateApiWorkspaceWorkspaceReset();
+            WorkspaceState  workspaceState() => RustLib.instance.api.crateApiWorkspaceWorkspaceState();
 
-WorkspaceState workspaceOpen({
-  required WorkspaceEntry entry,
-  required bool activate,
-}) => RustLib.instance.api.crateApiWorkspaceWorkspaceOpen(
-  entry: entry,
-  activate: activate,
-);
+WorkspaceState  workspaceReset() => RustLib.instance.api.crateApiWorkspaceWorkspaceReset();
 
-WorkspaceState workspaceMarkDirty({
-  required String id,
-  required bool isDirty,
-}) => RustLib.instance.api.crateApiWorkspaceWorkspaceMarkDirty(
-  id: id,
-  isDirty: isDirty,
-);
+WorkspaceState  workspaceOpen({required WorkspaceEntry entry , required bool activate }) => RustLib.instance.api.crateApiWorkspaceWorkspaceOpen(entry: entry, activate: activate);
 
-WorkspaceState workspaceSetActive({required String id}) =>
-    RustLib.instance.api.crateApiWorkspaceWorkspaceSetActive(id: id);
+WorkspaceState  workspaceMarkDirty({required String id , required bool isDirty }) => RustLib.instance.api.crateApiWorkspaceWorkspaceMarkDirty(id: id, isDirty: isDirty);
 
-WorkspaceEntry? workspaceNeighbor({required String id}) =>
-    RustLib.instance.api.crateApiWorkspaceWorkspaceNeighbor(id: id);
+WorkspaceState  workspaceSetActive({required String id }) => RustLib.instance.api.crateApiWorkspaceWorkspaceSetActive(id: id);
 
-WorkspaceState workspaceRemove({required String id, String? activateAfter}) =>
-    RustLib.instance.api.crateApiWorkspaceWorkspaceRemove(
-      id: id,
-      activateAfter: activateAfter,
-    );
+WorkspaceEntry?  workspaceNeighbor({required String id }) => RustLib.instance.api.crateApiWorkspaceWorkspaceNeighbor(id: id);
 
-WorkspaceState workspaceReorder({
-  required int oldIndex,
-  required int newIndex,
-}) => RustLib.instance.api.crateApiWorkspaceWorkspaceReorder(
-  oldIndex: oldIndex,
-  newIndex: newIndex,
-);
+WorkspaceState  workspaceRemove({required String id , String? activateAfter }) => RustLib.instance.api.crateApiWorkspaceWorkspaceRemove(id: id, activateAfter: activateAfter);
 
-class WorkspaceEntry {
-  final String id;
-  final String name;
-  final bool isDirty;
+WorkspaceState  workspaceReorder({required int oldIndex , required int newIndex }) => RustLib.instance.api.crateApiWorkspaceWorkspaceReorder(oldIndex: oldIndex, newIndex: newIndex);
 
-  const WorkspaceEntry({
-    required this.id,
-    required this.name,
-    required this.isDirty,
-  });
+            class WorkspaceEntry  {
+                final String id;
+final String name;
+final bool isDirty;
 
-  static Future<WorkspaceEntry> default_() =>
-      RustLib.instance.api.crateApiWorkspaceWorkspaceEntryDefault();
+                const WorkspaceEntry({required this.id ,required this.name ,required this.isDirty ,});
 
-  @override
-  int get hashCode => id.hashCode ^ name.hashCode ^ isDirty.hashCode;
+                static Future<WorkspaceEntry>  default_()=>RustLib.instance.api.crateApiWorkspaceWorkspaceEntryDefault();
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is WorkspaceEntry &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          name == other.name &&
-          isDirty == other.isDirty;
-}
 
-class WorkspaceState {
-  final List<WorkspaceEntry> entries;
-  final String? activeId;
+                
 
-  const WorkspaceState({required this.entries, this.activeId});
+                
+        @override
+        int get hashCode => id.hashCode^name.hashCode^isDirty.hashCode;
+        
 
-  static Future<WorkspaceState> default_() =>
-      RustLib.instance.api.crateApiWorkspaceWorkspaceStateDefault();
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is WorkspaceEntry &&
+                runtimeType == other.runtimeType
+                && id == other.id&& name == other.name&& isDirty == other.isDirty;
+        
+            }
 
-  @override
-  int get hashCode => entries.hashCode ^ activeId.hashCode;
+class WorkspaceState  {
+                final List<WorkspaceEntry> entries;
+final String? activeId;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is WorkspaceState &&
-          runtimeType == other.runtimeType &&
-          entries == other.entries &&
-          activeId == other.activeId;
-}
+                const WorkspaceState({required this.entries ,this.activeId ,});
+
+                static Future<WorkspaceState>  default_()=>RustLib.instance.api.crateApiWorkspaceWorkspaceStateDefault();
+
+
+                
+
+                
+        @override
+        int get hashCode => entries.hashCode^activeId.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is WorkspaceState &&
+                runtimeType == other.runtimeType
+                && entries == other.entries&& activeId == other.activeId;
+        
+            }
+            

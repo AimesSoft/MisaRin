@@ -6,11 +6,15 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-BigInt allocatePixelBuffer({required int size}) =>
-    RustLib.instance.api.crateApiMemoryAllocatePixelBuffer(size: size);
 
-void freePixelBuffer({required BigInt ptr, required int size}) =>
-    RustLib.instance.api.crateApiMemoryFreePixelBuffer(ptr: ptr, size: size);
+            // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `misarin_alloc_pixel_buffer`, `misarin_free_pixel_buffer`
 
-int readPixelAt({required BigInt ptr, required int index}) =>
-    RustLib.instance.api.crateApiMemoryReadPixelAt(ptr: ptr, index: index);
+
+            BigInt  allocatePixelBuffer({required int size }) => RustLib.instance.api.crateApiMemoryAllocatePixelBuffer(size: size);
+
+void  freePixelBuffer({required BigInt ptr , required int size }) => RustLib.instance.api.crateApiMemoryFreePixelBuffer(ptr: ptr, size: size);
+
+int  readPixelAt({required BigInt ptr , required int index }) => RustLib.instance.api.crateApiMemoryReadPixelAt(ptr: ptr, index: index);
+
+            
+            

@@ -3,7 +3,7 @@
 export "FLUTTER_ROOT=/Library/Afolder/FlutterProject/flutter"
 export "FLUTTER_APPLICATION_PATH=/Library/Afolder/FlutterProject/misa-rin"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
-export "FLUTTER_TARGET=lib/main.dart"
+export "FLUTTER_TARGET=/Library/Afolder/FlutterProject/misa-rin/lib/main.dart"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=1.0.13"
 export "FLUTTER_BUILD_NUMBER=1"

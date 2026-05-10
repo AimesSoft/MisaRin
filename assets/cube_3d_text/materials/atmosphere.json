@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "material": {
+    "front": {
+      "mode": "image",
+      "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFgAAAAoCAYAAAB6tz31AAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAWKADAAQAAAABAAAAKAAAAAAeUqjfAAADaklEQVRoBe1aPW8UMRBd31q6BIGQoEBJKIgoEA0IpDT8DP52inwUSQWkSIRECRJJCrLc6RTF88Z49p19jkly1c563pvx7HjG3ls3bA5DF/x2v18EUv7lzsaaICnNL8gbFCYN+nSnXPI4m1VHfNX8OJ9RshultZSS74DcgbwUawgCvuL8oa0C1+CuySjqa0Tb7ffnlo6Avd+SNfXgrGzNFsYaFZgYeDqjYI3T+EaDRrlFxMC7CZXAnSopLJ6aSX1liF3cAagjqRj6fphRMkECD/r7mMJEDNzRlKvB8Uda7+7bl7IHHJ9yPcDEQ3aaMzMKQLIGw4MybVVR6KWVng1ILl6aVyUThz3tIDLUliGgdIXKxZPzTWYwyVVHHTKQDnAunpyl+/r4t6gi26/WBcW3k3Mh33lh3vSZn7tKantnEFrjSfbcwfnu5ipY08xuZ1nbTuTbCJbAv4i23geDfmqPF+Erf6tGUAOv2ZIzfxeZwugmBzXqv2uCQbCqXEJCok13+rStffDWa7nPPfvC7XNz8RigXLm9XQRkRGr5RSdP4Ml2FjVn3dQlwkKselyVKIiYZT8Xb/GT497h2xskIOeHcFqGtKIzOBdPO5wGuB/PLth9SZrxFkchtst5wu5awm3kzOLzN1Nh1/csoYA/CNabyPaa3C0/M3YVqHMc9AA/qV1jRwSwQZf+6TXEc/ZuXaq6ny/SNfjJO1lTJFxLvw4v9c2Kd3L9RTzOxxrHqc52EWV/pflGe3dtGDLIwqtdCuDVSRbGFR4M2iUCCAGvxFjJuZ67Um7ghlri4FPU9wAUXAJyIfqJtYuwGIDW5AP94iLpr3qZBXh6HCbk1z7Ks//lHpz9yQzGJTP9IPnBvikqfywE6S/OH+kh3qqJWfjIlz1w7oiuEXTjRu67PPwN0+JK8aECyqS/CEfZ4fthkt938Ih6PDrDODqAssMUJvEmHyqgnGkP6XLn482Eg4REB1BWD5jEm3yogHKmPUw41bSxBP1BB6Tshs/y+2A53IC0a/wnuCP/Q8z2GANoEaqjnAR4PHnI4QYktSTAJzYgAM8WDfuqyWUbLE2ATQb5rQeA+pVl1eQq27fNWQEs3NRshzgN9YU7Bze0jeVjoBfDnx6NUmtVqf0aXDJyJR446c/9CjAZnBLqDwEuEcUEx1+o/HI4Lxlj+AAAAABJRU5ErkJggg==",
+      "repeatX": 0.4545454545,
+      "repeatY": 1,
+      "offsetX": 0,
+      "offsetY": 0
+    },
+    "back": {
+      "mode": "gradient",
+      "colorGradualStart": "#ebd4ff",
+      "colorGradualEnd": "#b56edd",
+      "repeat": 1,
+      "offset": 0
+    },
+    "up": {
+      "mode": "gradient",
+      "colorGradualStart": "#9a00f7",
+      "colorGradualEnd": "#55008d",
+      "repeat": 1,
+      "offset": 0
+    },
+    "down": {
+      "mode": "gradient",
+      "colorGradualStart": "#8900e4",
+      "colorGradualEnd": "#5e009a",
+      "repeat": 1,
+      "offset": 0
+    },
+    "left": {
+      "mode": "color",
+      "color": "#4a148c"
+    },
+    "right": {
+      "mode": "color",
+      "color": "#4a148c"
+    },
+    "outline": {
+      "mode": "color",
+      "color": "#36005d"
+    }
+  }
+}

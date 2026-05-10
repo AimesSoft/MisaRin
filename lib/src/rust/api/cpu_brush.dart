@@ -6,417 +6,121 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `bool_to_u8`
 
-CpuBrushResult cpuBrushDrawStampRgba({
-  required List<int> pixels,
-  required int width,
-  required int height,
-  required double centerX,
-  required double centerY,
-  required double radius,
-  required int colorArgb,
-  required int brushShape,
-  required int antialiasLevel,
-  required double softness,
-  required bool erase,
-  required bool randomRotation,
-  required bool smoothRotation,
-  required int rotationSeed,
-  required double rotationJitter,
-  required bool screentoneEnabled,
-  required double screentoneSpacing,
-  required double screentoneDotSize,
-  required double screentoneRotation,
-  required double screentoneSoftness,
-  required int screentoneShape,
-  required bool snapToPixel,
-  required int customMaskWidth,
-  required int customMaskHeight,
-  Uint8List? customMask,
-  Uint8List? selection,
-}) => RustLib.instance.api.crateApiCpuBrushCpuBrushDrawStampRgba(
-  pixels: pixels,
-  width: width,
-  height: height,
-  centerX: centerX,
-  centerY: centerY,
-  radius: radius,
-  colorArgb: colorArgb,
-  brushShape: brushShape,
-  antialiasLevel: antialiasLevel,
-  softness: softness,
-  erase: erase,
-  randomRotation: randomRotation,
-  smoothRotation: smoothRotation,
-  rotationSeed: rotationSeed,
-  rotationJitter: rotationJitter,
-  screentoneEnabled: screentoneEnabled,
-  screentoneSpacing: screentoneSpacing,
-  screentoneDotSize: screentoneDotSize,
-  screentoneRotation: screentoneRotation,
-  screentoneSoftness: screentoneSoftness,
-  screentoneShape: screentoneShape,
-  snapToPixel: snapToPixel,
-  customMaskWidth: customMaskWidth,
-  customMaskHeight: customMaskHeight,
-  customMask: customMask,
-  selection: selection,
-);
+            // These functions are ignored because they are not marked as `pub`: `bool_to_u8`
 
-CpuBrushResult cpuBrushDrawCapsuleSegmentRgba({
-  required List<int> pixels,
-  required int width,
-  required int height,
-  required double ax,
-  required double ay,
-  required double bx,
-  required double by,
-  required double startRadius,
-  required double endRadius,
-  required int colorArgb,
-  required int antialiasLevel,
-  required bool includeStartCap,
-  required bool erase,
-  required bool screentoneEnabled,
-  required double screentoneSpacing,
-  required double screentoneDotSize,
-  required double screentoneRotation,
-  required double screentoneSoftness,
-  required int screentoneShape,
-  Uint8List? selection,
-}) => RustLib.instance.api.crateApiCpuBrushCpuBrushDrawCapsuleSegmentRgba(
-  pixels: pixels,
-  width: width,
-  height: height,
-  ax: ax,
-  ay: ay,
-  bx: bx,
-  by: by,
-  startRadius: startRadius,
-  endRadius: endRadius,
-  colorArgb: colorArgb,
-  antialiasLevel: antialiasLevel,
-  includeStartCap: includeStartCap,
-  erase: erase,
-  screentoneEnabled: screentoneEnabled,
-  screentoneSpacing: screentoneSpacing,
-  screentoneDotSize: screentoneDotSize,
-  screentoneRotation: screentoneRotation,
-  screentoneSoftness: screentoneSoftness,
-  screentoneShape: screentoneShape,
-  selection: selection,
-);
 
-CpuBrushResult cpuBrushFillPolygonRgba({
-  required List<int> pixels,
-  required int width,
-  required int height,
-  required List<double> vertices,
-  required double radius,
-  required int colorArgb,
-  required int antialiasLevel,
-  required double softness,
-  required bool erase,
-  Uint8List? selection,
-}) => RustLib.instance.api.crateApiCpuBrushCpuBrushFillPolygonRgba(
-  pixels: pixels,
-  width: width,
-  height: height,
-  vertices: vertices,
-  radius: radius,
-  colorArgb: colorArgb,
-  antialiasLevel: antialiasLevel,
-  softness: softness,
-  erase: erase,
-  selection: selection,
-);
+            CpuBrushResult  cpuBrushDrawStampRgba({required List<int> pixels , required int width , required int height , required double centerX , required double centerY , required double radius , required int colorArgb , required int brushShape , required int antialiasLevel , required double softness , required bool erase , required bool randomRotation , required bool smoothRotation , required int rotationSeed , required double rotationJitter , required bool screentoneEnabled , required double screentoneSpacing , required double screentoneDotSize , required double screentoneRotation , required double screentoneSoftness , required int screentoneShape , required bool snapToPixel , required int customMaskWidth , required int customMaskHeight , Uint8List? customMask , Uint8List? selection }) => RustLib.instance.api.crateApiCpuBrushCpuBrushDrawStampRgba(pixels: pixels, width: width, height: height, centerX: centerX, centerY: centerY, radius: radius, colorArgb: colorArgb, brushShape: brushShape, antialiasLevel: antialiasLevel, softness: softness, erase: erase, randomRotation: randomRotation, smoothRotation: smoothRotation, rotationSeed: rotationSeed, rotationJitter: rotationJitter, screentoneEnabled: screentoneEnabled, screentoneSpacing: screentoneSpacing, screentoneDotSize: screentoneDotSize, screentoneRotation: screentoneRotation, screentoneSoftness: screentoneSoftness, screentoneShape: screentoneShape, snapToPixel: snapToPixel, customMaskWidth: customMaskWidth, customMaskHeight: customMaskHeight, customMask: customMask, selection: selection);
 
-CpuBrushResult cpuBrushDrawStampSegmentRgba({
-  required List<int> pixels,
-  required int width,
-  required int height,
-  required double startX,
-  required double startY,
-  required double endX,
-  required double endY,
-  required double startRadius,
-  required double endRadius,
-  required int colorArgb,
-  required int brushShape,
-  required int antialiasLevel,
-  required bool includeStart,
-  required bool erase,
-  required bool randomRotation,
-  required bool smoothRotation,
-  required int rotationSeed,
-  required double rotationJitter,
-  required bool screentoneEnabled,
-  required double screentoneSpacing,
-  required double screentoneDotSize,
-  required double screentoneRotation,
-  required double screentoneSoftness,
-  required int screentoneShape,
-  required double spacing,
-  required double scatter,
-  required double softness,
-  required bool snapToPixel,
-  required bool accumulate,
-  required int customMaskWidth,
-  required int customMaskHeight,
-  Uint8List? customMask,
-  Uint8List? selection,
-}) => RustLib.instance.api.crateApiCpuBrushCpuBrushDrawStampSegmentRgba(
-  pixels: pixels,
-  width: width,
-  height: height,
-  startX: startX,
-  startY: startY,
-  endX: endX,
-  endY: endY,
-  startRadius: startRadius,
-  endRadius: endRadius,
-  colorArgb: colorArgb,
-  brushShape: brushShape,
-  antialiasLevel: antialiasLevel,
-  includeStart: includeStart,
-  erase: erase,
-  randomRotation: randomRotation,
-  smoothRotation: smoothRotation,
-  rotationSeed: rotationSeed,
-  rotationJitter: rotationJitter,
-  screentoneEnabled: screentoneEnabled,
-  screentoneSpacing: screentoneSpacing,
-  screentoneDotSize: screentoneDotSize,
-  screentoneRotation: screentoneRotation,
-  screentoneSoftness: screentoneSoftness,
-  screentoneShape: screentoneShape,
-  spacing: spacing,
-  scatter: scatter,
-  softness: softness,
-  snapToPixel: snapToPixel,
-  accumulate: accumulate,
-  customMaskWidth: customMaskWidth,
-  customMaskHeight: customMaskHeight,
-  customMask: customMask,
-  selection: selection,
-);
+CpuBrushResult  cpuBrushDrawCapsuleSegmentRgba({required List<int> pixels , required int width , required int height , required double ax , required double ay , required double bx , required double by , required double startRadius , required double endRadius , required int colorArgb , required int antialiasLevel , required bool includeStartCap , required bool erase , required bool screentoneEnabled , required double screentoneSpacing , required double screentoneDotSize , required double screentoneRotation , required double screentoneSoftness , required int screentoneShape , Uint8List? selection }) => RustLib.instance.api.crateApiCpuBrushCpuBrushDrawCapsuleSegmentRgba(pixels: pixels, width: width, height: height, ax: ax, ay: ay, bx: bx, by: by, startRadius: startRadius, endRadius: endRadius, colorArgb: colorArgb, antialiasLevel: antialiasLevel, includeStartCap: includeStartCap, erase: erase, screentoneEnabled: screentoneEnabled, screentoneSpacing: screentoneSpacing, screentoneDotSize: screentoneDotSize, screentoneRotation: screentoneRotation, screentoneSoftness: screentoneSoftness, screentoneShape: screentoneShape, selection: selection);
 
-CpuBrushResult cpuBrushDrawSprayRgba({
-  required List<int> pixels,
-  required int width,
-  required int height,
-  required List<double> points,
-  required int colorArgb,
-  required int brushShape,
-  required int antialiasLevel,
-  required double softness,
-  required bool erase,
-  required bool accumulate,
-  Uint8List? selection,
-}) => RustLib.instance.api.crateApiCpuBrushCpuBrushDrawSprayRgba(
-  pixels: pixels,
-  width: width,
-  height: height,
-  points: points,
-  colorArgb: colorArgb,
-  brushShape: brushShape,
-  antialiasLevel: antialiasLevel,
-  softness: softness,
-  erase: erase,
-  accumulate: accumulate,
-  selection: selection,
-);
+CpuBrushResult  cpuBrushFillPolygonRgba({required List<int> pixels , required int width , required int height , required List<double> vertices , required double radius , required int colorArgb , required int antialiasLevel , required double softness , required bool erase , Uint8List? selection }) => RustLib.instance.api.crateApiCpuBrushCpuBrushFillPolygonRgba(pixels: pixels, width: width, height: height, vertices: vertices, radius: radius, colorArgb: colorArgb, antialiasLevel: antialiasLevel, softness: softness, erase: erase, selection: selection);
 
-CpuBrushResult cpuBrushApplyCommandsRgba({
-  required List<int> pixels,
-  required int width,
-  required int height,
-  required List<CpuBrushCommand> commands,
-  Uint8List? selection,
-}) => RustLib.instance.api.crateApiCpuBrushCpuBrushApplyCommandsRgba(
-  pixels: pixels,
-  width: width,
-  height: height,
-  commands: commands,
-  selection: selection,
-);
+CpuBrushResult  cpuBrushDrawStampSegmentRgba({required List<int> pixels , required int width , required int height , required double startX , required double startY , required double endX , required double endY , required double startRadius , required double endRadius , required int colorArgb , required int brushShape , required int antialiasLevel , required bool includeStart , required bool erase , required bool randomRotation , required bool smoothRotation , required int rotationSeed , required double rotationJitter , required bool screentoneEnabled , required double screentoneSpacing , required double screentoneDotSize , required double screentoneRotation , required double screentoneSoftness , required int screentoneShape , required double spacing , required double scatter , required double softness , required bool snapToPixel , required bool accumulate , required int customMaskWidth , required int customMaskHeight , Uint8List? customMask , Uint8List? selection }) => RustLib.instance.api.crateApiCpuBrushCpuBrushDrawStampSegmentRgba(pixels: pixels, width: width, height: height, startX: startX, startY: startY, endX: endX, endY: endY, startRadius: startRadius, endRadius: endRadius, colorArgb: colorArgb, brushShape: brushShape, antialiasLevel: antialiasLevel, includeStart: includeStart, erase: erase, randomRotation: randomRotation, smoothRotation: smoothRotation, rotationSeed: rotationSeed, rotationJitter: rotationJitter, screentoneEnabled: screentoneEnabled, screentoneSpacing: screentoneSpacing, screentoneDotSize: screentoneDotSize, screentoneRotation: screentoneRotation, screentoneSoftness: screentoneSoftness, screentoneShape: screentoneShape, spacing: spacing, scatter: scatter, softness: softness, snapToPixel: snapToPixel, accumulate: accumulate, customMaskWidth: customMaskWidth, customMaskHeight: customMaskHeight, customMask: customMask, selection: selection);
 
-CpuStreamlineResult cpuBrushApplyStreamlineSamples({
-  required List<double> samples,
-  required double strength,
-}) => RustLib.instance.api.crateApiCpuBrushCpuBrushApplyStreamlineSamples(
-  samples: samples,
-  strength: strength,
-);
+CpuBrushResult  cpuBrushDrawSprayRgba({required List<int> pixels , required int width , required int height , required List<double> points , required int colorArgb , required int brushShape , required int antialiasLevel , required double softness , required bool erase , required bool accumulate , Uint8List? selection }) => RustLib.instance.api.crateApiCpuBrushCpuBrushDrawSprayRgba(pixels: pixels, width: width, height: height, points: points, colorArgb: colorArgb, brushShape: brushShape, antialiasLevel: antialiasLevel, softness: softness, erase: erase, accumulate: accumulate, selection: selection);
 
-class CpuBrushCommand {
-  final int kind;
-  final double ax;
-  final double ay;
-  final double bx;
-  final double by;
-  final double startRadius;
-  final double endRadius;
-  final double centerX;
-  final double centerY;
-  final double radius;
-  final int colorArgb;
-  final int brushShape;
-  final int antialiasLevel;
-  final double softness;
-  final bool erase;
-  final bool includeStartCap;
-  final bool includeStart;
-  final bool randomRotation;
-  final bool smoothRotation;
-  final int rotationSeed;
-  final double rotationJitter;
-  final double spacing;
-  final double scatter;
-  final bool screentoneEnabled;
-  final double screentoneSpacing;
-  final double screentoneDotSize;
-  final double screentoneRotation;
-  final double screentoneSoftness;
-  final int screentoneShape;
-  final bool snapToPixel;
+CpuBrushResult  cpuBrushApplyCommandsRgba({required List<int> pixels , required int width , required int height , required List<CpuBrushCommand> commands , Uint8List? selection }) => RustLib.instance.api.crateApiCpuBrushCpuBrushApplyCommandsRgba(pixels: pixels, width: width, height: height, commands: commands, selection: selection);
 
-  const CpuBrushCommand({
-    required this.kind,
-    required this.ax,
-    required this.ay,
-    required this.bx,
-    required this.by,
-    required this.startRadius,
-    required this.endRadius,
-    required this.centerX,
-    required this.centerY,
-    required this.radius,
-    required this.colorArgb,
-    required this.brushShape,
-    required this.antialiasLevel,
-    required this.softness,
-    required this.erase,
-    required this.includeStartCap,
-    required this.includeStart,
-    required this.randomRotation,
-    required this.smoothRotation,
-    required this.rotationSeed,
-    required this.rotationJitter,
-    required this.spacing,
-    required this.scatter,
-    required this.screentoneEnabled,
-    required this.screentoneSpacing,
-    required this.screentoneDotSize,
-    required this.screentoneRotation,
-    required this.screentoneSoftness,
-    required this.screentoneShape,
-    required this.snapToPixel,
-  });
+CpuStreamlineResult  cpuBrushApplyStreamlineSamples({required List<double> samples , required double strength }) => RustLib.instance.api.crateApiCpuBrushCpuBrushApplyStreamlineSamples(samples: samples, strength: strength);
 
-  @override
-  int get hashCode =>
-      kind.hashCode ^
-      ax.hashCode ^
-      ay.hashCode ^
-      bx.hashCode ^
-      by.hashCode ^
-      startRadius.hashCode ^
-      endRadius.hashCode ^
-      centerX.hashCode ^
-      centerY.hashCode ^
-      radius.hashCode ^
-      colorArgb.hashCode ^
-      brushShape.hashCode ^
-      antialiasLevel.hashCode ^
-      softness.hashCode ^
-      erase.hashCode ^
-      includeStartCap.hashCode ^
-      includeStart.hashCode ^
-      randomRotation.hashCode ^
-      smoothRotation.hashCode ^
-      rotationSeed.hashCode ^
-      rotationJitter.hashCode ^
-      spacing.hashCode ^
-      scatter.hashCode ^
-      screentoneEnabled.hashCode ^
-      screentoneSpacing.hashCode ^
-      screentoneDotSize.hashCode ^
-      screentoneRotation.hashCode ^
-      screentoneSoftness.hashCode ^
-      screentoneShape.hashCode ^
-      snapToPixel.hashCode;
+            class CpuBrushCommand  {
+                final int kind;
+final double ax;
+final double ay;
+final double bx;
+final double by;
+final double startRadius;
+final double endRadius;
+final double centerX;
+final double centerY;
+final double radius;
+final int colorArgb;
+final int brushShape;
+final int antialiasLevel;
+final double softness;
+final bool erase;
+final bool includeStartCap;
+final bool includeStart;
+final bool randomRotation;
+final bool smoothRotation;
+final int rotationSeed;
+final double rotationJitter;
+final double spacing;
+final double scatter;
+final bool screentoneEnabled;
+final double screentoneSpacing;
+final double screentoneDotSize;
+final double screentoneRotation;
+final double screentoneSoftness;
+final int screentoneShape;
+final bool snapToPixel;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CpuBrushCommand &&
-          runtimeType == other.runtimeType &&
-          kind == other.kind &&
-          ax == other.ax &&
-          ay == other.ay &&
-          bx == other.bx &&
-          by == other.by &&
-          startRadius == other.startRadius &&
-          endRadius == other.endRadius &&
-          centerX == other.centerX &&
-          centerY == other.centerY &&
-          radius == other.radius &&
-          colorArgb == other.colorArgb &&
-          brushShape == other.brushShape &&
-          antialiasLevel == other.antialiasLevel &&
-          softness == other.softness &&
-          erase == other.erase &&
-          includeStartCap == other.includeStartCap &&
-          includeStart == other.includeStart &&
-          randomRotation == other.randomRotation &&
-          smoothRotation == other.smoothRotation &&
-          rotationSeed == other.rotationSeed &&
-          rotationJitter == other.rotationJitter &&
-          spacing == other.spacing &&
-          scatter == other.scatter &&
-          screentoneEnabled == other.screentoneEnabled &&
-          screentoneSpacing == other.screentoneSpacing &&
-          screentoneDotSize == other.screentoneDotSize &&
-          screentoneRotation == other.screentoneRotation &&
-          screentoneSoftness == other.screentoneSoftness &&
-          screentoneShape == other.screentoneShape &&
-          snapToPixel == other.snapToPixel;
-}
+                const CpuBrushCommand({required this.kind ,required this.ax ,required this.ay ,required this.bx ,required this.by ,required this.startRadius ,required this.endRadius ,required this.centerX ,required this.centerY ,required this.radius ,required this.colorArgb ,required this.brushShape ,required this.antialiasLevel ,required this.softness ,required this.erase ,required this.includeStartCap ,required this.includeStart ,required this.randomRotation ,required this.smoothRotation ,required this.rotationSeed ,required this.rotationJitter ,required this.spacing ,required this.scatter ,required this.screentoneEnabled ,required this.screentoneSpacing ,required this.screentoneDotSize ,required this.screentoneRotation ,required this.screentoneSoftness ,required this.screentoneShape ,required this.snapToPixel ,});
 
-class CpuBrushResult {
-  final bool ok;
-  final Uint32List pixels;
+                
+                
 
-  const CpuBrushResult({required this.ok, required this.pixels});
+                
+        @override
+        int get hashCode => kind.hashCode^ax.hashCode^ay.hashCode^bx.hashCode^by.hashCode^startRadius.hashCode^endRadius.hashCode^centerX.hashCode^centerY.hashCode^radius.hashCode^colorArgb.hashCode^brushShape.hashCode^antialiasLevel.hashCode^softness.hashCode^erase.hashCode^includeStartCap.hashCode^includeStart.hashCode^randomRotation.hashCode^smoothRotation.hashCode^rotationSeed.hashCode^rotationJitter.hashCode^spacing.hashCode^scatter.hashCode^screentoneEnabled.hashCode^screentoneSpacing.hashCode^screentoneDotSize.hashCode^screentoneRotation.hashCode^screentoneSoftness.hashCode^screentoneShape.hashCode^snapToPixel.hashCode;
+        
 
-  @override
-  int get hashCode => ok.hashCode ^ pixels.hashCode;
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CpuBrushCommand &&
+                runtimeType == other.runtimeType
+                && kind == other.kind&& ax == other.ax&& ay == other.ay&& bx == other.bx&& by == other.by&& startRadius == other.startRadius&& endRadius == other.endRadius&& centerX == other.centerX&& centerY == other.centerY&& radius == other.radius&& colorArgb == other.colorArgb&& brushShape == other.brushShape&& antialiasLevel == other.antialiasLevel&& softness == other.softness&& erase == other.erase&& includeStartCap == other.includeStartCap&& includeStart == other.includeStart&& randomRotation == other.randomRotation&& smoothRotation == other.smoothRotation&& rotationSeed == other.rotationSeed&& rotationJitter == other.rotationJitter&& spacing == other.spacing&& scatter == other.scatter&& screentoneEnabled == other.screentoneEnabled&& screentoneSpacing == other.screentoneSpacing&& screentoneDotSize == other.screentoneDotSize&& screentoneRotation == other.screentoneRotation&& screentoneSoftness == other.screentoneSoftness&& screentoneShape == other.screentoneShape&& snapToPixel == other.snapToPixel;
+        
+            }
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CpuBrushResult &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          pixels == other.pixels;
-}
+class CpuBrushResult  {
+                final bool ok;
+final Uint32List pixels;
 
-class CpuStreamlineResult {
-  final bool ok;
-  final Float32List samples;
+                const CpuBrushResult({required this.ok ,required this.pixels ,});
 
-  const CpuStreamlineResult({required this.ok, required this.samples});
+                
+                
 
-  @override
-  int get hashCode => ok.hashCode ^ samples.hashCode;
+                
+        @override
+        int get hashCode => ok.hashCode^pixels.hashCode;
+        
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CpuStreamlineResult &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          samples == other.samples;
-}
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CpuBrushResult &&
+                runtimeType == other.runtimeType
+                && ok == other.ok&& pixels == other.pixels;
+        
+            }
+
+class CpuStreamlineResult  {
+                final bool ok;
+final Float32List samples;
+
+                const CpuStreamlineResult({required this.ok ,required this.samples ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => ok.hashCode^samples.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CpuStreamlineResult &&
+                runtimeType == other.runtimeType
+                && ok == other.ok&& samples == other.samples;
+        
+            }
+            

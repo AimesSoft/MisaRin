@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "material": {
+    "front": {
+      "mode": "gradient",
+      "colorGradualStart": "rgb(248,193,39)",
+      "colorGradualEnd": "rgb(245,229,50)",
+      "repeat": 1,
+      "offset": 0
+    },
+    "back": {
+      "mode": "gradient",
+      "colorGradualStart": "rgb(248,193,39)",
+      "colorGradualEnd": "rgb(245,229,50)",
+      "repeat": 1,
+      "offset": 0
+    },
+    "up": {
+      "mode": "color",
+      "color": "#553800"
+    },
+    "down": {
+      "mode": "color",
+      "color": "rgb(162,105,37)"
+    },
+    "left": {
+      "mode": "color",
+      "color": "rgb(0,0,0)"
+    },
+    "right": {
+      "mode": "color",
+      "color": "rgb(0,0,0)"
+    },
+    "outline": {
+      "mode": "color",
+      "color": "rgb(0,0,0)"
+    }
+  }
+}

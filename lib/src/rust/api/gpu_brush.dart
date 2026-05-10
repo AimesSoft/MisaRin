@@ -6,100 +6,72 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `brush_cell`, `compute_dirty_rect_i32`, `create_wgpu_device`, `map_brush_shape`, `union_dirty_rect_i32`
+
+            // These functions are ignored because they are not marked as `pub`: `brush_cell`, `compute_dirty_rect_i32`, `create_wgpu_device`, `map_brush_shape`, `union_dirty_rect_i32`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `GpuBrushEngine`, `StrokeEndpoint`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
 
-void gpuBrushInit() => RustLib.instance.api.crateApiGpuBrushGpuBrushInit();
 
-Future<void> gpuUploadLayer({
-  required String layerId,
-  required List<int> pixels,
-  required int width,
-  required int height,
-}) => RustLib.instance.api.crateApiGpuBrushGpuUploadLayer(
-  layerId: layerId,
-  pixels: pixels,
-  width: width,
-  height: height,
-);
+            void  gpuBrushInit() => RustLib.instance.api.crateApiGpuBrushGpuBrushInit();
 
-Future<Uint32List> gpuDownloadLayer({required String layerId}) =>
-    RustLib.instance.api.crateApiGpuBrushGpuDownloadLayer(layerId: layerId);
+Future<void>  gpuUploadLayer({required String layerId , required List<int> pixels , required int width , required int height }) => RustLib.instance.api.crateApiGpuBrushGpuUploadLayer(layerId: layerId, pixels: pixels, width: width, height: height);
 
-void gpuRemoveLayer({required String layerId}) =>
-    RustLib.instance.api.crateApiGpuBrushGpuRemoveLayer(layerId: layerId);
+Future<Uint32List>  gpuDownloadLayer({required String layerId }) => RustLib.instance.api.crateApiGpuBrushGpuDownloadLayer(layerId: layerId);
 
-void gpuBrushDispose() =>
-    RustLib.instance.api.crateApiGpuBrushGpuBrushDispose();
+void  gpuRemoveLayer({required String layerId }) => RustLib.instance.api.crateApiGpuBrushGpuRemoveLayer(layerId: layerId);
 
-Future<GpuStrokeResult> gpuDrawStroke({
-  required String layerId,
-  required List<GpuPoint2D> points,
-  required List<double> radii,
-  required int color,
-  required int brushShape,
-  required bool erase,
-  required int antialiasLevel,
-}) => RustLib.instance.api.crateApiGpuBrushGpuDrawStroke(
-  layerId: layerId,
-  points: points,
-  radii: radii,
-  color: color,
-  brushShape: brushShape,
-  erase: erase,
-  antialiasLevel: antialiasLevel,
-);
+void  gpuBrushDispose() => RustLib.instance.api.crateApiGpuBrushGpuBrushDispose();
 
-class GpuPoint2D {
-  final double x;
-  final double y;
+Future<GpuStrokeResult>  gpuDrawStroke({required String layerId , required List<GpuPoint2D> points , required List<double> radii , required int color , required int brushShape , required bool erase , required int antialiasLevel }) => RustLib.instance.api.crateApiGpuBrushGpuDrawStroke(layerId: layerId, points: points, radii: radii, color: color, brushShape: brushShape, erase: erase, antialiasLevel: antialiasLevel);
 
-  const GpuPoint2D({required this.x, required this.y});
+            class GpuPoint2D  {
+                final double x;
+final double y;
 
-  @override
-  int get hashCode => x.hashCode ^ y.hashCode;
+                const GpuPoint2D({required this.x ,required this.y ,});
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is GpuPoint2D &&
-          runtimeType == other.runtimeType &&
-          x == other.x &&
-          y == other.y;
-}
+                
+                
 
-class GpuStrokeResult {
-  final int dirtyLeft;
-  final int dirtyTop;
-  final int dirtyWidth;
-  final int dirtyHeight;
-  final int drawCalls;
+                
+        @override
+        int get hashCode => x.hashCode^y.hashCode;
+        
 
-  const GpuStrokeResult({
-    required this.dirtyLeft,
-    required this.dirtyTop,
-    required this.dirtyWidth,
-    required this.dirtyHeight,
-    required this.drawCalls,
-  });
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is GpuPoint2D &&
+                runtimeType == other.runtimeType
+                && x == other.x&& y == other.y;
+        
+            }
 
-  @override
-  int get hashCode =>
-      dirtyLeft.hashCode ^
-      dirtyTop.hashCode ^
-      dirtyWidth.hashCode ^
-      dirtyHeight.hashCode ^
-      drawCalls.hashCode;
+class GpuStrokeResult  {
+                final int dirtyLeft;
+final int dirtyTop;
+final int dirtyWidth;
+final int dirtyHeight;
+final int drawCalls;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is GpuStrokeResult &&
-          runtimeType == other.runtimeType &&
-          dirtyLeft == other.dirtyLeft &&
-          dirtyTop == other.dirtyTop &&
-          dirtyWidth == other.dirtyWidth &&
-          dirtyHeight == other.dirtyHeight &&
-          drawCalls == other.drawCalls;
-}
+                const GpuStrokeResult({required this.dirtyLeft ,required this.dirtyTop ,required this.dirtyWidth ,required this.dirtyHeight ,required this.drawCalls ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => dirtyLeft.hashCode^dirtyTop.hashCode^dirtyWidth.hashCode^dirtyHeight.hashCode^drawCalls.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is GpuStrokeResult &&
+                runtimeType == other.runtimeType
+                && dirtyLeft == other.dirtyLeft&& dirtyTop == other.dirtyTop&& dirtyWidth == other.dirtyWidth&& dirtyHeight == other.dirtyHeight&& drawCalls == other.drawCalls;
+        
+            }
+            

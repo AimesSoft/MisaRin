@@ -6,72 +6,58 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-CpuFiltersResult cpuFiltersApplyAntialiasRgba({
-  required List<int> pixels,
-  required int width,
-  required int height,
-  required int level,
-  required bool previewOnly,
-}) => RustLib.instance.api.crateApiCpuFiltersCpuFiltersApplyAntialiasRgba(
-  pixels: pixels,
-  width: width,
-  height: height,
-  level: level,
-  previewOnly: previewOnly,
-);
 
-CpuFiltersBytesResult cpuFiltersApplyFilterRgbaBytes({
-  required List<int> pixels,
-  required int width,
-  required int height,
-  required int filterType,
-  required double param0,
-  required double param1,
-  required double param2,
-  required double param3,
-}) => RustLib.instance.api.crateApiCpuFiltersCpuFiltersApplyFilterRgbaBytes(
-  pixels: pixels,
-  width: width,
-  height: height,
-  filterType: filterType,
-  param0: param0,
-  param1: param1,
-  param2: param2,
-  param3: param3,
-);
+            
 
-class CpuFiltersBytesResult {
-  final bool ok;
-  final Uint8List pixels;
+            CpuFiltersResult  cpuFiltersApplyAntialiasRgba({required List<int> pixels , required int width , required int height , required int level , required bool previewOnly }) => RustLib.instance.api.crateApiCpuFiltersCpuFiltersApplyAntialiasRgba(pixels: pixels, width: width, height: height, level: level, previewOnly: previewOnly);
 
-  const CpuFiltersBytesResult({required this.ok, required this.pixels});
+CpuFiltersBytesResult  cpuFiltersApplyFilterRgbaBytes({required List<int> pixels , required int width , required int height , required int filterType , required double param0 , required double param1 , required double param2 , required double param3 }) => RustLib.instance.api.crateApiCpuFiltersCpuFiltersApplyFilterRgbaBytes(pixels: pixels, width: width, height: height, filterType: filterType, param0: param0, param1: param1, param2: param2, param3: param3);
 
-  @override
-  int get hashCode => ok.hashCode ^ pixels.hashCode;
+            class CpuFiltersBytesResult  {
+                final bool ok;
+final Uint8List pixels;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CpuFiltersBytesResult &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          pixels == other.pixels;
-}
+                const CpuFiltersBytesResult({required this.ok ,required this.pixels ,});
 
-class CpuFiltersResult {
-  final bool ok;
-  final Uint32List pixels;
+                
+                
 
-  const CpuFiltersResult({required this.ok, required this.pixels});
+                
+        @override
+        int get hashCode => ok.hashCode^pixels.hashCode;
+        
 
-  @override
-  int get hashCode => ok.hashCode ^ pixels.hashCode;
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CpuFiltersBytesResult &&
+                runtimeType == other.runtimeType
+                && ok == other.ok&& pixels == other.pixels;
+        
+            }
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CpuFiltersResult &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          pixels == other.pixels;
-}
+class CpuFiltersResult  {
+                final bool ok;
+final Uint32List pixels;
+
+                const CpuFiltersResult({required this.ok ,required this.pixels ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => ok.hashCode^pixels.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CpuFiltersResult &&
+                runtimeType == other.runtimeType
+                && ok == other.ok&& pixels == other.pixels;
+        
+            }
+            

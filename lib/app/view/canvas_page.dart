@@ -21,6 +21,7 @@ import '../../canvas/canvas_backend.dart';
 import '../../canvas/canvas_exporter.dart';
 import '../../canvas/canvas_settings.dart';
 import '../../canvas/perspective_guide.dart';
+import '../dialogs/art_text_generator_dialog.dart';
 import '../dialogs/canvas_size_dialog.dart';
 import '../dialogs/export_dialog.dart';
 import '../dialogs/image_size_dialog.dart';
@@ -1495,6 +1496,31 @@ class CanvasPageState extends State<CanvasPage> {
     AppNotifications.show(context, message: message, severity: severity);
   }
 
+  Future<void> _openArtTextGenerator() async {
+    final PaintingBoardState? board = _activeBoard;
+    if (board == null) {
+      _showInfoBar('画布尚未准备好，无法生成艺术字体。', severity: InfoBarSeverity.warning);
+      return;
+    }
+    final ArtTextImageResult? result = await showArtTextGeneratorDialog(
+      context,
+    );
+    if (!mounted || result == null) {
+      return;
+    }
+    final bool inserted = await board.insertImageLayerFromBytes(
+      result.bytes,
+      name: result.layerName,
+    );
+    if (!mounted) {
+      return;
+    }
+    _showInfoBar(
+      inserted ? '已插入艺术字体图层。' : '插入艺术字体图层失败。',
+      severity: inserted ? InfoBarSeverity.success : InfoBarSeverity.error,
+    );
+  }
+
   Future<void> _closePage() async {
     if (!mounted) {
       return;
@@ -2236,6 +2262,7 @@ class CanvasPageState extends State<CanvasPage> {
         final board = _activeBoard;
         board?.addLayerAboveActiveLayer();
       },
+      generateArtText: _openArtTextGenerator,
       importPalette: () => _importPaletteFromDisk(),
       paletteMenuEntries: _importedPalettes
           .map((entry) => MenuPaletteMenuEntry(id: entry.id, label: entry.name))

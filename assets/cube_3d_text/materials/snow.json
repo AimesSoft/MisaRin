@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "material": {
+    "front": {
+      "mode": "image",
+      "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAKKADAAQAAAABAAAAKAAAAAB65masAAACsUlEQVRYCeVYS0/bQBC2kVUqQGoTBBHtoQi1lUCiggMHziGRgP6kquq9p/6THkhQHr5w6KWHHhoFIR4KQrxr0iJatZWKG6+96/Hu2l5PHBKJSJFnZr+Zb3Zndr2JvvzFsrUB/hj2v1ul9PKZB5rZ/quETRNkaLfiAuYzw4TDbP9hXKbly8yYsiDj7SQoWUHbs8nGEiSVz7oTpS7mVcwkJbyGLVnB+rffNGboMz/+kI2Zlhxvc8WRcbEgHUHGKy0xdAqV4cSgDB14O69DbIhsaIqbRPCHZGExIMYJEIYTgvsG/V3TsjfPf/mWAZBWcyMsC0PrNEpcbzD0XQmgeUmC0p0MklmbGiVa+fQnsPZQDCTo9AnfKzw3HadPfjxtHfDoS5sH3GGQNlt38fC72ONdezpGpPLxDSqTOH/8OUjToesPykKHlJ4x/vrSxx0KUYqXFLTyZEyrn+BW1+HS334+CSRYPrpOmkNP8e4xAymwpYIxUpTFHkS8jlLMRwglrGA/3yrr049YgqXWDyIbpYPvzNh3Ae4Gr9XkF9Z+ZQovyJ4s9mDKya0888tWP3TLFkZR2m8LQ9IbtYDiDIXpxwFLrRXRJqBsmP7GvepgKZxUo3Y+xEbhAlP2FVyJwaqQUBFnZ01SNp8+XkKVmC8Vr8fTqiNQu7i2Z6kzdIkcKsxk3AurU6Y7/Kry6osfPvEd1eWc03VH9WCSFAovxgm8totriyHVshaeZ3Et4PwAcr7I9tEX3m/d7xInaQcZFndQyyL1yGYUX7pNXN2+TERRnJ0g+CR+r+dzAY6Nr+cBHSo0fufC6pkjXlfQkckYP+pDg0Rxelh2zCR9XVUa4bOn/MW5Sa3avKCqu5N9LfI/IZqPf+WHtw4QpBux2jgLuoP/XMhAFKeH1V+9qfALHwzaZ23gd/F/CZexQJAsizIAAAAASUVORK5CYII=",
+      "repeatX": 1,
+      "repeatY": 1,
+      "offsetX": 0,
+      "offsetY": 0
+    },
+    "back": {
+      "mode": "color",
+      "color": "#1c53a3"
+    },
+    "up": {
+      "mode": "color",
+      "color": "#35a3d6"
+    },
+    "down": {
+      "mode": "gradient",
+      "colorGradualStart": "#1c53a3",
+      "colorGradualEnd": "#151855",
+      "repeat": 1,
+      "offset": 0
+    },
+    "left": {
+      "mode": "gradient",
+      "colorGradualStart": "#0e3a7a",
+      "colorGradualEnd": "#151855",
+      "repeat": 1,
+      "offset": 0
+    },
+    "right": {
+      "mode": "gradient",
+      "colorGradualStart": "#0e3a7a",
+      "colorGradualEnd": "#151855",
+      "repeat": 1,
+      "offset": 0
+    },
+    "outline": {
+      "mode": "color",
+      "color": "#1d0e46"
+    }
+  }
+}

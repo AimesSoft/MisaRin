@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "material": {
+    "front": {
+      "mode": "gradient",
+      "colorGradualStart": "#caffff",
+      "colorGradualEnd": "#31deed",
+      "repeat": 1,
+      "offset": 0
+    },
+    "back": {
+      "mode": "gradient",
+      "colorGradualStart": "#caffff",
+      "colorGradualEnd": "#31deed",
+      "repeat": 1,
+      "offset": 0
+    },
+    "up": {
+      "mode": "color",
+      "color": "#004d4d"
+    },
+    "down": {
+      "mode": "gradient",
+      "colorGradualStart": "#00b3b3",
+      "colorGradualEnd": "#004d4d",
+      "repeat": 1,
+      "offset": 0
+    },
+    "left": {
+      "mode": "color",
+      "color": "#004d4d"
+    },
+    "right": {
+      "mode": "color",
+      "color": "#004d4d"
+    },
+    "outline": {
+      "mode": "color",
+      "color": "#002626"
+    }
+  }
+}

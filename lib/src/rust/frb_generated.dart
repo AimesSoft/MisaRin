@@ -10,6 +10,7 @@ import 'api/cpu_brush.dart';
 import 'api/cpu_filters.dart';
 import 'api/cpu_image.dart';
 import 'api/cpu_transform.dart';
+import 'api/cube_text.dart';
 import 'api/gpu_brush.dart';
 import 'api/gpu_composite.dart';
 import 'api/image_ops.dart';
@@ -80,7 +81,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1127123029;
+  int get rustContentHash => -1855414712;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -321,6 +322,42 @@ abstract class RustLibApi extends BaseApi {
     required int dy,
     required BigInt overflowCapacity,
   });
+
+  Future<CubeTextScene> crateApiCubeTextCubeTextBuildScene({
+    required List<CubeTextFontAsset> fonts,
+    required String globalFontId,
+    required List<CubeTextObject> texts,
+  });
+
+  Future<CubeTextFontConvertResult>
+  crateApiCubeTextCubeTextConvertTtfToFontJson({required List<int> bytes});
+
+  Future<CubeTextExportResult> crateApiCubeTextCubeTextExportResultDefault();
+
+  Future<CubeTextExportResult> crateApiCubeTextCubeTextExportScene({
+    required List<CubeTextFontAsset> fonts,
+    required String globalFontId,
+    required List<CubeTextObject> texts,
+    required String format,
+  });
+
+  Future<CubeTextFontAsset> crateApiCubeTextCubeTextFontAssetDefault();
+
+  Future<CubeTextFontConvertResult>
+  crateApiCubeTextCubeTextFontConvertResultDefault();
+
+  Future<CubeTextMaterialOption>
+  crateApiCubeTextCubeTextMaterialOptionDefault();
+
+  Future<CubeTextMaterials> crateApiCubeTextCubeTextMaterialsDefault();
+
+  Future<CubeTextObject> crateApiCubeTextCubeTextObjectDefault();
+
+  Future<CubeTextOptions> crateApiCubeTextCubeTextOptionsDefault();
+
+  Future<CubeTextScene> crateApiCubeTextCubeTextSceneDefault();
+
+  Future<CubeTextSceneMaterial> crateApiCubeTextCubeTextSceneMaterialDefault();
 
   Future<FloodFillRect> crateApiBucketFillFloodFillInPlace({
     required BigInt ptr,
@@ -1633,6 +1670,378 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<CubeTextScene> crateApiCubeTextCubeTextBuildScene({
+    required List<CubeTextFontAsset> fonts,
+    required String globalFontId,
+    required List<CubeTextObject> texts,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_cube_text_font_asset(fonts, serializer);
+          sse_encode_String(globalFontId, serializer);
+          sse_encode_list_cube_text_object(texts, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_scene,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextBuildSceneConstMeta,
+        argValues: [fonts, globalFontId, texts],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextBuildSceneConstMeta =>
+      const TaskConstMeta(
+        debugName: "cube_text_build_scene",
+        argNames: ["fonts", "globalFontId", "texts"],
+      );
+
+  @override
+  Future<CubeTextFontConvertResult>
+  crateApiCubeTextCubeTextConvertTtfToFontJson({required List<int> bytes}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(bytes, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_font_convert_result,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextConvertTtfToFontJsonConstMeta,
+        argValues: [bytes],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextConvertTtfToFontJsonConstMeta =>
+      const TaskConstMeta(
+        debugName: "cube_text_convert_ttf_to_font_json",
+        argNames: ["bytes"],
+      );
+
+  @override
+  Future<CubeTextExportResult> crateApiCubeTextCubeTextExportResultDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 21,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_export_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextExportResultDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextExportResultDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: "cube_text_export_result_default",
+        argNames: [],
+      );
+
+  @override
+  Future<CubeTextExportResult> crateApiCubeTextCubeTextExportScene({
+    required List<CubeTextFontAsset> fonts,
+    required String globalFontId,
+    required List<CubeTextObject> texts,
+    required String format,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_cube_text_font_asset(fonts, serializer);
+          sse_encode_String(globalFontId, serializer);
+          sse_encode_list_cube_text_object(texts, serializer);
+          sse_encode_String(format, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 22,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_export_result,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextExportSceneConstMeta,
+        argValues: [fonts, globalFontId, texts, format],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextExportSceneConstMeta =>
+      const TaskConstMeta(
+        debugName: "cube_text_export_scene",
+        argNames: ["fonts", "globalFontId", "texts", "format"],
+      );
+
+  @override
+  Future<CubeTextFontAsset> crateApiCubeTextCubeTextFontAssetDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_font_asset,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextFontAssetDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextFontAssetDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: "cube_text_font_asset_default",
+        argNames: [],
+      );
+
+  @override
+  Future<CubeTextFontConvertResult>
+  crateApiCubeTextCubeTextFontConvertResultDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 24,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_font_convert_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextFontConvertResultDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiCubeTextCubeTextFontConvertResultDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: "cube_text_font_convert_result_default",
+        argNames: [],
+      );
+
+  @override
+  Future<CubeTextMaterialOption>
+  crateApiCubeTextCubeTextMaterialOptionDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 25,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_material_option,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextMaterialOptionDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextMaterialOptionDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: "cube_text_material_option_default",
+        argNames: [],
+      );
+
+  @override
+  Future<CubeTextMaterials> crateApiCubeTextCubeTextMaterialsDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 26,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_materials,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextMaterialsDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextMaterialsDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: "cube_text_materials_default",
+        argNames: [],
+      );
+
+  @override
+  Future<CubeTextObject> crateApiCubeTextCubeTextObjectDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 27,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_object,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextObjectDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextObjectDefaultConstMeta =>
+      const TaskConstMeta(debugName: "cube_text_object_default", argNames: []);
+
+  @override
+  Future<CubeTextOptions> crateApiCubeTextCubeTextOptionsDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 28,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_options,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextOptionsDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextOptionsDefaultConstMeta =>
+      const TaskConstMeta(debugName: "cube_text_options_default", argNames: []);
+
+  @override
+  Future<CubeTextScene> crateApiCubeTextCubeTextSceneDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 29,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_scene,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextSceneDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextSceneDefaultConstMeta =>
+      const TaskConstMeta(debugName: "cube_text_scene_default", argNames: []);
+
+  @override
+  Future<CubeTextSceneMaterial> crateApiCubeTextCubeTextSceneMaterialDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 30,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_cube_text_scene_material,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCubeTextCubeTextSceneMaterialDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCubeTextCubeTextSceneMaterialDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: "cube_text_scene_material_default",
+        argNames: [],
+      );
+
+  @override
   Future<FloodFillRect> crateApiBucketFillFloodFillInPlace({
     required BigInt ptr,
     required int width,
@@ -1670,7 +2079,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 31,
             port: port_,
           );
         },
@@ -1759,7 +2168,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 32,
             port: port_,
           );
         },
@@ -1818,7 +2227,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_usize(ptr, serializer);
           sse_encode_i_32(size, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 33)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -1843,7 +2252,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 34)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -1865,7 +2274,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -1897,7 +2306,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 36,
             port: port_,
           );
         },
@@ -1924,7 +2333,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 37)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -1946,7 +2355,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -1974,7 +2383,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 39,
             port: port_,
           );
         },
@@ -2019,7 +2428,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 40,
             port: port_,
           );
         },
@@ -2063,7 +2472,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(layerId, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 41)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -2097,7 +2506,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 42,
             port: port_,
           );
         },
@@ -2125,7 +2534,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 43)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -2151,7 +2560,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 32,
+            funcId: 44,
             port: port_,
           );
         },
@@ -2178,7 +2587,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 33,
+            funcId: 45,
             port: port_,
           );
         },
@@ -2220,7 +2629,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 34,
+            funcId: 46,
             port: port_,
           );
         },
@@ -2265,7 +2674,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_usize(ptr, serializer);
           sse_encode_i_32(index, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 47)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_u_32,
@@ -2294,7 +2703,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(mask, serializer);
           sse_encode_i_32(width, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 36)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 48)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_32_strict,
@@ -2323,7 +2732,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 37,
+            funcId: 49,
             port: port_,
           );
         },
@@ -2352,7 +2761,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_bool(isDirty, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 50)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -2378,7 +2787,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 39)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 51)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_box_autoadd_workspace_entry,
@@ -2405,7 +2814,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_box_autoadd_workspace_entry(entry, serializer);
           sse_encode_bool(activate, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 40)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 52)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -2435,7 +2844,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_opt_String(activateAfter, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 41)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 53)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -2465,7 +2874,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_i_32(oldIndex, serializer);
           sse_encode_i_32(newIndex, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 42)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 54)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -2490,7 +2899,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 43)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 55)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -2513,7 +2922,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 44)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 56)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -2535,7 +2944,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 45)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 57)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_workspace_state,
@@ -2560,7 +2969,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 46,
+            funcId: 58,
             port: port_,
           );
         },
@@ -2821,6 +3230,152 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  CubeTextExportResult dco_decode_cube_text_export_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return CubeTextExportResult(
+      fileName: dco_decode_String(arr[0]),
+      mimeType: dco_decode_String(arr[1]),
+      bytes: dco_decode_list_prim_u_8_strict(arr[2]),
+      warnings: dco_decode_list_String(arr[3]),
+    );
+  }
+
+  @protected
+  CubeTextFontAsset dco_decode_cube_text_font_asset(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return CubeTextFontAsset(
+      id: dco_decode_String(arr[0]),
+      json: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  CubeTextFontConvertResult dco_decode_cube_text_font_convert_result(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return CubeTextFontConvertResult(
+      fontId: dco_decode_String(arr[0]),
+      json: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  CubeTextMaterialOption dco_decode_cube_text_material_option(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 11)
+      throw Exception('unexpected arr length: expect 11 but see ${arr.length}');
+    return CubeTextMaterialOption(
+      mode: dco_decode_String(arr[0]),
+      color: dco_decode_String(arr[1]),
+      colorGradualStart: dco_decode_String(arr[2]),
+      colorGradualEnd: dco_decode_String(arr[3]),
+      repeat: dco_decode_f_32(arr[4]),
+      offset: dco_decode_f_32(arr[5]),
+      image: dco_decode_String(arr[6]),
+      repeatX: dco_decode_f_32(arr[7]),
+      repeatY: dco_decode_f_32(arr[8]),
+      offsetX: dco_decode_f_32(arr[9]),
+      offsetY: dco_decode_f_32(arr[10]),
+    );
+  }
+
+  @protected
+  CubeTextMaterials dco_decode_cube_text_materials(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    return CubeTextMaterials(
+      front: dco_decode_cube_text_material_option(arr[0]),
+      back: dco_decode_cube_text_material_option(arr[1]),
+      up: dco_decode_cube_text_material_option(arr[2]),
+      down: dco_decode_cube_text_material_option(arr[3]),
+      left: dco_decode_cube_text_material_option(arr[4]),
+      right: dco_decode_cube_text_material_option(arr[5]),
+      outline: dco_decode_cube_text_material_option(arr[6]),
+    );
+  }
+
+  @protected
+  CubeTextObject dco_decode_cube_text_object(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return CubeTextObject(
+      content: dco_decode_String(arr[0]),
+      fontId: dco_decode_String(arr[1]),
+      opts: dco_decode_cube_text_options(arr[2]),
+    );
+  }
+
+  @protected
+  CubeTextOptions dco_decode_cube_text_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 13)
+      throw Exception('unexpected arr length: expect 13 but see ${arr.length}');
+    return CubeTextOptions(
+      size: dco_decode_f_32(arr[0]),
+      depth: dco_decode_f_32(arr[1]),
+      x: dco_decode_f_32(arr[2]),
+      y: dco_decode_f_32(arr[3]),
+      z: dco_decode_f_32(arr[4]),
+      rotY: dco_decode_f_32(arr[5]),
+      rotX: dco_decode_f_32(arr[6]),
+      rotZ: dco_decode_f_32(arr[7]),
+      outlineWidth: dco_decode_f_32(arr[8]),
+      letterSpacing: dco_decode_f_32(arr[9]),
+      spacingWidth: dco_decode_f_32(arr[10]),
+      overlay: dco_decode_String(arr[11]),
+      materials: dco_decode_cube_text_materials(arr[12]),
+    );
+  }
+
+  @protected
+  CubeTextScene dco_decode_cube_text_scene(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    return CubeTextScene(
+      positions: dco_decode_list_prim_f_32_strict(arr[0]),
+      normals: dco_decode_list_prim_f_32_strict(arr[1]),
+      uvs: dco_decode_list_prim_f_32_strict(arr[2]),
+      indices: dco_decode_list_prim_u_32_strict(arr[3]),
+      materialIndices: dco_decode_list_prim_i_32_strict(arr[4]),
+      materials: dco_decode_list_cube_text_scene_material(arr[5]),
+      boundsMin: dco_decode_list_prim_f_32_strict(arr[6]),
+      boundsMax: dco_decode_list_prim_f_32_strict(arr[7]),
+      warnings: dco_decode_list_String(arr[8]),
+    );
+  }
+
+  @protected
+  CubeTextSceneMaterial dco_decode_cube_text_scene_material(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return CubeTextSceneMaterial(
+      name: dco_decode_String(arr[0]),
+      slot: dco_decode_String(arr[1]),
+      option: dco_decode_cube_text_material_option(arr[2]),
+    );
+  }
+
+  @protected
   double dco_decode_f_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as double;
@@ -2907,6 +3462,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
   List<AbrTip> dco_decode_list_abr_tip(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_abr_tip).toList();
@@ -2916,6 +3477,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<CpuBrushCommand> dco_decode_list_cpu_brush_command(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_cpu_brush_command).toList();
+  }
+
+  @protected
+  List<CubeTextFontAsset> dco_decode_list_cube_text_font_asset(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_cube_text_font_asset).toList();
+  }
+
+  @protected
+  List<CubeTextObject> dco_decode_list_cube_text_object(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_cube_text_object).toList();
+  }
+
+  @protected
+  List<CubeTextSceneMaterial> dco_decode_list_cube_text_scene_material(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_cube_text_scene_material)
+        .toList();
   }
 
   @protected
@@ -3399,6 +3982,183 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  CubeTextExportResult sse_decode_cube_text_export_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_fileName = sse_decode_String(deserializer);
+    var var_mimeType = sse_decode_String(deserializer);
+    var var_bytes = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_warnings = sse_decode_list_String(deserializer);
+    return CubeTextExportResult(
+      fileName: var_fileName,
+      mimeType: var_mimeType,
+      bytes: var_bytes,
+      warnings: var_warnings,
+    );
+  }
+
+  @protected
+  CubeTextFontAsset sse_decode_cube_text_font_asset(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_json = sse_decode_String(deserializer);
+    return CubeTextFontAsset(id: var_id, json: var_json);
+  }
+
+  @protected
+  CubeTextFontConvertResult sse_decode_cube_text_font_convert_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_fontId = sse_decode_String(deserializer);
+    var var_json = sse_decode_String(deserializer);
+    return CubeTextFontConvertResult(fontId: var_fontId, json: var_json);
+  }
+
+  @protected
+  CubeTextMaterialOption sse_decode_cube_text_material_option(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_mode = sse_decode_String(deserializer);
+    var var_color = sse_decode_String(deserializer);
+    var var_colorGradualStart = sse_decode_String(deserializer);
+    var var_colorGradualEnd = sse_decode_String(deserializer);
+    var var_repeat = sse_decode_f_32(deserializer);
+    var var_offset = sse_decode_f_32(deserializer);
+    var var_image = sse_decode_String(deserializer);
+    var var_repeatX = sse_decode_f_32(deserializer);
+    var var_repeatY = sse_decode_f_32(deserializer);
+    var var_offsetX = sse_decode_f_32(deserializer);
+    var var_offsetY = sse_decode_f_32(deserializer);
+    return CubeTextMaterialOption(
+      mode: var_mode,
+      color: var_color,
+      colorGradualStart: var_colorGradualStart,
+      colorGradualEnd: var_colorGradualEnd,
+      repeat: var_repeat,
+      offset: var_offset,
+      image: var_image,
+      repeatX: var_repeatX,
+      repeatY: var_repeatY,
+      offsetX: var_offsetX,
+      offsetY: var_offsetY,
+    );
+  }
+
+  @protected
+  CubeTextMaterials sse_decode_cube_text_materials(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_front = sse_decode_cube_text_material_option(deserializer);
+    var var_back = sse_decode_cube_text_material_option(deserializer);
+    var var_up = sse_decode_cube_text_material_option(deserializer);
+    var var_down = sse_decode_cube_text_material_option(deserializer);
+    var var_left = sse_decode_cube_text_material_option(deserializer);
+    var var_right = sse_decode_cube_text_material_option(deserializer);
+    var var_outline = sse_decode_cube_text_material_option(deserializer);
+    return CubeTextMaterials(
+      front: var_front,
+      back: var_back,
+      up: var_up,
+      down: var_down,
+      left: var_left,
+      right: var_right,
+      outline: var_outline,
+    );
+  }
+
+  @protected
+  CubeTextObject sse_decode_cube_text_object(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_content = sse_decode_String(deserializer);
+    var var_fontId = sse_decode_String(deserializer);
+    var var_opts = sse_decode_cube_text_options(deserializer);
+    return CubeTextObject(
+      content: var_content,
+      fontId: var_fontId,
+      opts: var_opts,
+    );
+  }
+
+  @protected
+  CubeTextOptions sse_decode_cube_text_options(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_size = sse_decode_f_32(deserializer);
+    var var_depth = sse_decode_f_32(deserializer);
+    var var_x = sse_decode_f_32(deserializer);
+    var var_y = sse_decode_f_32(deserializer);
+    var var_z = sse_decode_f_32(deserializer);
+    var var_rotY = sse_decode_f_32(deserializer);
+    var var_rotX = sse_decode_f_32(deserializer);
+    var var_rotZ = sse_decode_f_32(deserializer);
+    var var_outlineWidth = sse_decode_f_32(deserializer);
+    var var_letterSpacing = sse_decode_f_32(deserializer);
+    var var_spacingWidth = sse_decode_f_32(deserializer);
+    var var_overlay = sse_decode_String(deserializer);
+    var var_materials = sse_decode_cube_text_materials(deserializer);
+    return CubeTextOptions(
+      size: var_size,
+      depth: var_depth,
+      x: var_x,
+      y: var_y,
+      z: var_z,
+      rotY: var_rotY,
+      rotX: var_rotX,
+      rotZ: var_rotZ,
+      outlineWidth: var_outlineWidth,
+      letterSpacing: var_letterSpacing,
+      spacingWidth: var_spacingWidth,
+      overlay: var_overlay,
+      materials: var_materials,
+    );
+  }
+
+  @protected
+  CubeTextScene sse_decode_cube_text_scene(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_positions = sse_decode_list_prim_f_32_strict(deserializer);
+    var var_normals = sse_decode_list_prim_f_32_strict(deserializer);
+    var var_uvs = sse_decode_list_prim_f_32_strict(deserializer);
+    var var_indices = sse_decode_list_prim_u_32_strict(deserializer);
+    var var_materialIndices = sse_decode_list_prim_i_32_strict(deserializer);
+    var var_materials = sse_decode_list_cube_text_scene_material(deserializer);
+    var var_boundsMin = sse_decode_list_prim_f_32_strict(deserializer);
+    var var_boundsMax = sse_decode_list_prim_f_32_strict(deserializer);
+    var var_warnings = sse_decode_list_String(deserializer);
+    return CubeTextScene(
+      positions: var_positions,
+      normals: var_normals,
+      uvs: var_uvs,
+      indices: var_indices,
+      materialIndices: var_materialIndices,
+      materials: var_materials,
+      boundsMin: var_boundsMin,
+      boundsMax: var_boundsMax,
+      warnings: var_warnings,
+    );
+  }
+
+  @protected
+  CubeTextSceneMaterial sse_decode_cube_text_scene_material(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_slot = sse_decode_String(deserializer);
+    var var_option = sse_decode_cube_text_material_option(deserializer);
+    return CubeTextSceneMaterial(
+      name: var_name,
+      slot: var_slot,
+      option: var_option,
+    );
+  }
+
+  @protected
   double sse_decode_f_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getFloat32();
@@ -3491,6 +4251,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<AbrTip> sse_decode_list_abr_tip(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -3512,6 +4284,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <CpuBrushCommand>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_cpu_brush_command(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<CubeTextFontAsset> sse_decode_list_cube_text_font_asset(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <CubeTextFontAsset>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_cube_text_font_asset(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<CubeTextObject> sse_decode_list_cube_text_object(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <CubeTextObject>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_cube_text_object(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<CubeTextSceneMaterial> sse_decode_list_cube_text_scene_material(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <CubeTextSceneMaterial>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_cube_text_scene_material(deserializer));
     }
     return ans_;
   }
@@ -4014,6 +4828,132 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_cube_text_export_result(
+    CubeTextExportResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.fileName, serializer);
+    sse_encode_String(self.mimeType, serializer);
+    sse_encode_list_prim_u_8_strict(self.bytes, serializer);
+    sse_encode_list_String(self.warnings, serializer);
+  }
+
+  @protected
+  void sse_encode_cube_text_font_asset(
+    CubeTextFontAsset self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.json, serializer);
+  }
+
+  @protected
+  void sse_encode_cube_text_font_convert_result(
+    CubeTextFontConvertResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.fontId, serializer);
+    sse_encode_String(self.json, serializer);
+  }
+
+  @protected
+  void sse_encode_cube_text_material_option(
+    CubeTextMaterialOption self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.mode, serializer);
+    sse_encode_String(self.color, serializer);
+    sse_encode_String(self.colorGradualStart, serializer);
+    sse_encode_String(self.colorGradualEnd, serializer);
+    sse_encode_f_32(self.repeat, serializer);
+    sse_encode_f_32(self.offset, serializer);
+    sse_encode_String(self.image, serializer);
+    sse_encode_f_32(self.repeatX, serializer);
+    sse_encode_f_32(self.repeatY, serializer);
+    sse_encode_f_32(self.offsetX, serializer);
+    sse_encode_f_32(self.offsetY, serializer);
+  }
+
+  @protected
+  void sse_encode_cube_text_materials(
+    CubeTextMaterials self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_cube_text_material_option(self.front, serializer);
+    sse_encode_cube_text_material_option(self.back, serializer);
+    sse_encode_cube_text_material_option(self.up, serializer);
+    sse_encode_cube_text_material_option(self.down, serializer);
+    sse_encode_cube_text_material_option(self.left, serializer);
+    sse_encode_cube_text_material_option(self.right, serializer);
+    sse_encode_cube_text_material_option(self.outline, serializer);
+  }
+
+  @protected
+  void sse_encode_cube_text_object(
+    CubeTextObject self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.content, serializer);
+    sse_encode_String(self.fontId, serializer);
+    sse_encode_cube_text_options(self.opts, serializer);
+  }
+
+  @protected
+  void sse_encode_cube_text_options(
+    CubeTextOptions self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_32(self.size, serializer);
+    sse_encode_f_32(self.depth, serializer);
+    sse_encode_f_32(self.x, serializer);
+    sse_encode_f_32(self.y, serializer);
+    sse_encode_f_32(self.z, serializer);
+    sse_encode_f_32(self.rotY, serializer);
+    sse_encode_f_32(self.rotX, serializer);
+    sse_encode_f_32(self.rotZ, serializer);
+    sse_encode_f_32(self.outlineWidth, serializer);
+    sse_encode_f_32(self.letterSpacing, serializer);
+    sse_encode_f_32(self.spacingWidth, serializer);
+    sse_encode_String(self.overlay, serializer);
+    sse_encode_cube_text_materials(self.materials, serializer);
+  }
+
+  @protected
+  void sse_encode_cube_text_scene(
+    CubeTextScene self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_f_32_strict(self.positions, serializer);
+    sse_encode_list_prim_f_32_strict(self.normals, serializer);
+    sse_encode_list_prim_f_32_strict(self.uvs, serializer);
+    sse_encode_list_prim_u_32_strict(self.indices, serializer);
+    sse_encode_list_prim_i_32_strict(self.materialIndices, serializer);
+    sse_encode_list_cube_text_scene_material(self.materials, serializer);
+    sse_encode_list_prim_f_32_strict(self.boundsMin, serializer);
+    sse_encode_list_prim_f_32_strict(self.boundsMax, serializer);
+    sse_encode_list_String(self.warnings, serializer);
+  }
+
+  @protected
+  void sse_encode_cube_text_scene_material(
+    CubeTextSceneMaterial self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.slot, serializer);
+    sse_encode_cube_text_material_option(self.option, serializer);
+  }
+
+  @protected
   void sse_encode_f_32(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat32(self);
@@ -4087,6 +5027,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_abr_tip(List<AbrTip> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
@@ -4104,6 +5053,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_cpu_brush_command(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_cube_text_font_asset(
+    List<CubeTextFontAsset> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_cube_text_font_asset(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_cube_text_object(
+    List<CubeTextObject> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_cube_text_object(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_cube_text_scene_material(
+    List<CubeTextSceneMaterial> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_cube_text_scene_material(item, serializer);
     }
   }
 

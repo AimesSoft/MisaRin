@@ -104,6 +104,8 @@ flutter:
     - assets/bedrock_models/armor_alex.json
     - assets/bedrock_models/cube.json
     - assets/bedrock_models/dfsteve_armor.animation.json
+    - assets/cube_3d_text/font/
+    - assets/cube_3d_text/materials/
 
   shaders:
     - shaders/antialias_alpha.frag

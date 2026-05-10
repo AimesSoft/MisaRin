@@ -6,5 +6,10 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-Uint8List convertPixelsToRgba({required List<int> pixels}) =>
-    RustLib.instance.api.crateApiImageOpsConvertPixelsToRgba(pixels: pixels);
+
+            
+
+            Uint8List  convertPixelsToRgba({required List<int> pixels }) => RustLib.instance.api.crateApiImageOpsConvertPixelsToRgba(pixels: pixels);
+
+            
+            

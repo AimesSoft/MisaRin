@@ -13,6 +13,7 @@ import 'api/cpu_brush.dart';
 import 'api/cpu_filters.dart';
 import 'api/cpu_image.dart';
 import 'api/cpu_transform.dart';
+import 'api/cube_text.dart';
 import 'api/gpu_brush.dart';
 import 'api/gpu_composite.dart';
 import 'api/image_ops.dart';
@@ -96,6 +97,35 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  CubeTextExportResult dco_decode_cube_text_export_result(dynamic raw);
+
+  @protected
+  CubeTextFontAsset dco_decode_cube_text_font_asset(dynamic raw);
+
+  @protected
+  CubeTextFontConvertResult dco_decode_cube_text_font_convert_result(
+    dynamic raw,
+  );
+
+  @protected
+  CubeTextMaterialOption dco_decode_cube_text_material_option(dynamic raw);
+
+  @protected
+  CubeTextMaterials dco_decode_cube_text_materials(dynamic raw);
+
+  @protected
+  CubeTextObject dco_decode_cube_text_object(dynamic raw);
+
+  @protected
+  CubeTextOptions dco_decode_cube_text_options(dynamic raw);
+
+  @protected
+  CubeTextScene dco_decode_cube_text_scene(dynamic raw);
+
+  @protected
+  CubeTextSceneMaterial dco_decode_cube_text_scene_material(dynamic raw);
+
+  @protected
   double dco_decode_f_32(dynamic raw);
 
   @protected
@@ -120,10 +150,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_i_32(dynamic raw);
 
   @protected
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
   List<AbrTip> dco_decode_list_abr_tip(dynamic raw);
 
   @protected
   List<CpuBrushCommand> dco_decode_list_cpu_brush_command(dynamic raw);
+
+  @protected
+  List<CubeTextFontAsset> dco_decode_list_cube_text_font_asset(dynamic raw);
+
+  @protected
+  List<CubeTextObject> dco_decode_list_cube_text_object(dynamic raw);
+
+  @protected
+  List<CubeTextSceneMaterial> dco_decode_list_cube_text_scene_material(
+    dynamic raw,
+  );
 
   @protected
   List<GpuLayerData> dco_decode_list_gpu_layer_data(dynamic raw);
@@ -284,6 +328,45 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  CubeTextExportResult sse_decode_cube_text_export_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  CubeTextFontAsset sse_decode_cube_text_font_asset(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  CubeTextFontConvertResult sse_decode_cube_text_font_convert_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  CubeTextMaterialOption sse_decode_cube_text_material_option(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  CubeTextMaterials sse_decode_cube_text_materials(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  CubeTextObject sse_decode_cube_text_object(SseDeserializer deserializer);
+
+  @protected
+  CubeTextOptions sse_decode_cube_text_options(SseDeserializer deserializer);
+
+  @protected
+  CubeTextScene sse_decode_cube_text_scene(SseDeserializer deserializer);
+
+  @protected
+  CubeTextSceneMaterial sse_decode_cube_text_scene_material(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   double sse_decode_f_32(SseDeserializer deserializer);
 
   @protected
@@ -308,10 +391,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
   List<AbrTip> sse_decode_list_abr_tip(SseDeserializer deserializer);
 
   @protected
   List<CpuBrushCommand> sse_decode_list_cpu_brush_command(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<CubeTextFontAsset> sse_decode_list_cube_text_font_asset(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<CubeTextObject> sse_decode_list_cube_text_object(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<CubeTextSceneMaterial> sse_decode_list_cube_text_scene_material(
     SseDeserializer deserializer,
   );
 
@@ -501,6 +602,57 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_cube_text_export_result(
+    CubeTextExportResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_cube_text_font_asset(
+    CubeTextFontAsset self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_cube_text_font_convert_result(
+    CubeTextFontConvertResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_cube_text_material_option(
+    CubeTextMaterialOption self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_cube_text_materials(
+    CubeTextMaterials self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_cube_text_object(
+    CubeTextObject self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_cube_text_options(
+    CubeTextOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_cube_text_scene(CubeTextScene self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_cube_text_scene_material(
+    CubeTextSceneMaterial self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_f_32(double self, SseSerializer serializer);
 
   @protected
@@ -531,11 +683,32 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_abr_tip(List<AbrTip> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_cpu_brush_command(
     List<CpuBrushCommand> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_cube_text_font_asset(
+    List<CubeTextFontAsset> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_cube_text_object(
+    List<CubeTextObject> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_cube_text_scene_material(
+    List<CubeTextSceneMaterial> self,
     SseSerializer serializer,
   );
 

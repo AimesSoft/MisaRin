@@ -13,6 +13,10 @@ wgpu = "0.19"
 pollster = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
 log = "0.4"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+spade = "2.15.0"
+ttf-parser = "0.25.1"
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 rayon = "1.10"

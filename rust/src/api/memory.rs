@@ -36,6 +36,7 @@ pub fn free_pixel_buffer(ptr: usize, size: i32) {
 }
 
 #[cfg(not(target_family = "wasm"))]
+#[flutter_rust_bridge::frb(ignore)]
 #[no_mangle]
 pub extern "C" fn misarin_alloc_pixel_buffer(len: usize) -> *mut u32 {
     if len == 0 {
@@ -51,6 +52,7 @@ pub extern "C" fn misarin_alloc_pixel_buffer(len: usize) -> *mut u32 {
 }
 
 #[cfg(not(target_family = "wasm"))]
+#[flutter_rust_bridge::frb(ignore)]
 #[no_mangle]
 pub extern "C" fn misarin_free_pixel_buffer(ptr: *mut u32, len: usize) {
     if ptr.is_null() || len == 0 {

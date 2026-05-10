@@ -6,30 +6,32 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-CpuImageBoundsResult cpuImageBoundsRgba({
-  required List<int> pixels,
-  required int width,
-  required int height,
-}) => RustLib.instance.api.crateApiCpuImageCpuImageBoundsRgba(
-  pixels: pixels,
-  width: width,
-  height: height,
-);
 
-class CpuImageBoundsResult {
-  final bool ok;
-  final Int32List bounds;
+            
 
-  const CpuImageBoundsResult({required this.ok, required this.bounds});
+            CpuImageBoundsResult  cpuImageBoundsRgba({required List<int> pixels , required int width , required int height }) => RustLib.instance.api.crateApiCpuImageCpuImageBoundsRgba(pixels: pixels, width: width, height: height);
 
-  @override
-  int get hashCode => ok.hashCode ^ bounds.hashCode;
+            class CpuImageBoundsResult  {
+                final bool ok;
+final Int32List bounds;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CpuImageBoundsResult &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          bounds == other.bounds;
-}
+                const CpuImageBoundsResult({required this.ok ,required this.bounds ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => ok.hashCode^bounds.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CpuImageBoundsResult &&
+                runtimeType == other.runtimeType
+                && ok == other.ok&& bounds == other.bounds;
+        
+            }
+            

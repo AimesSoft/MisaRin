@@ -5,6 +5,7 @@ pub mod cpu_brush;
 pub mod cpu_filters;
 pub mod cpu_image;
 pub mod cpu_transform;
+pub mod cube_text;
 #[cfg(not(target_family = "wasm"))]
 pub mod gpu_brush;
 #[cfg(target_family = "wasm")]

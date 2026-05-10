@@ -6,150 +6,67 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `apply_antialias_to_mask`, `colors_within_tolerance`, `empty`, `empty`, `expand_mask_by_one`, `expand_mask`, `export_patch`, `fill_from_target_mask`, `find_nearest_fillable_start_index`, `flood_color_line`, `flood_fill_bounds`, `open_mask8_unpadded`, `open_mask8`, `run_masked_antialias_pass`, `swallow_color_lines`
+
+            // These functions are ignored because they are not marked as `pub`: `apply_antialias_to_mask`, `colors_within_tolerance`, `empty`, `empty`, `expand_mask_by_one`, `expand_mask`, `export_patch`, `fill_from_target_mask`, `find_nearest_fillable_start_index`, `flood_color_line`, `flood_fill_bounds`, `open_mask8_unpadded`, `open_mask8`, `run_masked_antialias_pass`, `swallow_color_lines`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`
 
-Future<FloodFillPatch> floodFillPatch({
-  required int width,
-  required int height,
-  required List<int> pixels,
-  Uint32List? samplePixels,
-  required int startX,
-  required int startY,
-  required int colorValue,
-  int? targetColorValue,
-  required bool contiguous,
-  required int tolerance,
-  required int fillGap,
-  Uint8List? selectionMask,
-  Uint32List? swallowColors,
-  required int antialiasLevel,
-}) => RustLib.instance.api.crateApiBucketFillFloodFillPatch(
-  width: width,
-  height: height,
-  pixels: pixels,
-  samplePixels: samplePixels,
-  startX: startX,
-  startY: startY,
-  colorValue: colorValue,
-  targetColorValue: targetColorValue,
-  contiguous: contiguous,
-  tolerance: tolerance,
-  fillGap: fillGap,
-  selectionMask: selectionMask,
-  swallowColors: swallowColors,
-  antialiasLevel: antialiasLevel,
-);
 
-Future<FloodFillRect> floodFillInPlace({
-  required BigInt ptr,
-  required int width,
-  required int height,
-  Uint32List? samplePixels,
-  required int startX,
-  required int startY,
-  required int colorValue,
-  int? targetColorValue,
-  required bool contiguous,
-  required int tolerance,
-  required int fillGap,
-  Uint8List? selectionMask,
-  Uint32List? swallowColors,
-  required int antialiasLevel,
-}) => RustLib.instance.api.crateApiBucketFillFloodFillInPlace(
-  ptr: ptr,
-  width: width,
-  height: height,
-  samplePixels: samplePixels,
-  startX: startX,
-  startY: startY,
-  colorValue: colorValue,
-  targetColorValue: targetColorValue,
-  contiguous: contiguous,
-  tolerance: tolerance,
-  fillGap: fillGap,
-  selectionMask: selectionMask,
-  swallowColors: swallowColors,
-  antialiasLevel: antialiasLevel,
-);
+            Future<FloodFillPatch>  floodFillPatch({required int width , required int height , required List<int> pixels , Uint32List? samplePixels , required int startX , required int startY , required int colorValue , int? targetColorValue , required bool contiguous , required int tolerance , required int fillGap , Uint8List? selectionMask , Uint32List? swallowColors , required int antialiasLevel }) => RustLib.instance.api.crateApiBucketFillFloodFillPatch(width: width, height: height, pixels: pixels, samplePixels: samplePixels, startX: startX, startY: startY, colorValue: colorValue, targetColorValue: targetColorValue, contiguous: contiguous, tolerance: tolerance, fillGap: fillGap, selectionMask: selectionMask, swallowColors: swallowColors, antialiasLevel: antialiasLevel);
 
-Future<Uint8List?> magicWandMask({
-  required int width,
-  required int height,
-  required List<int> pixels,
-  required int startX,
-  required int startY,
-  required int tolerance,
-  Uint8List? selectionMask,
-}) => RustLib.instance.api.crateApiBucketFillMagicWandMask(
-  width: width,
-  height: height,
-  pixels: pixels,
-  startX: startX,
-  startY: startY,
-  tolerance: tolerance,
-  selectionMask: selectionMask,
-);
+Future<FloodFillRect>  floodFillInPlace({required BigInt ptr , required int width , required int height , Uint32List? samplePixels , required int startX , required int startY , required int colorValue , int? targetColorValue , required bool contiguous , required int tolerance , required int fillGap , Uint8List? selectionMask , Uint32List? swallowColors , required int antialiasLevel }) => RustLib.instance.api.crateApiBucketFillFloodFillInPlace(ptr: ptr, width: width, height: height, samplePixels: samplePixels, startX: startX, startY: startY, colorValue: colorValue, targetColorValue: targetColorValue, contiguous: contiguous, tolerance: tolerance, fillGap: fillGap, selectionMask: selectionMask, swallowColors: swallowColors, antialiasLevel: antialiasLevel);
 
-class FloodFillPatch {
-  final int left;
-  final int top;
-  final int width;
-  final int height;
-  final Uint32List pixels;
+Future<Uint8List?>  magicWandMask({required int width , required int height , required List<int> pixels , required int startX , required int startY , required int tolerance , Uint8List? selectionMask }) => RustLib.instance.api.crateApiBucketFillMagicWandMask(width: width, height: height, pixels: pixels, startX: startX, startY: startY, tolerance: tolerance, selectionMask: selectionMask);
 
-  const FloodFillPatch({
-    required this.left,
-    required this.top,
-    required this.width,
-    required this.height,
-    required this.pixels,
-  });
+            class FloodFillPatch  {
+                final int left;
+final int top;
+final int width;
+final int height;
+final Uint32List pixels;
 
-  @override
-  int get hashCode =>
-      left.hashCode ^
-      top.hashCode ^
-      width.hashCode ^
-      height.hashCode ^
-      pixels.hashCode;
+                const FloodFillPatch({required this.left ,required this.top ,required this.width ,required this.height ,required this.pixels ,});
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is FloodFillPatch &&
-          runtimeType == other.runtimeType &&
-          left == other.left &&
-          top == other.top &&
-          width == other.width &&
-          height == other.height &&
-          pixels == other.pixels;
-}
+                
+                
 
-class FloodFillRect {
-  final int left;
-  final int top;
-  final int width;
-  final int height;
+                
+        @override
+        int get hashCode => left.hashCode^top.hashCode^width.hashCode^height.hashCode^pixels.hashCode;
+        
 
-  const FloodFillRect({
-    required this.left,
-    required this.top,
-    required this.width,
-    required this.height,
-  });
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is FloodFillPatch &&
+                runtimeType == other.runtimeType
+                && left == other.left&& top == other.top&& width == other.width&& height == other.height&& pixels == other.pixels;
+        
+            }
 
-  @override
-  int get hashCode =>
-      left.hashCode ^ top.hashCode ^ width.hashCode ^ height.hashCode;
+class FloodFillRect  {
+                final int left;
+final int top;
+final int width;
+final int height;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is FloodFillRect &&
-          runtimeType == other.runtimeType &&
-          left == other.left &&
-          top == other.top &&
-          width == other.width &&
-          height == other.height;
-}
+                const FloodFillRect({required this.left ,required this.top ,required this.width ,required this.height ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => left.hashCode^top.hashCode^width.hashCode^height.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is FloodFillRect &&
+                runtimeType == other.runtimeType
+                && left == other.left&& top == other.top&& width == other.width&& height == other.height;
+        
+            }
+            
