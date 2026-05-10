@@ -555,6 +555,9 @@ mixin _PaintingBoardInteractionMixin
   }
 
   void _setActiveTool(CanvasTool tool) {
+    if (_brushPresetWheelActive) {
+      _finishBrushPresetWheel(commit: false);
+    }
     final bool shouldCommitText =
         tool != CanvasTool.text && _isTextEditingActive;
     if (_guardTransformInProgress(

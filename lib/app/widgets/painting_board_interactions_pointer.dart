@@ -106,6 +106,12 @@ extension _PaintingBoardInteractionPointerImpl
   Future<void> _handlePointerDownImpl(PointerDownEvent event) async {
     _debugPointerEvent('down', event);
     _trackStylusContact(event);
+    if (_brushPresetWheelActive) {
+      _recordWorkspacePointer(event.localPosition);
+      _updateBrushPresetWheelPointer(event.localPosition);
+      _focusNode.requestFocus();
+      return;
+    }
     final bool isStylus = _isStylusEvent(event);
     final bool isTouch = event.kind == PointerDeviceKind.touch && !isStylus;
     _debugPointerInput(
@@ -422,6 +428,11 @@ extension _PaintingBoardInteractionPointerImpl
   void _handlePointerMoveImpl(PointerMoveEvent event) {
     _debugPointerEvent('move', event);
     _trackStylusContact(event);
+    if (_brushPresetWheelActive) {
+      _recordWorkspacePointer(event.localPosition);
+      _updateBrushPresetWheelPointer(event.localPosition);
+      return;
+    }
     final bool isStylus = _isStylusEvent(event);
     if (event.kind == PointerDeviceKind.touch && !isStylus) {
       if (_touchIgnoreUntilAllUp) {
@@ -619,6 +630,11 @@ extension _PaintingBoardInteractionPointerImpl
   Future<void> _handlePointerUpImpl(PointerUpEvent event) async {
     _debugPointerEvent('up', event);
     _trackStylusContact(event);
+    if (_brushPresetWheelActive) {
+      _recordWorkspacePointer(event.localPosition);
+      _updateBrushPresetWheelPointer(event.localPosition);
+      return;
+    }
     final bool wasIgnoring = _touchIgnoreUntilAllUp;
     final bool isStylus = _isStylusEvent(event);
     if (event.kind == PointerDeviceKind.touch && !isStylus) {
@@ -735,6 +751,9 @@ extension _PaintingBoardInteractionPointerImpl
   void _handlePointerCancelImpl(PointerCancelEvent event) {
     _debugPointerEvent('cancel', event);
     _trackStylusContact(event);
+    if (_brushPresetWheelActive) {
+      return;
+    }
     final bool wasIgnoring = _touchIgnoreUntilAllUp;
     final bool isStylus = _isStylusEvent(event);
     if (event.kind == PointerDeviceKind.touch && !isStylus) {
@@ -828,6 +847,10 @@ extension _PaintingBoardInteractionPointerImpl
 
   void _handlePointerHoverImpl(PointerHoverEvent event) {
     _recordWorkspacePointer(event.localPosition);
+    if (_brushPresetWheelActive) {
+      _updateBrushPresetWheelPointer(event.localPosition);
+      return;
+    }
     _updateToolCursorOverlay(
       event.localPosition,
       pointerKind: event.kind,
@@ -874,6 +897,33 @@ extension _PaintingBoardInteractionPointerImpl
       return KeyEventResult.ignored;
     }
     final LogicalKeyboardKey key = event.logicalKey;
+    if (_brushPresetWheelActive) {
+      if (key == LogicalKeyboardKey.escape &&
+          (event is KeyDownEvent || event is KeyRepeatEvent)) {
+        _finishBrushPresetWheel(commit: false);
+        return KeyEventResult.handled;
+      }
+      if (_isBrushPresetWheelModifier(key)) {
+        if (event is KeyUpEvent) {
+          _finishBrushPresetWheel(commit: true);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.handled;
+      }
+      if (event is KeyDownEvent || event is KeyRepeatEvent) {
+        _finishBrushPresetWheel(commit: false);
+      }
+      return KeyEventResult.ignored;
+    }
+    if (_isBrushPresetWheelModifier(key)) {
+      if (event is KeyDownEvent || event is KeyRepeatEvent) {
+        _beginBrushPresetWheel();
+        return _brushPresetWheelActive
+            ? KeyEventResult.handled
+            : KeyEventResult.ignored;
+      }
+      return KeyEventResult.ignored;
+    }
     if (_layerTransformModeActive) {
       if (event is KeyDownEvent || event is KeyRepeatEvent) {
         if (key == LogicalKeyboardKey.escape) {
@@ -983,6 +1033,13 @@ extension _PaintingBoardInteractionPointerImpl
 
   void _handlePointerSignalImpl(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) {
+      return;
+    }
+    if (_brushPresetWheelActive) {
+      final double scrollDelta = event.scrollDelta.dy;
+      if (scrollDelta != 0) {
+        _nudgeBrushPresetWheelSelection(scrollDelta > 0 ? 1 : -1);
+      }
       return;
     }
     final RenderBox? box = context.findRenderObject() as RenderBox?;

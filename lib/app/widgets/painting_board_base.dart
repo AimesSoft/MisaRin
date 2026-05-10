@@ -58,6 +58,7 @@ abstract class _PaintingBoardBase extends _PaintingBoardBaseCore {
   Offset _backendToEngineSpace(Offset boardLocal);
 
   void _setActiveTool(CanvasTool tool);
+  void _selectBrushPreset(String id);
   void _convertMagicWandPreviewToSelection();
   void _convertSelectionToMagicWandPreview();
   void _clearMagicWandPreview();

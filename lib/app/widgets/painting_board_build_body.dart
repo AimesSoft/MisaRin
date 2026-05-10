@@ -1554,6 +1554,7 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                                 ),
                               ),
                             ),
+                          _buildBrushPresetWheelOverlay(theme),
                         ],
                       ),
                     ),

@@ -76,6 +76,7 @@ class PaintingBoardState extends _PaintingBoardBase
     _viewInfoNotifier = ValueNotifier<CanvasViewInfo>(_buildViewInfo());
     initializeTextTool();
     initializeSelectionTicker(this);
+    _focusNode.addListener(_handleWorkspaceFocusChanged);
     MobileBottomSheetController.activeCount.addListener(
       _handleMobileBottomSheetChanged,
     );
@@ -237,6 +238,7 @@ class PaintingBoardState extends _PaintingBoardBase
     _layerRenameFocusNode.dispose();
     _pendingLayoutTask = null;
     unawaited(_layoutWorker?.dispose());
+    _focusNode.removeListener(_handleWorkspaceFocusChanged);
     _focusNode.dispose();
     _sprayTicker?.dispose();
     _viewInfoNotifier.dispose();
@@ -288,6 +290,13 @@ class PaintingBoardState extends _PaintingBoardBase
       return;
     }
     _scheduleWorkspaceCardsOverlaySync();
+  }
+
+  void _handleWorkspaceFocusChanged() {
+    if (_focusNode.hasFocus || !_brushPresetWheelActive) {
+      return;
+    }
+    _finishBrushPresetWheel(commit: false);
   }
 
   void _perfStressOnTimings(List<ui.FrameTiming> timings) {
@@ -1274,6 +1283,7 @@ class PaintingBoardState extends _PaintingBoardBase
     _applyBrushPreset(library.selectedPreset);
   }
 
+  @override
   void _selectBrushPreset(String id) {
     final BrushLibrary? library = _brushLibrary;
     if (library == null) {
@@ -1286,6 +1296,7 @@ class PaintingBoardState extends _PaintingBoardBase
     library.selectPreset(id);
   }
 
+  @override
   Future<void> _openBrushPresetPicker() async {
     final BrushLibrary? library = _brushLibrary;
     if (library == null) {

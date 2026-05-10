@@ -151,6 +151,9 @@ abstract class _PaintingBoardBaseCore extends State<PaintingBoard> {
   int _backendLayerPreviewSerial = 0;
   bool _backendLayerPreviewRefreshScheduled = false;
   bool _spacePanOverrideActive = false;
+  bool _brushPresetWheelActive = false;
+  Offset? _brushPresetWheelCenter;
+  int? _brushPresetWheelHoverIndex;
   bool _isLayerDragging = false;
   bool _layerAdjustBackendSynced = false;
   bool _layerAdjustUsingBackendPreview = false;
