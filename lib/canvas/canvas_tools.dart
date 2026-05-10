@@ -1,13 +1,13 @@
 enum CanvasTool {
   layerAdjust,
-  pen,
-  perspectivePen,
+  pen(supportsBrushPreset: true),
+  perspectivePen(supportsBrushPreset: true),
   spray,
   smudge,
   liquify,
-  curvePen,
-  shape,
-  eraser,
+  curvePen(supportsBrushPreset: true),
+  shape(supportsBrushPreset: true),
+  eraser(supportsBrushPreset: true),
   bucket,
   magicWand,
   eyedropper,
@@ -15,7 +15,11 @@ enum CanvasTool {
   selectionPen,
   text,
   hand,
-  rotate,
+  rotate;
+
+  const CanvasTool({this.supportsBrushPreset = false});
+
+  final bool supportsBrushPreset;
 }
 
 enum SprayMode { smudge, splatter }

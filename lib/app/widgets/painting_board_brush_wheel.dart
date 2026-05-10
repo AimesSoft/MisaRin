@@ -6,7 +6,7 @@ const double _kBrushPresetWheelEdgePadding = 18.0;
 
 extension _PaintingBoardBrushWheelExtension on _PaintingBoardInteractionMixin {
   bool get _isBrushPresetWheelTool {
-    return _activeTool == CanvasTool.pen;
+    return _activeTool.supportsBrushPreset;
   }
 
   bool _isBrushPresetWheelModifier(LogicalKeyboardKey key) {
@@ -241,6 +241,11 @@ class _BrushPresetWheelOverlay extends StatelessWidget {
     final Color textColor = theme.brightness.isDark
         ? const Color(0xFFF4F4F6)
         : const Color(0xFF202124);
+    final Size viewportSize = MediaQuery.sizeOf(context);
+    final double centerWidth = math
+        .max(240.0, radius * 1.42)
+        .clamp(180.0, math.max(180.0, viewportSize.width - 32.0));
+    const double centerHeight = 74.0;
     final BrushPreset hoverPreset = presets[hoverIndex];
     final List<Widget> labels = <Widget>[];
     for (int i = 0; i < presets.length; i++) {
@@ -285,10 +290,10 @@ class _BrushPresetWheelOverlay extends StatelessWidget {
         ),
         ...labels,
         Positioned(
-          left: center.dx - radius * 0.44,
-          top: center.dy - 34,
-          width: radius * 0.88,
-          height: 68,
+          left: center.dx - centerWidth / 2,
+          top: center.dy - centerHeight / 2,
+          width: centerWidth,
+          height: centerHeight,
           child: _BrushPresetWheelCenter(
             preset: hoverPreset,
             name: library.displayNameFor(hoverPreset, locale),
@@ -321,71 +326,55 @@ class _BrushPresetWheelLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color background = highlighted
-        ? accentColor.withValues(alpha: 0.92)
+    final Color selectedBackground = Color.alphaBlend(
+      accentColor.withValues(alpha: highlighted ? 0.72 : 0.36),
+      textColor.computeLuminance() > 0.5
+          ? const Color(0xFF1B1D24)
+          : const Color(0xFFFFFFFF),
+    );
+    final Color inverseText = selectedBackground.computeLuminance() > 0.5
+        ? const Color(0xFF111318)
+        : const Color(0xFFFFFFFF);
+    final Color foreground = highlighted
+        ? inverseText
         : selected
-        ? accentColor.withValues(alpha: 0.38)
-        : const Color(0xAA202328);
-    final Color foreground = highlighted ? Colors.white : textColor;
+        ? inverseText
+        : textColor.withValues(alpha: 0.76);
+    final List<Shadow> shadows = <Shadow>[
+      Shadow(
+        color: Colors.black.withValues(alpha: highlighted ? 0.55 : 0.38),
+        blurRadius: highlighted ? 8 : 5,
+      ),
+    ];
     if (compact) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          color: background,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: highlighted
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.18),
-            width: highlighted ? 1.5 : 1,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            name.isEmpty ? '' : name.substring(0, 1).toUpperCase(),
-            style: TextStyle(
-              color: foreground,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
+      return Center(
+        child: Text(
+          name.isEmpty ? '' : name.substring(0, 1).toUpperCase(),
+          style: TextStyle(
+            color: foreground,
+            fontSize: highlighted ? 14 : 12,
+            fontWeight: FontWeight.w600,
+            shadows: shadows,
           ),
         ),
       );
     }
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(
-          color: highlighted
-              ? Colors.white
-              : Colors.white.withValues(alpha: 0.14),
-          width: highlighted ? 1.5 : 1,
-        ),
-        boxShadow: [
-          if (highlighted)
-            BoxShadow(
-              color: accentColor.withValues(alpha: 0.32),
-              blurRadius: 14,
-              spreadRadius: 1,
-            ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Center(
-          child: Text(
-            name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: foreground,
-              fontSize: 11,
-              height: 1.1,
-              fontWeight: highlighted || selected
-                  ? FontWeight.w600
-                  : FontWeight.w500,
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Center(
+        child: Text(
+          name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: foreground,
+            fontSize: highlighted ? 12 : 11,
+            height: 1.1,
+            fontWeight: highlighted || selected
+                ? FontWeight.w600
+                : FontWeight.w500,
+            shadows: shadows,
           ),
         ),
       ),
@@ -410,52 +399,40 @@ class _BrushPresetWheelCenter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: dark ? const Color(0xEA17191F) : const Color(0xEEF8F8FA),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: dark
-              ? Colors.white.withValues(alpha: 0.16)
-              : Colors.black.withValues(alpha: 0.08),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.35 : 0.16),
-            blurRadius: 18,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 32,
+            child: BrushPresetStrokePreview(
+              preset: preset,
+              height: 32,
+              color: strokeColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 12,
+              height: 1.0,
+              fontWeight: FontWeight.w600,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withValues(alpha: dark ? 0.55 : 0.22),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
           ),
         ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(5),
-                child: BrushPresetStrokePreview(
-                  preset: preset,
-                  height: 28,
-                  color: strokeColor,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 12,
-                height: 1.0,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

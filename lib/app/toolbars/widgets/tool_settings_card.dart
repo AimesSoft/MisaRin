@@ -331,182 +331,41 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
       backgroundColor = fallbackColor;
     }
 
-    Widget content;
-    switch (widget.activeTool) {
-      case CanvasTool.pen:
-      case CanvasTool.perspectivePen:
-      case CanvasTool.curvePen:
-        content = _buildBrushControls(theme);
-        break;
-      case CanvasTool.spray:
-        content = _buildSprayControls(theme);
-        break;
-      case CanvasTool.smudge:
-        content = _buildSmudgeControls(theme);
-        break;
-      case CanvasTool.liquify:
-        content = _buildLiquifyControls(theme);
-        break;
-      case CanvasTool.eraser:
-        content = _buildBrushControls(theme);
-        break;
-      case CanvasTool.shape:
-        content = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildShapeVariantRow(theme),
-            const SizedBox(height: 12),
-            _buildBrushControls(theme),
-          ],
-        );
-        break;
-      case CanvasTool.bucket:
-        content = _buildControlsGroup(
-          [
-            _buildToleranceSlider(
+    final Widget content = widget.activeTool.supportsBrushPreset
+        ? _buildBrushPresetAwareControls(theme)
+        : switch (widget.activeTool) {
+            CanvasTool.spray => _buildSprayControls(theme),
+            CanvasTool.smudge => _buildSmudgeControls(theme),
+            CanvasTool.liquify => _buildLiquifyControls(theme),
+            CanvasTool.bucket => _buildBucketControls(theme),
+            CanvasTool.magicWand => _buildToleranceSlider(
               theme,
               label: l10n.tolerance,
               detail: l10n.toleranceDesc,
-              value: widget.bucketTolerance,
-              onChanged: widget.onBucketToleranceChanged,
+              value: widget.magicWandTolerance,
+              onChanged: widget.onMagicWandToleranceChanged,
             ),
-            _buildToleranceSlider(
+            CanvasTool.layerAdjust => _buildToggleSwitchRow(
               theme,
-              label: l10n.fillGap,
-              detail: l10n.fillGapDesc,
-              value: widget.bucketFillGap,
-              onChanged: widget.onBucketFillGapChanged,
-              max: 64,
+              label: l10n.cropOutsideCanvas,
+              detail: l10n.cropOutsideCanvasDesc,
+              value: widget.layerAdjustCropOutside,
+              onChanged: widget.onLayerAdjustCropOutsideChanged,
             ),
-            _buildBucketAntialiasRow(theme),
-            _BucketOptionTile(
-              title: l10n.sampleAllLayers,
-              detail: l10n.sampleAllLayersDesc,
-              value: widget.bucketSampleAllLayers,
-              onChanged: widget.onBucketSampleAllLayersChanged,
-              compact: widget.compactLayout,
+            CanvasTool.selection => _buildSelectionControls(theme),
+            CanvasTool.selectionPen => _buildBrushSizeRow(theme),
+            CanvasTool.text => _buildTextControls(theme),
+            CanvasTool.rotate => _buildCanvasRotationControls(theme),
+            CanvasTool.pen ||
+            CanvasTool.perspectivePen ||
+            CanvasTool.curvePen ||
+            CanvasTool.shape ||
+            CanvasTool.eraser => _buildBrushPresetAwareControls(theme),
+            CanvasTool.eyedropper || CanvasTool.hand => Text(
+              l10n.noAdjustableSettings,
+              style: theme.typography.body,
             ),
-            _BucketOptionTile(
-              title: l10n.contiguous,
-              detail: l10n.contiguousDesc,
-              value: widget.bucketContiguous,
-              onChanged: widget.onBucketContiguousChanged,
-              compact: widget.compactLayout,
-            ),
-            _BucketOptionTile(
-              title: l10n.swallowColorLine,
-              detail: l10n.swallowColorLineDesc,
-              value: widget.bucketSwallowColorLine,
-              onChanged: widget.onBucketSwallowColorLineChanged,
-              compact: widget.compactLayout,
-            ),
-            if (widget.bucketSwallowColorLine) ...[
-              _BucketOptionTile(
-                title: l10n.swallowBlueColorLine,
-                detail: l10n.swallowBlueColorLineDesc,
-                value:
-                    widget.bucketSwallowColorLineMode ==
-                    BucketSwallowColorLineMode.blue,
-                onChanged: (value) {
-                  if (!value) {
-                    return;
-                  }
-                  widget.onBucketSwallowColorLineModeChanged(
-                    BucketSwallowColorLineMode.blue,
-                  );
-                },
-                compact: widget.compactLayout,
-              ),
-              _BucketOptionTile(
-                title: l10n.swallowGreenColorLine,
-                detail: l10n.swallowGreenColorLineDesc,
-                value:
-                    widget.bucketSwallowColorLineMode ==
-                    BucketSwallowColorLineMode.green,
-                onChanged: (value) {
-                  if (!value) {
-                    return;
-                  }
-                  widget.onBucketSwallowColorLineModeChanged(
-                    BucketSwallowColorLineMode.green,
-                  );
-                },
-                compact: widget.compactLayout,
-              ),
-              _BucketOptionTile(
-                title: l10n.swallowRedColorLine,
-                detail: l10n.swallowRedColorLineDesc,
-                value:
-                    widget.bucketSwallowColorLineMode ==
-                    BucketSwallowColorLineMode.red,
-                onChanged: (value) {
-                  if (!value) {
-                    return;
-                  }
-                  widget.onBucketSwallowColorLineModeChanged(
-                    BucketSwallowColorLineMode.red,
-                  );
-                },
-                compact: widget.compactLayout,
-              ),
-              _BucketOptionTile(
-                title: l10n.swallowAllColorLine,
-                detail: l10n.swallowAllColorLineDesc,
-                value:
-                    widget.bucketSwallowColorLineMode ==
-                    BucketSwallowColorLineMode.all,
-                onChanged: (value) {
-                  if (!value) {
-                    return;
-                  }
-                  widget.onBucketSwallowColorLineModeChanged(
-                    BucketSwallowColorLineMode.all,
-                  );
-                },
-                compact: widget.compactLayout,
-              ),
-            ],
-          ],
-          spacing: 16,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-        );
-        break;
-      case CanvasTool.magicWand:
-        content = _buildToleranceSlider(
-          theme,
-          label: l10n.tolerance,
-          detail: l10n.toleranceDesc,
-          value: widget.magicWandTolerance,
-          onChanged: widget.onMagicWandToleranceChanged,
-        );
-        break;
-      case CanvasTool.layerAdjust:
-        content = _buildToggleSwitchRow(
-          theme,
-          label: l10n.cropOutsideCanvas,
-          detail: l10n.cropOutsideCanvasDesc,
-          value: widget.layerAdjustCropOutside,
-          onChanged: widget.onLayerAdjustCropOutsideChanged,
-        );
-        break;
-      case CanvasTool.selection:
-        content = _buildSelectionControls(theme);
-        break;
-      case CanvasTool.selectionPen:
-        content = _buildBrushSizeRow(theme);
-        break;
-      case CanvasTool.text:
-        content = _buildTextControls(theme);
-        break;
-      case CanvasTool.rotate:
-        content = _buildCanvasRotationControls(theme);
-        break;
-      default:
-        content = Text(l10n.noAdjustableSettings, style: theme.typography.body);
-        break;
-    }
+          };
 
     Widget padded = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -585,16 +444,143 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     );
   }
 
+  Widget _buildBrushPresetAwareControls(FluentThemeData theme) {
+    if (widget.activeTool != CanvasTool.shape) {
+      return _buildBrushControls(theme);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildShapeVariantRow(theme),
+        const SizedBox(height: 12),
+        _buildBrushControls(theme),
+      ],
+    );
+  }
+
+  Widget _buildBucketControls(FluentThemeData theme) {
+    final l10n = context.l10n;
+    return _buildControlsGroup(
+      [
+        _buildToleranceSlider(
+          theme,
+          label: l10n.tolerance,
+          detail: l10n.toleranceDesc,
+          value: widget.bucketTolerance,
+          onChanged: widget.onBucketToleranceChanged,
+        ),
+        _buildToleranceSlider(
+          theme,
+          label: l10n.fillGap,
+          detail: l10n.fillGapDesc,
+          value: widget.bucketFillGap,
+          onChanged: widget.onBucketFillGapChanged,
+          max: 64,
+        ),
+        _buildBucketAntialiasRow(theme),
+        _BucketOptionTile(
+          title: l10n.sampleAllLayers,
+          detail: l10n.sampleAllLayersDesc,
+          value: widget.bucketSampleAllLayers,
+          onChanged: widget.onBucketSampleAllLayersChanged,
+          compact: widget.compactLayout,
+        ),
+        _BucketOptionTile(
+          title: l10n.contiguous,
+          detail: l10n.contiguousDesc,
+          value: widget.bucketContiguous,
+          onChanged: widget.onBucketContiguousChanged,
+          compact: widget.compactLayout,
+        ),
+        _BucketOptionTile(
+          title: l10n.swallowColorLine,
+          detail: l10n.swallowColorLineDesc,
+          value: widget.bucketSwallowColorLine,
+          onChanged: widget.onBucketSwallowColorLineChanged,
+          compact: widget.compactLayout,
+        ),
+        if (widget.bucketSwallowColorLine) ...[
+          _BucketOptionTile(
+            title: l10n.swallowBlueColorLine,
+            detail: l10n.swallowBlueColorLineDesc,
+            value:
+                widget.bucketSwallowColorLineMode ==
+                BucketSwallowColorLineMode.blue,
+            onChanged: (value) {
+              if (!value) {
+                return;
+              }
+              widget.onBucketSwallowColorLineModeChanged(
+                BucketSwallowColorLineMode.blue,
+              );
+            },
+            compact: widget.compactLayout,
+          ),
+          _BucketOptionTile(
+            title: l10n.swallowGreenColorLine,
+            detail: l10n.swallowGreenColorLineDesc,
+            value:
+                widget.bucketSwallowColorLineMode ==
+                BucketSwallowColorLineMode.green,
+            onChanged: (value) {
+              if (!value) {
+                return;
+              }
+              widget.onBucketSwallowColorLineModeChanged(
+                BucketSwallowColorLineMode.green,
+              );
+            },
+            compact: widget.compactLayout,
+          ),
+          _BucketOptionTile(
+            title: l10n.swallowRedColorLine,
+            detail: l10n.swallowRedColorLineDesc,
+            value:
+                widget.bucketSwallowColorLineMode ==
+                BucketSwallowColorLineMode.red,
+            onChanged: (value) {
+              if (!value) {
+                return;
+              }
+              widget.onBucketSwallowColorLineModeChanged(
+                BucketSwallowColorLineMode.red,
+              );
+            },
+            compact: widget.compactLayout,
+          ),
+          _BucketOptionTile(
+            title: l10n.swallowAllColorLine,
+            detail: l10n.swallowAllColorLineDesc,
+            value:
+                widget.bucketSwallowColorLineMode ==
+                BucketSwallowColorLineMode.all,
+            onChanged: (value) {
+              if (!value) {
+                return;
+              }
+              widget.onBucketSwallowColorLineModeChanged(
+                BucketSwallowColorLineMode.all,
+              );
+            },
+            compact: widget.compactLayout,
+          ),
+        ],
+      ],
+      spacing: 16,
+      runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.center,
+    );
+  }
+
   Widget _buildBrushControls(FluentThemeData theme) {
     final l10n = context.l10n;
     final bool isPenTool =
         widget.activeTool == CanvasTool.pen ||
         widget.activeTool == CanvasTool.perspectivePen;
     final bool isEraserTool = widget.activeTool == CanvasTool.eraser;
-    final bool isCurvePenTool = widget.activeTool == CanvasTool.curvePen;
     final bool isShapeTool = widget.activeTool == CanvasTool.shape;
-    final bool showAdvancedBrushToggles =
-        isPenTool || isCurvePenTool || isShapeTool || isEraserTool;
+    final bool showAdvancedBrushToggles = widget.activeTool.supportsBrushPreset;
     final bool supportsStrokeStabilizer = isPenTool || isEraserTool;
 
     final List<Widget> wrapChildren = <Widget>[

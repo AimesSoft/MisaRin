@@ -2,7 +2,7 @@
 FLUTTER_ROOT=/Library/Afolder/FlutterProject/flutter
 FLUTTER_APPLICATION_PATH=/Library/Afolder/FlutterProject/misa-rin
 COCOAPODS_PARALLEL_CODE_SIGN=true
-FLUTTER_TARGET=/Library/Afolder/FlutterProject/misa-rin/lib/main.dart
+FLUTTER_TARGET=lib/main.dart
 FLUTTER_BUILD_DIR=build
 FLUTTER_BUILD_NAME=1.0.13
 FLUTTER_BUILD_NUMBER=1
