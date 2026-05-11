@@ -9,6 +9,20 @@ use super::types::{EnginePoint, SprayPoint};
     target_os = "ios",
     target_os = "android"
 ))]
+use super::cube_text_preview::{parse_materials_json, CubeTextPreviewImage};
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+use super::cube_text_preview::{CubeTextPreviewCamera, CubeTextPreviewScene};
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
 use super::engine::{create_engine, lookup_engine, remove_engine, EngineCommand, EngineInputBatch};
 #[cfg(any(
     target_os = "macos",
@@ -164,6 +178,233 @@ pub extern "C" fn engine_attach_present_texture(
     _height: u32,
     _bytes_per_row: u32,
 ) {
+}
+
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+#[no_mangle]
+pub extern "C" fn engine_set_cube_text_preview_scene(
+    handle: u64,
+    positions: *const f32,
+    positions_len: usize,
+    normals: *const f32,
+    normals_len: usize,
+    uvs: *const f32,
+    uvs_len: usize,
+    indices: *const u32,
+    indices_len: usize,
+    material_indices: *const i32,
+    material_indices_len: usize,
+    materials_json: *const u8,
+    materials_json_len: usize,
+    image_widths: *const u32,
+    image_heights: *const u32,
+    image_offsets: *const u64,
+    image_lengths: *const u64,
+    image_count: usize,
+    image_bytes: *const u8,
+    image_bytes_len: usize,
+) -> u8 {
+    let Some(entry) = lookup_engine(handle) else {
+        return 0;
+    };
+    if positions.is_null() || indices.is_null() || positions_len < 3 || indices_len < 3 {
+        return 0;
+    }
+    let positions = unsafe { std::slice::from_raw_parts(positions, positions_len) }.to_vec();
+    let normals = if normals.is_null() || normals_len == 0 {
+        Vec::new()
+    } else {
+        unsafe { std::slice::from_raw_parts(normals, normals_len) }.to_vec()
+    };
+    let uvs = if uvs.is_null() || uvs_len == 0 {
+        Vec::new()
+    } else {
+        unsafe { std::slice::from_raw_parts(uvs, uvs_len) }.to_vec()
+    };
+    let indices = unsafe { std::slice::from_raw_parts(indices, indices_len) }.to_vec();
+    let material_indices = if material_indices.is_null() || material_indices_len == 0 {
+        Vec::new()
+    } else {
+        unsafe { std::slice::from_raw_parts(material_indices, material_indices_len) }.to_vec()
+    };
+    let materials = if materials_json.is_null() || materials_json_len == 0 {
+        parse_materials_json(&[])
+    } else {
+        let json = unsafe { std::slice::from_raw_parts(materials_json, materials_json_len) };
+        parse_materials_json(json)
+    };
+    let images = cube_text_preview_images(
+        image_widths,
+        image_heights,
+        image_offsets,
+        image_lengths,
+        image_count,
+        image_bytes,
+        image_bytes_len,
+    );
+    let scene = CubeTextPreviewScene {
+        positions,
+        normals,
+        uvs,
+        indices,
+        material_indices,
+        materials,
+        images,
+    };
+    match entry
+        .cmd_tx
+        .send(EngineCommand::SetCubeTextPreviewScene { scene })
+    {
+        Ok(()) => 1,
+        Err(_) => 0,
+    }
+}
+
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
+#[no_mangle]
+pub extern "C" fn engine_set_cube_text_preview_scene(
+    _handle: u64,
+    _positions: *const f32,
+    _positions_len: usize,
+    _normals: *const f32,
+    _normals_len: usize,
+    _uvs: *const f32,
+    _uvs_len: usize,
+    _indices: *const u32,
+    _indices_len: usize,
+    _material_indices: *const i32,
+    _material_indices_len: usize,
+    _materials_json: *const u8,
+    _materials_json_len: usize,
+    _image_widths: *const u32,
+    _image_heights: *const u32,
+    _image_offsets: *const u64,
+    _image_lengths: *const u64,
+    _image_count: usize,
+    _image_bytes: *const u8,
+    _image_bytes_len: usize,
+) -> u8 {
+    0
+}
+
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+fn cube_text_preview_images(
+    image_widths: *const u32,
+    image_heights: *const u32,
+    image_offsets: *const u64,
+    image_lengths: *const u64,
+    image_count: usize,
+    image_bytes: *const u8,
+    image_bytes_len: usize,
+) -> Vec<CubeTextPreviewImage> {
+    if image_count == 0
+        || image_bytes.is_null()
+        || image_widths.is_null()
+        || image_heights.is_null()
+        || image_offsets.is_null()
+        || image_lengths.is_null()
+    {
+        return Vec::new();
+    }
+    let widths = unsafe { std::slice::from_raw_parts(image_widths, image_count) };
+    let heights = unsafe { std::slice::from_raw_parts(image_heights, image_count) };
+    let offsets = unsafe { std::slice::from_raw_parts(image_offsets, image_count) };
+    let lengths = unsafe { std::slice::from_raw_parts(image_lengths, image_count) };
+    let bytes = unsafe { std::slice::from_raw_parts(image_bytes, image_bytes_len) };
+    let mut images = Vec::with_capacity(image_count);
+    for index in 0..image_count {
+        let Ok(offset) = usize::try_from(offsets[index]) else {
+            continue;
+        };
+        let Ok(length) = usize::try_from(lengths[index]) else {
+            continue;
+        };
+        let Some(end) = offset.checked_add(length) else {
+            continue;
+        };
+        let width = widths[index];
+        let height = heights[index];
+        let expected_len = width
+            .checked_mul(height)
+            .and_then(|value| value.checked_mul(4))
+            .map(|value| value as usize);
+        if expected_len != Some(length) || end > bytes.len() {
+            continue;
+        }
+        images.push(CubeTextPreviewImage {
+            width,
+            height,
+            rgba: bytes[offset..end].to_vec(),
+        });
+    }
+    images
+}
+
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+))]
+#[no_mangle]
+pub extern "C" fn engine_render_cube_text_preview(
+    handle: u64,
+    yaw: f32,
+    pitch: f32,
+    zoom: f32,
+    fov: f32,
+    transparent_background: u8,
+) -> u8 {
+    let Some(entry) = lookup_engine(handle) else {
+        return 0;
+    };
+    let camera = CubeTextPreviewCamera {
+        yaw,
+        pitch,
+        zoom,
+        fov,
+        transparent_background: transparent_background != 0,
+    };
+    match entry
+        .cmd_tx
+        .send(EngineCommand::RenderCubeTextPreview { camera })
+    {
+        Ok(()) => 1,
+        Err(_) => 0,
+    }
+}
+
+#[cfg(not(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "ios",
+    target_os = "android"
+)))]
+#[no_mangle]
+pub extern "C" fn engine_render_cube_text_preview(
+    _handle: u64,
+    _yaw: f32,
+    _pitch: f32,
+    _zoom: f32,
+    _fov: f32,
+    _transparent_background: u8,
+) -> u8 {
+    0
 }
 
 #[cfg(target_os = "android")]

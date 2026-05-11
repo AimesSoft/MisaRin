@@ -91,12 +91,27 @@ impl PreviewRenderer {
             push_constant_ranges: &[],
         });
 
-        let pipeline_alpha =
-            create_pipeline(device, &shader, &pipeline_layout, format, PreviewPipelineKind::Alpha);
-        let pipeline_max =
-            create_pipeline(device, &shader, &pipeline_layout, format, PreviewPipelineKind::Max);
-        let pipeline_erase =
-            create_pipeline(device, &shader, &pipeline_layout, format, PreviewPipelineKind::Erase);
+        let pipeline_alpha = create_pipeline(
+            device,
+            &shader,
+            &pipeline_layout,
+            format,
+            PreviewPipelineKind::Alpha,
+        );
+        let pipeline_max = create_pipeline(
+            device,
+            &shader,
+            &pipeline_layout,
+            format,
+            PreviewPipelineKind::Max,
+        );
+        let pipeline_erase = create_pipeline(
+            device,
+            &shader,
+            &pipeline_layout,
+            format,
+            PreviewPipelineKind::Erase,
+        );
 
         let config_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("misa-rin preview renderer config"),

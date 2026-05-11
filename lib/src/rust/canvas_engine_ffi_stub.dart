@@ -25,6 +25,34 @@ class CanvasEngineFfi {
 
   void requestPresent({required int handle}) {}
 
+  bool setCubeTextPreviewScene({
+    required int handle,
+    required Float32List positions,
+    required Float32List normals,
+    required Float32List uvs,
+    required Uint32List indices,
+    required Int32List materialIndices,
+    required Uint8List materialsJson,
+    required Uint32List imageWidths,
+    required Uint32List imageHeights,
+    required Uint64List imageOffsets,
+    required Uint64List imageLengths,
+    required Uint8List imageBytes,
+  }) {
+    return false;
+  }
+
+  bool renderCubeTextPreview({
+    required int handle,
+    required double yaw,
+    required double pitch,
+    required double zoom,
+    required double fov,
+    required bool transparentBackground,
+  }) {
+    return false;
+  }
+
   String? popLogLine() => null;
 
   List<String> drainLogs({int maxLines = 200}) => const <String>[];

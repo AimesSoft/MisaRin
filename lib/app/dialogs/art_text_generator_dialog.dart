@@ -7,12 +7,13 @@ import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/gestures.dart' show PointerScrollEvent;
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show MethodChannel, rootBundle;
 import 'package:misa_rin/utils/io_shim.dart';
 import 'package:path/path.dart' as p;
 
 import '../../mobile/mobile_utils.dart';
 import '../../src/rust/api/cube_text.dart' as cube_text;
+import '../../src/rust/canvas_engine_ffi.dart' as canvas_engine_ffi;
 import '../../src/rust/rust_init.dart';
 import '../utils/file_name_dialog.dart';
 import '../utils/mobile_export_paths.dart';
@@ -74,23 +75,8 @@ const Map<String, String> _kMaterialFaceLabels = <String, String>{
 };
 
 const int _kRasterAntialiasSamples = 2;
-const int _kPreviewMaxSupersampledPixels = 10000000;
 
 int _objectSerial = 0;
-
-double _previewPixelRatio(
-  double logicalWidth,
-  double logicalHeight,
-  double devicePixelRatio,
-) {
-  final double logicalPixels = math.max(1.0, logicalWidth * logicalHeight);
-  final double maxRatio = math.sqrt(
-    _kPreviewMaxSupersampledPixels /
-        (logicalPixels * _kRasterAntialiasSamples * _kRasterAntialiasSamples),
-  );
-  final double targetRatio = devicePixelRatio.clamp(1.0, 2.0).toDouble();
-  return math.max(1.0, math.min(targetRatio, maxRatio));
-}
 
 int _exportAntialiasSamples(int width, int height) {
   final int pixels = math.max(1, width) * math.max(1, height);
@@ -1045,29 +1031,25 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                       final double rawHeight = constraints.maxHeight.isFinite
                           ? constraints.maxHeight
                           : 1;
-                      final double pixelRatio = _previewPixelRatio(
-                        rawWidth,
-                        rawHeight,
-                        MediaQuery.devicePixelRatioOf(context),
-                      );
+                      final double pixelRatio = MediaQuery.devicePixelRatioOf(
+                        context,
+                      ).clamp(1.0, 2.5);
                       final int width = math
                           .max(1, (rawWidth * pixelRatio).round())
                           .toInt();
                       final int height = math
                           .max(1, (rawHeight * pixelRatio).round())
                           .toInt();
-                      return _CubeTextRasterPreview(
+                      return _CubeTextBevyPreview(
                         scene: scene,
-                        texts: _texts,
+                        materialImages: _materialImages,
                         width: width,
                         height: height,
-                        pixelRatio: pixelRatio,
                         yaw: _yaw,
                         pitch: _pitch,
                         zoom: _zoom,
                         fov: _fov,
                         transparentBackground: false,
-                        materialImages: _materialImages,
                       );
                     },
                   ),
@@ -2519,6 +2501,363 @@ class _MaterialSwatch extends StatelessWidget {
   }
 }
 
+class _CubeTextBevyPreview extends StatefulWidget {
+  const _CubeTextBevyPreview({
+    required this.scene,
+    required this.materialImages,
+    required this.width,
+    required this.height,
+    required this.yaw,
+    required this.pitch,
+    required this.zoom,
+    required this.fov,
+    required this.transparentBackground,
+  });
+
+  final cube_text.CubeTextScene scene;
+  final Map<String, ui.Image> materialImages;
+  final int width;
+  final int height;
+  final double yaw;
+  final double pitch;
+  final double zoom;
+  final double fov;
+  final bool transparentBackground;
+
+  @override
+  State<_CubeTextBevyPreview> createState() => _CubeTextBevyPreviewState();
+}
+
+class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
+  static const MethodChannel _channel = MethodChannel(
+    'misarin/rust_canvas_texture',
+  );
+  static int _nextSurfaceId = 1;
+
+  late final String _surfaceId;
+  int? _textureId;
+  int? _engineHandle;
+  int _textureWidth = 0;
+  int _textureHeight = 0;
+  int _syncSerial = 0;
+  cube_text.CubeTextScene? _uploadedScene;
+  String? _uploadedMaterialKey;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _surfaceId = 'cube_text_bevy_preview_${_nextSurfaceId++}';
+    unawaited(_sync(uploadScene: true));
+  }
+
+  @override
+  void didUpdateWidget(covariant _CubeTextBevyPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final bool sizeChanged =
+        oldWidget.width != widget.width || oldWidget.height != widget.height;
+    final bool sceneChanged = !identical(oldWidget.scene, widget.scene);
+    if (sceneChanged) {
+      _uploadedScene = null;
+      _uploadedMaterialKey = null;
+    }
+    unawaited(_sync(uploadScene: sceneChanged || sizeChanged));
+  }
+
+  @override
+  void dispose() {
+    unawaited(_disposeSurface());
+    super.dispose();
+  }
+
+  Future<void> _disposeSurface() async {
+    try {
+      await _channel.invokeMethod<void>('disposeTexture', <String, Object?>{
+        'surfaceId': _surfaceId,
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _sync({required bool uploadScene}) async {
+    final int serial = ++_syncSerial;
+    try {
+      await _ensureTexture(serial);
+      if (!mounted || serial != _syncSerial) {
+        return;
+      }
+      final int? handle = _engineHandle;
+      if (handle == null || handle == 0) {
+        return;
+      }
+      final String materialKey = _cubeTextPreviewMaterialKey(
+        widget.scene,
+        widget.materialImages,
+      );
+      if (uploadScene ||
+          !identical(_uploadedScene, widget.scene) ||
+          _uploadedMaterialKey != materialKey) {
+        final _CubeTextPreviewMaterialUpload materialUpload =
+            await _cubeTextPreviewMaterialUpload(
+              widget.scene,
+              widget.materialImages,
+            );
+        if (!mounted || serial != _syncSerial) {
+          return;
+        }
+        final bool ok = canvas_engine_ffi.CanvasEngineFfi.instance
+            .setCubeTextPreviewScene(
+              handle: handle,
+              positions: widget.scene.positions,
+              normals: widget.scene.normals,
+              uvs: widget.scene.uvs,
+              indices: widget.scene.indices,
+              materialIndices: widget.scene.materialIndices,
+              materialsJson: materialUpload.materialsJson,
+              imageWidths: materialUpload.imageWidths,
+              imageHeights: materialUpload.imageHeights,
+              imageOffsets: materialUpload.imageOffsets,
+              imageLengths: materialUpload.imageLengths,
+              imageBytes: materialUpload.imageBytes,
+            );
+        if (!ok) {
+          throw StateError('engine_set_cube_text_preview_scene failed');
+        }
+        _uploadedScene = widget.scene;
+        _uploadedMaterialKey = materialKey;
+      }
+      final bool rendered = canvas_engine_ffi.CanvasEngineFfi.instance
+          .renderCubeTextPreview(
+            handle: handle,
+            yaw: widget.yaw,
+            pitch: widget.pitch,
+            zoom: widget.zoom,
+            fov: widget.fov,
+            transparentBackground: widget.transparentBackground,
+          );
+      if (!rendered) {
+        throw StateError('engine_render_cube_text_preview failed');
+      }
+      if (mounted && _error != null) {
+        setState(() {
+          _error = null;
+        });
+      }
+    } catch (error) {
+      if (!mounted || serial != _syncSerial) {
+        return;
+      }
+      setState(() {
+        _error = error;
+      });
+    }
+  }
+
+  Future<void> _ensureTexture(int serial) async {
+    if (_textureId != null &&
+        _engineHandle != null &&
+        _textureWidth == widget.width &&
+        _textureHeight == widget.height) {
+      return;
+    }
+    final Map<dynamic, dynamic>? info = await _channel
+        .invokeMethod<Map<dynamic, dynamic>>(
+          'getTextureInfo',
+          <String, Object?>{
+            'surfaceId': _surfaceId,
+            'width': widget.width.clamp(1, 8192),
+            'height': widget.height.clamp(1, 8192),
+            'layerCount': 1,
+            'backgroundColorArgb': 0x00FFFFFF,
+          },
+        );
+    if (!mounted || serial != _syncSerial) {
+      return;
+    }
+    final int? textureId = (info?['textureId'] as num?)?.toInt();
+    final int? engineHandle = (info?['engineHandle'] as num?)?.toInt();
+    final int textureWidth = (info?['width'] as num?)?.toInt() ?? widget.width;
+    final int textureHeight =
+        (info?['height'] as num?)?.toInt() ?? widget.height;
+    if (textureId == null || engineHandle == null) {
+      throw StateError('getTextureInfo returned invalid info: $info');
+    }
+    setState(() {
+      _textureId = textureId;
+      _engineHandle = engineHandle;
+      _textureWidth = textureWidth;
+      _textureHeight = textureHeight;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final int? textureId = _textureId;
+    if (_error != null) {
+      return Center(
+        child: Text('Bevy 3D 预览初始化失败\n$_error', textAlign: TextAlign.center),
+      );
+    }
+    if (textureId == null) {
+      return const Center(child: ProgressRing());
+    }
+    return Texture(textureId: textureId, filterQuality: ui.FilterQuality.high);
+  }
+}
+
+class _CubeTextPreviewMaterialUpload {
+  const _CubeTextPreviewMaterialUpload({
+    required this.materialsJson,
+    required this.imageWidths,
+    required this.imageHeights,
+    required this.imageOffsets,
+    required this.imageLengths,
+    required this.imageBytes,
+  });
+
+  final Uint8List materialsJson;
+  final Uint32List imageWidths;
+  final Uint32List imageHeights;
+  final Uint64List imageOffsets;
+  final Uint64List imageLengths;
+  final Uint8List imageBytes;
+}
+
+Future<_CubeTextPreviewMaterialUpload> _cubeTextPreviewMaterialUpload(
+  cube_text.CubeTextScene scene,
+  Map<String, ui.Image> materialImages,
+) async {
+  final Set<String> imageUris = <String>{};
+  for (final cube_text.CubeTextSceneMaterial material in scene.materials) {
+    final cube_text.CubeTextMaterialOption option = material.option;
+    if (option.mode != 'image' || option.image.isEmpty) {
+      continue;
+    }
+    imageUris.add(option.image);
+  }
+
+  final Map<String, int> imageIndices = <String, int>{};
+  final List<int> widths = <int>[];
+  final List<int> heights = <int>[];
+  final List<int> offsets = <int>[];
+  final List<int> lengths = <int>[];
+  final BytesBuilder imageBytes = BytesBuilder(copy: true);
+  for (final String uri in imageUris) {
+    final ui.Image? image = materialImages[uri];
+    if (image == null) {
+      continue;
+    }
+    final ByteData? data = await image.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    );
+    if (data == null) {
+      continue;
+    }
+    final Uint8List rgba = data.buffer.asUint8List(
+      data.offsetInBytes,
+      data.lengthInBytes,
+    );
+    imageIndices[uri] = widths.length;
+    widths.add(image.width);
+    heights.add(image.height);
+    offsets.add(imageBytes.length);
+    lengths.add(rgba.length);
+    imageBytes.add(rgba);
+  }
+
+  final List<Map<String, Object?>> materials = <Map<String, Object?>>[];
+  for (final cube_text.CubeTextSceneMaterial material in scene.materials) {
+    final cube_text.CubeTextMaterialOption option = material.option;
+    final int imageIndex = imageIndices[option.image] ?? -1;
+    final String mode = option.mode == 'image' && imageIndex < 0
+        ? 'color'
+        : option.mode;
+    materials.add(<String, Object?>{
+      'mode': mode,
+      'color': _rgbaInt(_parseColor(option.color) ?? const Color(0xFFFFFFFF)),
+      'gradientStart': _rgbaInt(
+        _parseColor(option.colorGradualStart) ?? const Color(0xFFFFFFFF),
+      ),
+      'gradientEnd': _rgbaInt(
+        _parseColor(option.colorGradualEnd) ?? const Color(0xFFFFFFFF),
+      ),
+      'repeat': option.repeat,
+      'offset': option.offset,
+      'imageIndex': imageIndex,
+      'repeatX': option.repeatX,
+      'repeatY': option.repeatY,
+      'offsetX': option.offsetX,
+      'offsetY': option.offsetY,
+    });
+  }
+  if (materials.isEmpty) {
+    materials.add(<String, Object?>{
+      'mode': 'color',
+      'color': 0xFFFFFFFF,
+      'gradientStart': 0xFFFFFFFF,
+      'gradientEnd': 0xFFFFFFFF,
+      'repeat': 1.0,
+      'offset': 0.0,
+      'imageIndex': -1,
+      'repeatX': 1.0,
+      'repeatY': 1.0,
+      'offsetX': 0.0,
+      'offsetY': 0.0,
+    });
+  }
+
+  return _CubeTextPreviewMaterialUpload(
+    materialsJson: Uint8List.fromList(utf8.encode(jsonEncode(materials))),
+    imageWidths: Uint32List.fromList(widths),
+    imageHeights: Uint32List.fromList(heights),
+    imageOffsets: Uint64List.fromList(offsets),
+    imageLengths: Uint64List.fromList(lengths),
+    imageBytes: imageBytes.toBytes(),
+  );
+}
+
+String _cubeTextPreviewMaterialKey(
+  cube_text.CubeTextScene scene,
+  Map<String, ui.Image> materialImages,
+) {
+  final StringBuffer buffer = StringBuffer('${scene.materials.length}|');
+  for (final cube_text.CubeTextSceneMaterial material in scene.materials) {
+    final cube_text.CubeTextMaterialOption option = material.option;
+    buffer
+      ..write(option.mode)
+      ..write(':')
+      ..write(option.color)
+      ..write(':')
+      ..write(option.colorGradualStart)
+      ..write(':')
+      ..write(option.colorGradualEnd)
+      ..write(':')
+      ..write(option.repeat)
+      ..write(':')
+      ..write(option.offset)
+      ..write(':')
+      ..write(option.image)
+      ..write(':')
+      ..write(option.repeatX)
+      ..write(':')
+      ..write(option.repeatY)
+      ..write(':')
+      ..write(option.offsetX)
+      ..write(':')
+      ..write(option.offsetY);
+    final ui.Image? image = materialImages[option.image];
+    if (image != null) {
+      buffer
+        ..write(':')
+        ..write(image.width)
+        ..write('x')
+        ..write(image.height);
+    }
+    buffer.write('|');
+  }
+  return buffer.toString();
+}
+
+// ignore: unused_element
 class _CubeTextRasterPreview extends StatefulWidget {
   const _CubeTextRasterPreview({
     required this.scene,
@@ -3139,6 +3478,7 @@ void _fillCheckerboardPixels(
   }
 }
 
+// ignore: unused_element
 // ignore: unused_element
 class _CubeTextMeshPainter extends CustomPainter {
   const _CubeTextMeshPainter({

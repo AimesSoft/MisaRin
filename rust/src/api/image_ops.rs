@@ -18,7 +18,7 @@ pub fn convert_pixels_to_rgba(pixels: Vec<u32>) -> Vec<u8> {
             let g = ((argb >> 8) & 0xff) as u32;
             let b = (argb & 0xff) as u32;
             let a_u32 = a as u32;
-            
+
             // Fast premultiply: (val * a + 127) / 255
             out[0] = ((r * a_u32 + 127) / 255) as u8;
             out[1] = ((g * a_u32 + 127) / 255) as u8;

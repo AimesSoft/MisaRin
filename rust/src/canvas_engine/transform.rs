@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use crate::gpu::debug::{self, LogLevel};
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::shared_device::SharedRenderDevice;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -15,7 +16,7 @@ struct TransformUniform {
 }
 
 pub(crate) struct LayerTransformRenderer {
-    device: Arc<wgpu::Device>,
+    device: SharedRenderDevice,
     queue: Arc<wgpu::Queue>,
     pipeline: wgpu::ComputePipeline,
     bind_group_layout: wgpu::BindGroupLayout,
@@ -27,7 +28,7 @@ pub(crate) struct LayerTransformRenderer {
 }
 
 impl LayerTransformRenderer {
-    pub(crate) fn new(device: Arc<wgpu::Device>, queue: Arc<wgpu::Queue>) -> Result<Self, String> {
+    pub(crate) fn new(device: SharedRenderDevice, queue: Arc<wgpu::Queue>) -> Result<Self, String> {
         let shader_source = include_str!("transform_rgba8.wgsl");
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("misa-rin layer transform shader"),

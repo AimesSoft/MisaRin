@@ -221,10 +221,7 @@ pub fn cube_text_export_scene(
             export_gltf(&scene, true)?,
         ),
         _ => {
-            return Err(format!(
-                "不支持的艺术字体导出格式: {}",
-                format.trim()
-            ));
+            return Err(format!("不支持的艺术字体导出格式: {}", format.trim()));
         }
     };
     Ok(CubeTextExportResult {
@@ -236,7 +233,9 @@ pub fn cube_text_export_scene(
 }
 
 #[flutter_rust_bridge::frb]
-pub fn cube_text_convert_ttf_to_font_json(bytes: Vec<u8>) -> Result<CubeTextFontConvertResult, String> {
+pub fn cube_text_convert_ttf_to_font_json(
+    bytes: Vec<u8>,
+) -> Result<CubeTextFontConvertResult, String> {
     convert_ttf_to_font_json(&bytes)
 }
 
@@ -283,14 +282,7 @@ fn build_scene(
 
         let material_base = materials.len() as i32;
         append_text_materials(index, &text.opts.materials, &mut materials);
-        build_text_mesh(
-            font,
-            text,
-            material_base,
-            &mut mesh,
-            &mut warnings,
-            font_id,
-        );
+        build_text_mesh(font, text, material_base, &mut mesh, &mut warnings, font_id);
     }
 
     let bounds = compute_bounds3(&mesh.positions);
@@ -301,15 +293,22 @@ fn build_scene(
         indices: mesh.indices,
         material_indices: mesh.material_indices,
         materials,
-        bounds_min: vec![bounds.min.x as f32, bounds.min.y as f32, bounds.min.z as f32],
-        bounds_max: vec![bounds.max.x as f32, bounds.max.y as f32, bounds.max.z as f32],
+        bounds_min: vec![
+            bounds.min.x as f32,
+            bounds.min.y as f32,
+            bounds.min.z as f32,
+        ],
+        bounds_max: vec![
+            bounds.max.x as f32,
+            bounds.max.y as f32,
+            bounds.max.z as f32,
+        ],
         warnings,
     })
 }
 
 fn convert_ttf_to_font_json(bytes: &[u8]) -> Result<CubeTextFontConvertResult, String> {
-    let face = Face::parse(bytes, 0)
-        .map_err(|error| format!("TTF 字体解析失败: {error:?}"))?;
+    let face = Face::parse(bytes, 0).map_err(|error| format!("TTF 字体解析失败: {error:?}"))?;
     let units_per_em = f64::from(face.units_per_em()).max(1.0);
     let scale = (1000.0 * 100.0) / (units_per_em * 72.0);
     let family_name = font_name(&face).unwrap_or_else(|| "Custom Font".to_string());
@@ -364,8 +363,8 @@ fn convert_ttf_to_font_json(bytes: &[u8]) -> Result<CubeTextFontConvertResult, S
         "cssFontWeight": if face.is_bold() { "bold" } else { "normal" },
         "cssFontStyle": if face.is_italic() { "italic" } else { "normal" },
     });
-    let json = serde_json::to_string(&root)
-        .map_err(|error| format!("字体 JSON 生成失败: {error}"))?;
+    let json =
+        serde_json::to_string(&root).map_err(|error| format!("字体 JSON 生成失败: {error}"))?;
     Ok(CubeTextFontConvertResult {
         font_id: family_name,
         json,
@@ -452,8 +451,11 @@ impl FaceTypeOutlineBuilder {
     }
 
     fn push_point(&mut self, x: f32, y: f32) {
-        self.commands
-            .push_str(&format!("{} {} ", round_f64(f64::from(x) * self.scale), round_f64(f64::from(y) * self.scale)));
+        self.commands.push_str(&format!(
+            "{} {} ",
+            round_f64(f64::from(x) * self.scale),
+            round_f64(f64::from(y) * self.scale)
+        ));
     }
 }
 
@@ -847,7 +849,10 @@ fn placeholder_shapes(offset_x: f64, size: f64) -> Vec<Shape2D> {
     let height = size * PLACEHOLDER_HEIGHT_RATIO;
     vec![Shape2D {
         outer: vec![
-            P2 { x: offset_x, y: 0.0 },
+            P2 {
+                x: offset_x,
+                y: 0.0,
+            },
             P2 {
                 x: offset_x + width,
                 y: 0.0,
@@ -1009,15 +1014,14 @@ fn triangulate_shape(shape: &Shape2D) -> Vec<[P2; 3]> {
         return Vec::new();
     }
 
-    let triangulation =
-        match ConstrainedDelaunayTriangulation::<Point2<f64>>::try_bulk_load_cdt(
-            vertices,
-            edges,
-            |_| {},
-        ) {
-            Ok(value) => value,
-            Err(_) => return triangulate_simple_polygon(&shape.outer),
-        };
+    let triangulation = match ConstrainedDelaunayTriangulation::<Point2<f64>>::try_bulk_load_cdt(
+        vertices,
+        edges,
+        |_| {},
+    ) {
+        Ok(value) => value,
+        Err(_) => return triangulate_simple_polygon(&shape.outer),
+    };
 
     let mut result = Vec::new();
     for face in triangulation.inner_faces() {
@@ -1098,7 +1102,11 @@ fn triangulate_simple_polygon(points: &[P2]) -> Vec<[P2; 3]> {
         }
     }
     if indices.len() == 3 {
-        result.push([polygon[indices[0]], polygon[indices[1]], polygon[indices[2]]]);
+        result.push([
+            polygon[indices[0]],
+            polygon[indices[1]],
+            polygon[indices[2]],
+        ]);
     }
     result
 }
@@ -1526,8 +1534,8 @@ fn export_gltf(scene: &CubeTextScene, binary: bool) -> Result<Vec<u8>, String> {
         root["textures"] = json!(textures);
     }
 
-    let json_bytes = serde_json::to_vec_pretty(&root)
-        .map_err(|error| format!("glTF JSON 生成失败: {error}"))?;
+    let json_bytes =
+        serde_json::to_vec_pretty(&root).map_err(|error| format!("glTF JSON 生成失败: {error}"))?;
     if !binary {
         return Ok(json_bytes);
     }

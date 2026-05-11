@@ -79,14 +79,8 @@ pub fn cpu_blend_overflow_rgba(
 ) -> CpuBlendOverflowResult {
     let mut canvas = canvas;
 
-    let upper_len = upper_x
-        .len()
-        .min(upper_y.len())
-        .min(upper_color.len()) as u64;
-    let lower_len = lower_x
-        .len()
-        .min(lower_y.len())
-        .min(lower_color.len()) as u64;
+    let upper_len = upper_x.len().min(upper_y.len()).min(upper_color.len()) as u64;
+    let lower_len = lower_x.len().min(lower_y.len()).min(lower_color.len()) as u64;
     let mask_overflow_len = mask_overflow_x
         .len()
         .min(mask_overflow_y.len())
@@ -141,9 +135,21 @@ pub fn cpu_blend_overflow_rgba(
         upper_y.as_ptr(),
         upper_color.as_ptr(),
         upper_len,
-        if lower_len > 0 { lower_x.as_ptr() } else { std::ptr::null() },
-        if lower_len > 0 { lower_y.as_ptr() } else { std::ptr::null() },
-        if lower_len > 0 { lower_color.as_ptr() } else { std::ptr::null() },
+        if lower_len > 0 {
+            lower_x.as_ptr()
+        } else {
+            std::ptr::null()
+        },
+        if lower_len > 0 {
+            lower_y.as_ptr()
+        } else {
+            std::ptr::null()
+        },
+        if lower_len > 0 {
+            lower_color.as_ptr()
+        } else {
+            std::ptr::null()
+        },
         lower_len,
         opacity,
         blend_mode,

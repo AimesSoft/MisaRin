@@ -56,9 +56,7 @@ pub fn log(required: LogLevel, args: std::fmt::Arguments) {
     }
     let msg = format!("[misa-rin][rust][gpu] {args}");
     {
-        let mut guard = log_buffer()
-            .lock()
-            .unwrap_or_else(|err| err.into_inner());
+        let mut guard = log_buffer().lock().unwrap_or_else(|err| err.into_inner());
         if guard.len() >= LOG_BUFFER_CAPACITY {
             guard.pop_front();
         }
@@ -68,9 +66,7 @@ pub fn log(required: LogLevel, args: std::fmt::Arguments) {
 }
 
 pub fn pop_log_line() -> Option<String> {
-    let mut guard = log_buffer()
-        .lock()
-        .unwrap_or_else(|err| err.into_inner());
+    let mut guard = log_buffer().lock().unwrap_or_else(|err| err.into_inner());
     guard.pop_front()
 }
 

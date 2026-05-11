@@ -61,6 +61,72 @@ typedef _EngineSetLogLevelDart = void Function(int level);
 typedef _EngineRequestPresentNative = ffi.Void Function(ffi.Uint64 handle);
 typedef _EngineRequestPresentDart = void Function(int handle);
 
+typedef _EngineSetCubeTextPreviewSceneNative =
+    ffi.Uint8 Function(
+      ffi.Uint64 handle,
+      ffi.Pointer<ffi.Float> positions,
+      ffi.UintPtr positionsLen,
+      ffi.Pointer<ffi.Float> normals,
+      ffi.UintPtr normalsLen,
+      ffi.Pointer<ffi.Float> uvs,
+      ffi.UintPtr uvsLen,
+      ffi.Pointer<ffi.Uint32> indices,
+      ffi.UintPtr indicesLen,
+      ffi.Pointer<ffi.Int32> materialIndices,
+      ffi.UintPtr materialIndicesLen,
+      ffi.Pointer<ffi.Uint8> materialsJson,
+      ffi.UintPtr materialsJsonLen,
+      ffi.Pointer<ffi.Uint32> imageWidths,
+      ffi.Pointer<ffi.Uint32> imageHeights,
+      ffi.Pointer<ffi.Uint64> imageOffsets,
+      ffi.Pointer<ffi.Uint64> imageLengths,
+      ffi.UintPtr imageCount,
+      ffi.Pointer<ffi.Uint8> imageBytes,
+      ffi.UintPtr imageBytesLen,
+    );
+typedef _EngineSetCubeTextPreviewSceneDart =
+    int Function(
+      int handle,
+      ffi.Pointer<ffi.Float> positions,
+      int positionsLen,
+      ffi.Pointer<ffi.Float> normals,
+      int normalsLen,
+      ffi.Pointer<ffi.Float> uvs,
+      int uvsLen,
+      ffi.Pointer<ffi.Uint32> indices,
+      int indicesLen,
+      ffi.Pointer<ffi.Int32> materialIndices,
+      int materialIndicesLen,
+      ffi.Pointer<ffi.Uint8> materialsJson,
+      int materialsJsonLen,
+      ffi.Pointer<ffi.Uint32> imageWidths,
+      ffi.Pointer<ffi.Uint32> imageHeights,
+      ffi.Pointer<ffi.Uint64> imageOffsets,
+      ffi.Pointer<ffi.Uint64> imageLengths,
+      int imageCount,
+      ffi.Pointer<ffi.Uint8> imageBytes,
+      int imageBytesLen,
+    );
+
+typedef _EngineRenderCubeTextPreviewNative =
+    ffi.Uint8 Function(
+      ffi.Uint64 handle,
+      ffi.Float yaw,
+      ffi.Float pitch,
+      ffi.Float zoom,
+      ffi.Float fov,
+      ffi.Uint8 transparentBackground,
+    );
+typedef _EngineRenderCubeTextPreviewDart =
+    int Function(
+      int handle,
+      double yaw,
+      double pitch,
+      double zoom,
+      double fov,
+      int transparentBackground,
+    );
+
 typedef _EngineSetActiveLayerNative =
     ffi.Void Function(ffi.Uint64 handle, ffi.Uint32 layerIndex);
 typedef _EngineSetActiveLayerDart = void Function(int handle, int layerIndex);
@@ -607,6 +673,24 @@ class CanvasEngineFfi {
         _requestPresent = null;
       }
       try {
+        _setCubeTextPreviewScene = _lib
+            .lookupFunction<
+              _EngineSetCubeTextPreviewSceneNative,
+              _EngineSetCubeTextPreviewSceneDart
+            >('engine_set_cube_text_preview_scene');
+      } catch (_) {
+        _setCubeTextPreviewScene = null;
+      }
+      try {
+        _renderCubeTextPreview = _lib
+            .lookupFunction<
+              _EngineRenderCubeTextPreviewNative,
+              _EngineRenderCubeTextPreviewDart
+            >('engine_render_cube_text_preview');
+      } catch (_) {
+        _renderCubeTextPreview = null;
+      }
+      try {
         _isValid = _lib
             .lookupFunction<_EngineIsValidNative, _EngineIsValidDart>(
               'engine_is_valid',
@@ -969,6 +1053,8 @@ class CanvasEngineFfi {
   late final _EngineGetInputQueueLenDart _getQueueLen;
   late final _EngineSetLogLevelDart? _setLogLevel;
   late final _EngineRequestPresentDart? _requestPresent;
+  late final _EngineSetCubeTextPreviewSceneDart? _setCubeTextPreviewScene;
+  late final _EngineRenderCubeTextPreviewDart? _renderCubeTextPreview;
   late final _EngineIsValidDart? _isValid;
   late final _EngineSetActiveLayerDart? _setActiveLayer;
   late final _EngineSetLayerOpacityDart? _setLayerOpacity;
@@ -1080,6 +1166,145 @@ class CanvasEngineFfi {
       return;
     }
     fn(handle);
+  }
+
+  bool setCubeTextPreviewScene({
+    required int handle,
+    required Float32List positions,
+    required Float32List normals,
+    required Float32List uvs,
+    required Uint32List indices,
+    required Int32List materialIndices,
+    required Uint8List materialsJson,
+    required Uint32List imageWidths,
+    required Uint32List imageHeights,
+    required Uint64List imageOffsets,
+    required Uint64List imageLengths,
+    required Uint8List imageBytes,
+  }) {
+    final fn = _setCubeTextPreviewScene;
+    if (!isSupported ||
+        fn == null ||
+        handle == 0 ||
+        positions.isEmpty ||
+        indices.isEmpty) {
+      return false;
+    }
+
+    ffi.Pointer<ffi.Float> positionsPtr = ffi.nullptr;
+    ffi.Pointer<ffi.Float> normalsPtr = ffi.nullptr;
+    ffi.Pointer<ffi.Float> uvsPtr = ffi.nullptr;
+    ffi.Pointer<ffi.Uint32> indicesPtr = ffi.nullptr;
+    ffi.Pointer<ffi.Int32> materialIndicesPtr = ffi.nullptr;
+    ffi.Pointer<ffi.Uint8> materialsJsonPtr = ffi.nullptr;
+    ffi.Pointer<ffi.Uint32> imageWidthsPtr = ffi.nullptr;
+    ffi.Pointer<ffi.Uint32> imageHeightsPtr = ffi.nullptr;
+    ffi.Pointer<ffi.Uint64> imageOffsetsPtr = ffi.nullptr;
+    ffi.Pointer<ffi.Uint64> imageLengthsPtr = ffi.nullptr;
+    ffi.Pointer<ffi.Uint8> imageBytesPtr = ffi.nullptr;
+    try {
+      positionsPtr = calloc<ffi.Float>(positions.length);
+      positionsPtr.asTypedList(positions.length).setAll(0, positions);
+      if (normals.isNotEmpty) {
+        normalsPtr = calloc<ffi.Float>(normals.length);
+        normalsPtr.asTypedList(normals.length).setAll(0, normals);
+      }
+      if (uvs.isNotEmpty) {
+        uvsPtr = calloc<ffi.Float>(uvs.length);
+        uvsPtr.asTypedList(uvs.length).setAll(0, uvs);
+      }
+      indicesPtr = calloc<ffi.Uint32>(indices.length);
+      indicesPtr.asTypedList(indices.length).setAll(0, indices);
+      if (materialIndices.isNotEmpty) {
+        materialIndicesPtr = calloc<ffi.Int32>(materialIndices.length);
+        materialIndicesPtr
+            .asTypedList(materialIndices.length)
+            .setAll(0, materialIndices);
+      }
+      if (materialsJson.isNotEmpty) {
+        materialsJsonPtr = calloc<ffi.Uint8>(materialsJson.length);
+        materialsJsonPtr
+            .asTypedList(materialsJson.length)
+            .setAll(0, materialsJson);
+      }
+      if (imageWidths.isNotEmpty) {
+        imageWidthsPtr = calloc<ffi.Uint32>(imageWidths.length);
+        imageWidthsPtr.asTypedList(imageWidths.length).setAll(0, imageWidths);
+      }
+      if (imageHeights.isNotEmpty) {
+        imageHeightsPtr = calloc<ffi.Uint32>(imageHeights.length);
+        imageHeightsPtr
+            .asTypedList(imageHeights.length)
+            .setAll(0, imageHeights);
+      }
+      if (imageOffsets.isNotEmpty) {
+        imageOffsetsPtr = calloc<ffi.Uint64>(imageOffsets.length);
+        imageOffsetsPtr
+            .asTypedList(imageOffsets.length)
+            .setAll(0, imageOffsets);
+      }
+      if (imageLengths.isNotEmpty) {
+        imageLengthsPtr = calloc<ffi.Uint64>(imageLengths.length);
+        imageLengthsPtr
+            .asTypedList(imageLengths.length)
+            .setAll(0, imageLengths);
+      }
+      if (imageBytes.isNotEmpty) {
+        imageBytesPtr = calloc<ffi.Uint8>(imageBytes.length);
+        imageBytesPtr.asTypedList(imageBytes.length).setAll(0, imageBytes);
+      }
+      return fn(
+            handle,
+            positionsPtr,
+            positions.length,
+            normalsPtr,
+            normals.length,
+            uvsPtr,
+            uvs.length,
+            indicesPtr,
+            indices.length,
+            materialIndicesPtr,
+            materialIndices.length,
+            materialsJsonPtr,
+            materialsJson.length,
+            imageWidthsPtr,
+            imageHeightsPtr,
+            imageOffsetsPtr,
+            imageLengthsPtr,
+            imageWidths.length,
+            imageBytesPtr,
+            imageBytes.length,
+          ) !=
+          0;
+    } finally {
+      if (positionsPtr != ffi.nullptr) calloc.free(positionsPtr);
+      if (normalsPtr != ffi.nullptr) calloc.free(normalsPtr);
+      if (uvsPtr != ffi.nullptr) calloc.free(uvsPtr);
+      if (indicesPtr != ffi.nullptr) calloc.free(indicesPtr);
+      if (materialIndicesPtr != ffi.nullptr) calloc.free(materialIndicesPtr);
+      if (materialsJsonPtr != ffi.nullptr) calloc.free(materialsJsonPtr);
+      if (imageWidthsPtr != ffi.nullptr) calloc.free(imageWidthsPtr);
+      if (imageHeightsPtr != ffi.nullptr) calloc.free(imageHeightsPtr);
+      if (imageOffsetsPtr != ffi.nullptr) calloc.free(imageOffsetsPtr);
+      if (imageLengthsPtr != ffi.nullptr) calloc.free(imageLengthsPtr);
+      if (imageBytesPtr != ffi.nullptr) calloc.free(imageBytesPtr);
+    }
+  }
+
+  bool renderCubeTextPreview({
+    required int handle,
+    required double yaw,
+    required double pitch,
+    required double zoom,
+    required double fov,
+    required bool transparentBackground,
+  }) {
+    final fn = _renderCubeTextPreview;
+    if (!isSupported || fn == null || handle == 0) {
+      return false;
+    }
+    return fn(handle, yaw, pitch, zoom, fov, transparentBackground ? 1 : 0) !=
+        0;
   }
 
   String? popLogLine() {

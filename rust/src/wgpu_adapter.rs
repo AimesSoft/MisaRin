@@ -17,9 +17,8 @@ pub(crate) fn select_compute_adapter(
         }
     };
 
-    let is_compute = |adapter: &wgpu::Adapter| {
-        adapter.limits().max_compute_workgroups_per_dimension > 0
-    };
+    let is_compute =
+        |adapter: &wgpu::Adapter| adapter.limits().max_compute_workgroups_per_dimension > 0;
 
     let is_software = |adapter: &wgpu::Adapter| {
         let info = adapter.get_info();

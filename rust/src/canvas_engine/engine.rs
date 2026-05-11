@@ -21,7 +21,11 @@ use crate::gpu::filter_renderer::{
     FILTER_LEAK_REMOVAL, FILTER_LINE_NARROW, FILTER_SCAN_PAPER_DRAWING,
 };
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::shared_device::SharedRenderDevice;
 
+use super::cube_text_preview::{
+    CubeTextPreviewCamera, CubeTextPreviewRenderer, CubeTextPreviewScene,
+};
 use super::layers::LayerTextures;
 #[cfg(target_os = "android")]
 use super::present::attach_present_surface;
@@ -106,6 +110,12 @@ pub(crate) enum EngineCommand {
         width: u32,
         height: u32,
         reply: mpsc::Sender<Option<usize>>,
+    },
+    SetCubeTextPreviewScene {
+        scene: CubeTextPreviewScene,
+    },
+    RenderCubeTextPreview {
+        camera: CubeTextPreviewCamera,
     },
     RequestPresent,
     ResetCanvas {
@@ -345,7 +355,7 @@ fn engines() -> &'static Mutex<HashMap<u64, EngineEntry>> {
 struct EngineDeviceContext {
     instance: Arc<wgpu::Instance>,
     adapter: Arc<wgpu::Adapter>,
-    device: Arc<wgpu::Device>,
+    device: SharedRenderDevice,
     queue: Arc<wgpu::Queue>,
 }
 
@@ -412,7 +422,7 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
         Ok(EngineDeviceContext {
             instance,
             adapter,
-            device: Arc::new(device),
+            device: SharedRenderDevice::new(device),
             queue: Arc::new(queue),
         })
     });
@@ -986,7 +996,7 @@ fn render_streamline_frame(
     t: f32,
     stroke: &mut StrokeResampler,
     brush: &mut Option<BrushRenderer>,
-    device: &Arc<wgpu::Device>,
+    device: &SharedRenderDevice,
     queue: &Arc<wgpu::Queue>,
     layers: &LayerTextures,
     undo_manager: &mut UndoManager,
@@ -1120,7 +1130,7 @@ fn commit_preview_stroke(
     layers: &LayerTextures,
     undo_manager: &mut UndoManager,
     layer_uniform: &mut Vec<Option<u32>>,
-    device: &Arc<wgpu::Device>,
+    device: &SharedRenderDevice,
     queue: &Arc<wgpu::Queue>,
     canvas_width: u32,
     canvas_height: u32,
@@ -1206,7 +1216,7 @@ fn commit_preview_stroke(
 fn spawn_render_thread(
     instance: Arc<wgpu::Instance>,
     adapter: Arc<wgpu::Adapter>,
-    device: Arc<wgpu::Device>,
+    device: SharedRenderDevice,
     queue: Arc<wgpu::Queue>,
     layer_textures: LayerTextures,
     cmd_rx: mpsc::Receiver<EngineCommand>,
@@ -1240,7 +1250,7 @@ fn spawn_render_thread(
 fn render_thread_main(
     instance: Arc<wgpu::Instance>,
     adapter: Arc<wgpu::Adapter>,
-    device: Arc<wgpu::Device>,
+    device: SharedRenderDevice,
     queue: Arc<wgpu::Queue>,
     layer_textures: LayerTextures,
     cmd_rx: mpsc::Receiver<EngineCommand>,
@@ -1337,6 +1347,9 @@ fn render_thread_main(
     let mut streamline_animation: Option<StreamlineAnimation> = None;
     let mut preview_renderer: Option<PreviewRenderer> = None;
     let mut preview_state: Option<PreviewStrokeState> = None;
+    let mut cube_text_preview_renderer: Option<CubeTextPreviewRenderer> = None;
+    let mut cube_text_preview_scene: Option<CubeTextPreviewScene> = None;
+    let mut cube_text_preview_camera = CubeTextPreviewCamera::default();
     let mut selection_mask_active = false;
     let mut spray_active_layer: Option<u32> = None;
     let mut liquify_active_layer: Option<u32> = None;
@@ -1436,6 +1449,9 @@ fn render_thread_main(
                 &mut present_params_capacity,
                 &mut present_bind_group,
                 &mut preview_renderer,
+                &mut cube_text_preview_renderer,
+                &mut cube_text_preview_scene,
+                &mut cube_text_preview_camera,
                 &mut transform_renderer,
                 &mut brush,
                 &mut brush_settings,
@@ -1572,6 +1588,9 @@ fn render_thread_main(
                     &mut present_params_capacity,
                     &mut present_bind_group,
                     &mut preview_renderer,
+                    &mut cube_text_preview_renderer,
+                    &mut cube_text_preview_scene,
+                    &mut cube_text_preview_camera,
                     &mut transform_renderer,
                     &mut brush,
                     &mut brush_settings,
@@ -2163,6 +2182,9 @@ fn render_thread_main(
                     &mut present_params_capacity,
                     &mut present_bind_group,
                     &mut preview_renderer,
+                    &mut cube_text_preview_renderer,
+                    &mut cube_text_preview_scene,
+                    &mut cube_text_preview_camera,
                     &mut transform_renderer,
                     &mut brush,
                     &mut brush_settings,
@@ -2269,7 +2291,47 @@ fn render_thread_main(
                                     ),
                                 );
                             }
-                            if let Some(state) = preview_state.as_ref() {
+                            if let Some(scene) = cube_text_preview_scene.as_ref() {
+                                let recreate = cube_text_preview_renderer
+                                    .as_ref()
+                                    .map(|renderer| renderer.format() != present_format)
+                                    .unwrap_or(true);
+                                if recreate {
+                                    cube_text_preview_renderer =
+                                        Some(CubeTextPreviewRenderer::new(
+                                            &instance,
+                                            &adapter,
+                                            &device,
+                                            &queue,
+                                            present_format,
+                                        ));
+                                }
+                                if let Some(renderer) = cube_text_preview_renderer.as_mut() {
+                                    renderer.render(
+                                        target.render_texture(),
+                                        target.width,
+                                        target.height,
+                                        scene,
+                                        cube_text_preview_camera,
+                                    );
+                                }
+                                if target.shared_texture().is_some() {
+                                    let mut encoder = device.create_command_encoder(
+                                        &wgpu::CommandEncoderDescriptor {
+                                            label: Some(
+                                                "misa-rin cube text bevy present copy encoder",
+                                            ),
+                                        },
+                                    );
+                                    copy_render_to_shared(&mut encoder, target);
+                                    queue.submit(Some(encoder.finish()));
+                                }
+                                signal_frame_ready(
+                                    queue.as_ref(),
+                                    Arc::clone(&frame_ready),
+                                    Arc::clone(&frame_in_flight),
+                                );
+                            } else if let Some(state) = preview_state.as_ref() {
                                 present_renderer.render_base(
                                     device.as_ref(),
                                     queue.as_ref(),
@@ -2479,7 +2541,7 @@ fn render_thread_main(
 fn handle_engine_command(
     instance: &wgpu::Instance,
     adapter: &wgpu::Adapter,
-    device: &Arc<wgpu::Device>,
+    device: &SharedRenderDevice,
     queue: &Arc<wgpu::Queue>,
     present: &mut Option<PresentTarget>,
     cmd: EngineCommand,
@@ -2505,6 +2567,9 @@ fn handle_engine_command(
     present_params_capacity: &mut usize,
     present_bind_group: &mut wgpu::BindGroup,
     preview_renderer: &mut Option<PreviewRenderer>,
+    _cube_text_preview_renderer: &mut Option<CubeTextPreviewRenderer>,
+    cube_text_preview_scene: &mut Option<CubeTextPreviewScene>,
+    cube_text_preview_camera: &mut CubeTextPreviewCamera,
     transform_renderer: &mut Option<LayerTransformRenderer>,
     brush: &mut Option<BrushRenderer>,
     brush_settings: &mut EngineBrushSettings,
@@ -2615,6 +2680,22 @@ fn handle_engine_command(
                 needs_render: false,
                 new_canvas_size: None,
             }
+        }
+        EngineCommand::SetCubeTextPreviewScene { scene } => {
+            *cube_text_preview_scene = Some(scene);
+            return EngineCommandOutcome {
+                stop: false,
+                needs_render: false,
+                new_canvas_size: None,
+            };
+        }
+        EngineCommand::RenderCubeTextPreview { camera } => {
+            *cube_text_preview_camera = camera;
+            return EngineCommandOutcome {
+                stop: false,
+                needs_render: present.is_some() && cube_text_preview_scene.is_some(),
+                new_canvas_size: None,
+            };
         }
         EngineCommand::AttachPresentTexture {
             mtl_texture_ptr,
@@ -5904,7 +5985,7 @@ fn reorder_layer_textures(
 
 fn ensure_brush<'a>(
     brush: &'a mut Option<BrushRenderer>,
-    device: &Arc<wgpu::Device>,
+    device: &SharedRenderDevice,
     queue: &Arc<wgpu::Queue>,
     canvas_width: u32,
     canvas_height: u32,
@@ -5923,7 +6004,7 @@ fn ensure_brush<'a>(
 
 fn ensure_filter_renderer<'a>(
     filter_renderer: &'a mut Option<FilterRenderer>,
-    device: &Arc<wgpu::Device>,
+    device: &SharedRenderDevice,
     queue: &Arc<wgpu::Queue>,
     canvas_width: u32,
     canvas_height: u32,
@@ -5943,7 +6024,7 @@ fn ensure_filter_renderer<'a>(
 
 fn ensure_transform_renderer<'a>(
     transform_renderer: &'a mut Option<LayerTransformRenderer>,
-    device: &Arc<wgpu::Device>,
+    device: &SharedRenderDevice,
     queue: &Arc<wgpu::Queue>,
 ) -> Result<&'a mut LayerTransformRenderer, String> {
     if transform_renderer.is_none() {
@@ -7109,7 +7190,7 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
     spawn_render_thread(
         Arc::clone(&ctx.instance),
         Arc::clone(&ctx.adapter),
-        Arc::clone(&ctx.device),
+        ctx.device.clone(),
         Arc::clone(&ctx.queue),
         layers,
         cmd_rx,

@@ -33,8 +33,7 @@ const EDGE_SMOOTH_STRENGTH: f32 = 1.0;
 const EDGE_SMOOTH_GAMMA: f32 = 0.55;
 
 const GAUSSIAN_KERNEL_5X5: [i32; 25] = [
-    1, 4, 6, 4, 1, 4, 16, 24, 16, 4, 6, 24, 36, 24, 6, 4, 16, 24, 16, 4, 1, 4, 6, 4,
-    1,
+    1, 4, 6, 4, 1, 4, 16, 24, 16, 4, 6, 24, 36, 24, 6, 4, 16, 24, 16, 4, 1, 4, 6, 4, 1,
 ];
 
 fn clamp_u8(value: i32) -> u8 {
@@ -47,13 +46,7 @@ fn clamp_u8(value: i32) -> u8 {
     }
 }
 
-fn antialias_pass(
-    src: &[u32],
-    dest: &mut [u32],
-    width: usize,
-    height: usize,
-    factor: f32,
-) -> bool {
+fn antialias_pass(src: &[u32], dest: &mut [u32], width: usize, height: usize, factor: f32) -> bool {
     dest.copy_from_slice(src);
     if factor <= 0.0 {
         return false;
@@ -72,12 +65,9 @@ fn antialias_pass(
 
             let mut total_weight = ANTIALIAS_CENTER_WEIGHT;
             let mut weighted_alpha = alpha * ANTIALIAS_CENTER_WEIGHT;
-            let mut weighted_premul_r =
-                (center_r * alpha * ANTIALIAS_CENTER_WEIGHT) as i64;
-            let mut weighted_premul_g =
-                (center_g * alpha * ANTIALIAS_CENTER_WEIGHT) as i64;
-            let mut weighted_premul_b =
-                (center_b * alpha * ANTIALIAS_CENTER_WEIGHT) as i64;
+            let mut weighted_premul_r = (center_r * alpha * ANTIALIAS_CENTER_WEIGHT) as i64;
+            let mut weighted_premul_g = (center_g * alpha * ANTIALIAS_CENTER_WEIGHT) as i64;
+            let mut weighted_premul_b = (center_b * alpha * ANTIALIAS_CENTER_WEIGHT) as i64;
 
             for i in 0..ANTIALIAS_DX.len() {
                 let nx = x as i32 + ANTIALIAS_DX[i];
@@ -199,8 +189,8 @@ fn edge_smooth_weight(gradient: f32) -> f32 {
     if gradient <= EDGE_DETECT_MIN {
         return 0.0;
     }
-    let normalized = ((gradient - EDGE_DETECT_MIN) / (EDGE_DETECT_MAX - EDGE_DETECT_MIN))
-        .clamp(0.0, 1.0);
+    let normalized =
+        ((gradient - EDGE_DETECT_MIN) / (EDGE_DETECT_MAX - EDGE_DETECT_MIN)).clamp(0.0, 1.0);
     normalized.powf(EDGE_SMOOTH_GAMMA) * EDGE_SMOOTH_STRENGTH
 }
 
@@ -225,10 +215,7 @@ fn lerp_argb(a: u32, b: u32, t: f32) -> u32 {
     let out_r = lerp_channel(a_r, b_r);
     let out_g = lerp_channel(a_g, b_g);
     let out_b = lerp_channel(a_b, b_b);
-    ((out_a as u32) << 24)
-        | ((out_r as u32) << 16)
-        | ((out_g as u32) << 8)
-        | (out_b as u32)
+    ((out_a as u32) << 24) | ((out_r as u32) << 16) | ((out_g as u32) << 8) | (out_b as u32)
 }
 
 fn gaussian_blur(src: &[u32], dest: &mut [u32], width: usize, height: usize) {
@@ -542,8 +529,9 @@ fn apply_brightness_contrast(pixels: &mut [u8], brightness_percent: f32, contras
             continue;
         }
         for channel in &mut chunk[0..3] {
-            let adjusted = ((*channel as f32 - 128.0) * contrast_factor + 128.0 + brightness_offset)
-                .clamp(0.0, 255.0);
+            let adjusted =
+                ((*channel as f32 - 128.0) * contrast_factor + 128.0 + brightness_offset)
+                    .clamp(0.0, 255.0);
             *channel = round_channel(adjusted);
         }
     }
@@ -560,10 +548,8 @@ fn apply_black_white(pixels: &mut [u8], black_point: f32, white_point: f32, mid_
         if alpha == 0 {
             continue;
         }
-        let luminance = (chunk[0] as f32 * 0.299
-            + chunk[1] as f32 * 0.587
-            + chunk[2] as f32 * 0.114)
-            / 255.0;
+        let luminance =
+            (chunk[0] as f32 * 0.299 + chunk[1] as f32 * 0.587 + chunk[2] as f32 * 0.114) / 255.0;
         let mut normalized = ((luminance - black) * inv_range).clamp(0.0, 1.0);
         normalized = normalized.powf(gamma).clamp(0.0, 1.0);
         let gray = round_channel(normalized * 255.0);
@@ -634,7 +620,13 @@ fn filter_compute_box_sizes(sigma: f32, box_count: i32) -> Vec<i32> {
     let m = m_ideal.round() as i32;
     let clamped_m = m.clamp(0, box_count);
     (0..box_count)
-        .map(|i| if i < clamped_m { lower_width } else { upper_width })
+        .map(|i| {
+            if i < clamped_m {
+                lower_width
+            } else {
+                upper_width
+            }
+        })
         .collect()
 }
 
@@ -674,8 +666,10 @@ fn filter_box_blur_pass(
                 destination[dest_index + 3] = round_channel(sum_a as f32 / kernel_size);
                 let remove_x = x as i32 - radius as i32;
                 let add_x = x as i32 + radius as i32 + 1;
-                let remove_index = ((row_offset + clamp_index(remove_x, width as i32) as usize) << 2) as usize;
-                let add_index = ((row_offset + clamp_index(add_x, width as i32) as usize) << 2) as usize;
+                let remove_index =
+                    ((row_offset + clamp_index(remove_x, width as i32) as usize) << 2) as usize;
+                let add_index =
+                    ((row_offset + clamp_index(add_x, width as i32) as usize) << 2) as usize;
                 sum_r += source[add_index] as i32 - source[remove_index] as i32;
                 sum_g += source[add_index + 1] as i32 - source[remove_index + 1] as i32;
                 sum_b += source[add_index + 2] as i32 - source[remove_index + 2] as i32;
@@ -705,8 +699,10 @@ fn filter_box_blur_pass(
             destination[dest_index + 3] = round_channel(sum_a as f32 / kernel_size);
             let remove_y = y as i32 - radius as i32;
             let add_y = y as i32 + radius as i32 + 1;
-            let remove_index = ((clamp_index(remove_y, height as i32) as usize * width + x) << 2) as usize;
-            let add_index = ((clamp_index(add_y, height as i32) as usize * width + x) << 2) as usize;
+            let remove_index =
+                ((clamp_index(remove_y, height as i32) as usize * width + x) << 2) as usize;
+            let add_index =
+                ((clamp_index(add_y, height as i32) as usize * width + x) << 2) as usize;
             sum_r += source[add_index] as i32 - source[remove_index] as i32;
             sum_g += source[add_index + 1] as i32 - source[remove_index + 1] as i32;
             sum_b += source[add_index + 2] as i32 - source[remove_index + 2] as i32;
@@ -802,13 +798,7 @@ fn build_luminance_mask_if_fully_opaque(
     Some(mask)
 }
 
-fn apply_morphology(
-    pixels: &mut [u8],
-    width: usize,
-    height: usize,
-    radius: i32,
-    dilate: bool,
-) {
+fn apply_morphology(pixels: &mut [u8], width: usize, height: usize, radius: i32, dilate: bool) {
     if pixels.is_empty() || width == 0 || height == 0 {
         return;
     }
@@ -1397,15 +1387,9 @@ fn scan_paper_map_rgb_to_argb_tone(
     0
 }
 
-fn apply_scan_paper_drawing(
-    pixels: &mut [u8],
-    black_point: f32,
-    white_point: f32,
-    mid_tone: f32,
-) {
-    let tone_mapping_enabled = black_point.abs() > 1e-6
-        || (white_point - 100.0).abs() > 1e-6
-        || mid_tone.abs() > 1e-6;
+fn apply_scan_paper_drawing(pixels: &mut [u8], black_point: f32, white_point: f32, mid_tone: f32) {
+    let tone_mapping_enabled =
+        black_point.abs() > 1e-6 || (white_point - 100.0).abs() > 1e-6 || mid_tone.abs() > 1e-6;
     let black_norm = black_point.clamp(0.0, 100.0) / 100.0;
     let white_norm = white_point.clamp(0.0, 100.0) / 100.0;
     let safe_white = (black_norm + (BLACK_WHITE_MIN_RANGE / 100.0)).max(white_norm);
@@ -1418,7 +1402,9 @@ fn apply_scan_paper_drawing(
             continue;
         }
         let mapped = if tone_mapping_enabled {
-            scan_paper_map_rgb_to_argb_tone(chunk[0], chunk[1], chunk[2], black_norm, inv_range, gamma)
+            scan_paper_map_rgb_to_argb_tone(
+                chunk[0], chunk[1], chunk[2], black_norm, inv_range, gamma,
+            )
         } else {
             scan_paper_map_rgb_to_argb(chunk[0], chunk[1], chunk[2])
         };

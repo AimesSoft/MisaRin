@@ -327,12 +327,7 @@ impl KritaStabilizer {
         self.strength = strength;
     }
 
-    fn process(
-        &mut self,
-        sample: StrokeSample,
-        is_down: bool,
-        is_up: bool,
-    ) -> Vec<StrokeSample> {
+    fn process(&mut self, sample: StrokeSample, is_down: bool, is_up: bool) -> Vec<StrokeSample> {
         let strength = self.strength;
         if strength <= 0.0001 {
             if is_down {
@@ -560,8 +555,7 @@ impl StrokeResampler {
         if let Some(last) = self.last_emitted {
             let dx = point.x - last.x;
             let dy = point.y - last.y;
-            if dx * dx + dy * dy <= 1.0e-6 && (pressure - self.last_pressure).abs() <= 1.0e-4
-            {
+            if dx * dx + dy * dy <= 1.0e-6 && (pressure - self.last_pressure).abs() <= 1.0e-4 {
                 return;
             }
         }
@@ -665,11 +659,7 @@ impl StrokeResampler {
         }
     }
 
-    fn smooth_weighted(
-        &mut self,
-        sample: StrokeSample,
-        strength: f32,
-    ) -> StrokeSample {
+    fn smooth_weighted(&mut self, sample: StrokeSample, strength: f32) -> StrokeSample {
         let mut current = sample;
         let prev_pos = if let Some(last) = self.smooth_history.last() {
             last.pos
@@ -720,10 +710,7 @@ impl StrokeResampler {
                 for i in (0..self.smooth_history.len()).rev() {
                     let mut rate = 0.0f32;
                     let next_info = self.smooth_history[i];
-                    let mut distance = *self
-                        .smooth_distance_history
-                        .get(i)
-                        .unwrap_or(&0.0);
+                    let mut distance = *self.smooth_distance_history.get(i).unwrap_or(&0.0);
 
                     if i + 1 < self.smooth_history.len() {
                         let pressure_grad =
@@ -1117,7 +1104,11 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
 
     let mut dirty_union: Option<(i32, i32, i32, i32)> = None;
     let mut drew_any = false;
-    let dirty_scale = if softness > 0.0001 { 1.0 + softness } else { 1.0 };
+    let dirty_scale = if softness > 0.0001 {
+        1.0 + softness
+    } else {
+        1.0
+    };
     let (points, radii) = prepare_brush_samples(brush_settings, emitted);
     if points.is_empty() || points.len() != radii.len() {
         return (false, None);
@@ -1131,8 +1122,9 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
 
         let supports_rotation = brush_settings.supports_rotation();
         let use_smooth = brush_settings.smooth_rotation && supports_rotation;
-        let use_random =
-            brush_settings.random_rotation && brush_settings.rotation_jitter > 0.0001 && supports_rotation;
+        let use_random = brush_settings.random_rotation
+            && brush_settings.rotation_jitter > 0.0001
+            && supports_rotation;
         let rotations = if use_smooth || use_random {
             let jitter = if brush_settings.rotation_jitter.is_finite() {
                 brush_settings.rotation_jitter.clamp(0.0, 1.0)
@@ -1147,7 +1139,8 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
                     0.0
                 };
                 if use_random {
-                    angle += brush_random_rotation_radians(*point, brush_settings.rotation_seed) * jitter;
+                    angle += brush_random_rotation_radians(*point, brush_settings.rotation_seed)
+                        * jitter;
                 }
                 rotations.push(PointRotation {
                     sin: angle.sin(),
@@ -1293,10 +1286,9 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
             }
         }
     } else {
-        let needs_per_segment_rotation =
-            brush_settings.random_rotation
-                && brush_settings.rotation_jitter > 0.0001
-                && brush_settings.supports_rotation();
+        let needs_per_segment_rotation = brush_settings.random_rotation
+            && brush_settings.rotation_jitter > 0.0001
+            && brush_settings.supports_rotation();
         let color = Color {
             argb: brush_settings.color_argb,
         };
@@ -1311,9 +1303,8 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
                 let dirty_radii = [r0 * dirty_scale, r1 * dirty_scale];
                 let dirty = compute_dirty_rect_i32(&pts, &dirty_radii, canvas_width, canvas_height);
                 before_draw(brush, dirty);
-                let rotation =
-                    brush_random_rotation_radians(p0, brush_settings.rotation_seed)
-                        * brush_settings.rotation_jitter;
+                let rotation = brush_random_rotation_radians(p0, brush_settings.rotation_seed)
+                    * brush_settings.rotation_jitter;
                 match brush.draw_stroke(
                     layer_view,
                     &pts,
@@ -1440,7 +1431,6 @@ fn draw_emitted_points_internal<F: FnMut(&mut BrushRenderer, (i32, i32, i32, i32
     (drew_any, dirty_union)
 }
 
-
 const RUST_PRESSURE_MIN_FACTOR: f32 = 0.09;
 // Allow dense resampling on long straight segments (e.g., line/perspective tools)
 // so small brushes don't turn into dashed strokes.
@@ -1510,12 +1500,7 @@ pub(crate) fn prepare_brush_samples(
         if scatter > 0.0001 {
             let scatter_radius = radius.abs().max(0.01) * 2.0 * scatter;
             if scatter_radius > 0.0001 {
-                let jitter = brush_scatter_offset(
-                    point,
-                    scatter_seed,
-                    scatter_radius,
-                    idx as u32,
-                );
+                let jitter = brush_scatter_offset(point, scatter_seed, scatter_radius, idx as u32);
                 point.x += jitter.x;
                 point.y += jitter.y;
             }
@@ -1603,7 +1588,11 @@ fn average_segment_length(points: &[(Point2D, f32)]) -> f32 {
 }
 
 fn gaussian_kernel(radius: usize, sigma: f32) -> Vec<f32> {
-    let sigma = if sigma.is_finite() { sigma.max(0.1) } else { 1.0 };
+    let sigma = if sigma.is_finite() {
+        sigma.max(0.1)
+    } else {
+        1.0
+    };
     let size = radius.saturating_mul(2).saturating_add(1);
     if size == 0 {
         return Vec::new();
@@ -1625,10 +1614,7 @@ fn gaussian_kernel(radius: usize, sigma: f32) -> Vec<f32> {
     kernel
 }
 
-fn gaussian_smooth_points(
-    points: &[(Point2D, f32)],
-    kernel: &[f32],
-) -> Vec<(Point2D, f32)> {
+fn gaussian_smooth_points(points: &[(Point2D, f32)], kernel: &[f32]) -> Vec<(Point2D, f32)> {
     if points.len() < 3 || kernel.is_empty() {
         return points.to_vec();
     }
@@ -1665,10 +1651,7 @@ fn gaussian_smooth_points(
     output
 }
 
-pub(crate) fn apply_streamline(
-    points: &[(Point2D, f32)],
-    strength: f32,
-) -> Vec<(Point2D, f32)> {
+pub(crate) fn apply_streamline(points: &[(Point2D, f32)], strength: f32) -> Vec<(Point2D, f32)> {
     let strength = if strength.is_finite() {
         strength.clamp(0.0, 1.0)
     } else {
@@ -1689,7 +1672,13 @@ pub(crate) fn apply_streamline(
     radius = radius.clamp(2, max_radius);
     let sigma = radius as f32 * 0.8 + 0.5;
     let kernel = gaussian_kernel(radius, sigma);
-    let passes = if eased < 0.25 { 2 } else if eased < 0.6 { 3 } else { 4 };
+    let passes = if eased < 0.25 {
+        2
+    } else if eased < 0.6 {
+        3
+    } else {
+        4
+    };
     let mut smoothed = points.to_vec();
     for _ in 0..passes {
         smoothed = gaussian_smooth_points(&smoothed, &kernel);
@@ -1703,7 +1692,11 @@ pub(crate) fn apply_streamline(
     resampled[last_idx] = points[points.len() - 1];
     for (idx, sample) in resampled.iter_mut().enumerate() {
         let pres = points[idx].1;
-        sample.1 = if pres.is_finite() { pres.clamp(0.0, 1.0) } else { 0.0 };
+        sample.1 = if pres.is_finite() {
+            pres.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
     }
     let mut output: Vec<(Point2D, f32)> = Vec::with_capacity(points.len());
     let pos_mix = eased;
@@ -1821,7 +1814,11 @@ fn tangent_is_zero(t: Point2D) -> bool {
 }
 
 fn cubic_point(p0: Point2D, p1: Point2D, p2: Point2D, p3: Point2D, t: f32) -> Point2D {
-    let t = if t.is_finite() { t.clamp(0.0, 1.0) } else { 0.0 };
+    let t = if t.is_finite() {
+        t.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
     let u = 1.0 - t;
     let tt = t * t;
     let uu = u * u;
@@ -1864,9 +1861,7 @@ fn bezier_controls_from_tangents(
     let mut control_target1;
     let mut control_target2;
 
-    if let Some(intersection) =
-        line_intersection_bounded(control_dir1, control_dir2, p0, p3)
-    {
+    if let Some(intersection) = line_intersection_bounded(control_dir1, control_dir2, p0, p3) {
         let control_length = point_distance(p0, p3) * 0.5;
         control_target1 = point_on_line(p0, control_dir1, control_length);
         control_target2 = point_on_line(p3, control_dir2, control_length);
@@ -2118,10 +2113,7 @@ impl LcgRng {
     }
 
     fn next_u32(&mut self) -> u32 {
-        self.state = self
-            .state
-            .wrapping_mul(1664525)
-            .wrapping_add(1013904223);
+        self.state = self.state.wrapping_mul(1664525).wrapping_add(1013904223);
         self.state
     }
 

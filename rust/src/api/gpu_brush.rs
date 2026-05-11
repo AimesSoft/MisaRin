@@ -6,6 +6,7 @@ use std::time::Instant;
 use crate::gpu::brush_renderer::{BrushRenderer, BrushShape, Color, Point2D};
 use crate::gpu::debug::{self, LogLevel};
 use crate::gpu::layer_texture::LayerTextureManager;
+use crate::gpu::shared_device::SharedRenderDevice;
 
 #[derive(Clone, Copy, Debug)]
 struct StrokeEndpoint {
@@ -53,7 +54,7 @@ pub fn gpu_brush_init() -> Result<(), String> {
 
     let t0 = Instant::now();
     let (device, queue) = create_wgpu_device()?;
-    let device = Arc::new(device);
+    let device = SharedRenderDevice::new(device);
     let queue = Arc::new(queue);
     let mut brush = BrushRenderer::new(device.clone(), queue.clone())?;
     brush.set_softness(0.0);

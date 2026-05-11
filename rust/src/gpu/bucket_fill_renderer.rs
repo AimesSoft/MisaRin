@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use wgpu::{BindGroup, BindGroupLayout, ComputePipeline, Device, Queue};
+use wgpu::{BindGroup, BindGroupLayout, ComputePipeline, Queue};
 
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::shared_device::SharedRenderDevice;
 use crate::gpu::wgpu_utils;
 
 const WORKGROUP_SIZE: u32 = 16;
@@ -102,7 +103,7 @@ struct BucketFillStateSnapshot {
 }
 
 pub struct BucketFillRenderer {
-    device: Arc<Device>,
+    device: SharedRenderDevice,
     queue: Arc<Queue>,
     pipeline: ComputePipeline,
     bind_group_layout: BindGroupLayout,
@@ -138,7 +139,7 @@ pub struct BucketFillRenderer {
 }
 
 impl BucketFillRenderer {
-    pub fn new(device: Arc<Device>, queue: Arc<Queue>) -> Result<Self, String> {
+    pub fn new(device: SharedRenderDevice, queue: Arc<Queue>) -> Result<Self, String> {
         device_push_scopes(device.as_ref());
 
         let shader_source = include_str!("bucket_fill_shaders_rgba8.wgsl");
@@ -473,7 +474,14 @@ impl BucketFillRenderer {
             .is_some();
         if selection_enabled {
             if let Some(mask) = selection_mask {
-                write_mask_texture(self.device.as_ref(), self.queue.as_ref(), &self.mask_a, width, height, mask)?;
+                write_mask_texture(
+                    self.device.as_ref(),
+                    self.queue.as_ref(),
+                    &self.mask_a,
+                    width,
+                    height,
+                    mask,
+                )?;
             }
         }
 

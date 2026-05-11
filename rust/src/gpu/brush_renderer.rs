@@ -3,10 +3,11 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
-use wgpu::{ComputePipeline, Device, Queue};
+use wgpu::{ComputePipeline, Queue};
 
 use crate::gpu::debug::{self, LogLevel};
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::shared_device::SharedRenderDevice;
 use crate::gpu::wgpu_utils;
 
 #[derive(Debug, Clone, Copy)]
@@ -107,7 +108,7 @@ struct StrokeBaseTile {
 }
 
 pub struct BrushRenderer {
-    device: Arc<Device>,
+    device: SharedRenderDevice,
     queue: Arc<Queue>,
     pipeline: ComputePipeline,
 
@@ -153,7 +154,7 @@ pub struct BrushRenderer {
 }
 
 impl BrushRenderer {
-    pub fn new(device: Arc<Device>, queue: Arc<Queue>) -> Result<Self, String> {
+    pub fn new(device: SharedRenderDevice, queue: Arc<Queue>) -> Result<Self, String> {
         device_push_scopes(device.as_ref());
 
         let shader_source = include_str!("brush_shaders_rgba8.wgsl");
@@ -619,12 +620,7 @@ impl BrushRenderer {
         Ok(())
     }
 
-    pub fn set_custom_mask(
-        &mut self,
-        width: u32,
-        height: u32,
-        mask: &[u8],
-    ) -> Result<(), String> {
+    pub fn set_custom_mask(&mut self, width: u32, height: u32, mask: &[u8]) -> Result<(), String> {
         if width == 0 || height == 0 {
             self.custom_mask_enabled = false;
             return Ok(());
@@ -854,7 +850,11 @@ impl BrushRenderer {
         } else {
             0.0
         };
-        let radius_scale = if softness > 0.0001 { 1.0 + softness } else { 1.0 };
+        let radius_scale = if softness > 0.0001 {
+            1.0 + softness
+        } else {
+            1.0
+        };
         let dirty = compute_dirty_rect(
             points,
             radii,
@@ -1471,8 +1471,7 @@ fn write_selection_mask(
     const MAX_CHUNK_BYTES: usize = 4 * 1024 * 1024;
 
     let bytes_per_row_unpadded = width;
-    let bytes_per_row_padded =
-        align_up_u32(bytes_per_row_unpadded, COPY_BYTES_PER_ROW_ALIGNMENT);
+    let bytes_per_row_padded = align_up_u32(bytes_per_row_unpadded, COPY_BYTES_PER_ROW_ALIGNMENT);
     if bytes_per_row_padded == 0 {
         return Err("selection mask bytes_per_row == 0".to_string());
     }
@@ -1546,8 +1545,7 @@ fn write_custom_mask(
     let bytes_per_row_unpadded = width
         .checked_mul(2)
         .ok_or_else(|| "custom mask bytes_per_row overflow".to_string())?;
-    let bytes_per_row_padded =
-        align_up_u32(bytes_per_row_unpadded, COPY_BYTES_PER_ROW_ALIGNMENT);
+    let bytes_per_row_padded = align_up_u32(bytes_per_row_unpadded, COPY_BYTES_PER_ROW_ALIGNMENT);
     if bytes_per_row_padded == 0 {
         return Err("custom mask bytes_per_row == 0".to_string());
     }
