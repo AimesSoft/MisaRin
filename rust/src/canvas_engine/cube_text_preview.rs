@@ -255,7 +255,7 @@ impl CubeTextPreviewRenderer {
             }
             let mut mesh = Mesh::new(
                 PrimitiveTopology::TriangleList,
-                RenderAssetUsages::RENDER_WORLD,
+                RenderAssetUsages::default(),
             );
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, chunk.positions);
             mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, chunk.normals);
@@ -510,7 +510,7 @@ fn gradient_image(start: u32, end: u32) -> Image {
         TextureDimension::D2,
         &[255, 255, 255, 255],
         TextureFormat::Rgba8UnormSrgb,
-        RenderAssetUsages::RENDER_WORLD,
+        RenderAssetUsages::default(),
     );
     for y in 0..GRADIENT_TEXTURE_HEIGHT {
         let t = if GRADIENT_TEXTURE_HEIGHT <= 1 {
@@ -568,7 +568,7 @@ fn image_from_preview_image(source: &CubeTextPreviewImage) -> Option<Image> {
             ..Default::default()
         }),
         texture_view_descriptor: None,
-        asset_usage: RenderAssetUsages::RENDER_WORLD,
+        asset_usage: RenderAssetUsages::default(),
     })
 }
 

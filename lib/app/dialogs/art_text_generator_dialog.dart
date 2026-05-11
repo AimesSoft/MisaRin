@@ -1015,43 +1015,48 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                       );
                     });
                   },
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      if (scene == null) {
-                        return Center(
-                          child: Text(
-                            _statusMessage ?? '正在生成真实 3D 网格...',
-                            textAlign: TextAlign.center,
-                          ),
+                  child: CustomPaint(
+                    painter: _transparentBackground
+                        ? const _CheckerboardPainter()
+                        : null,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (scene == null) {
+                          return Center(
+                            child: Text(
+                              _statusMessage ?? '正在生成真实 3D 网格...',
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        }
+                        final double rawWidth = constraints.maxWidth.isFinite
+                            ? constraints.maxWidth
+                            : 1;
+                        final double rawHeight = constraints.maxHeight.isFinite
+                            ? constraints.maxHeight
+                            : 1;
+                        final double pixelRatio = MediaQuery.devicePixelRatioOf(
+                          context,
+                        ).clamp(1.0, 2.5);
+                        final int width = math
+                            .max(1, (rawWidth * pixelRatio).round())
+                            .toInt();
+                        final int height = math
+                            .max(1, (rawHeight * pixelRatio).round())
+                            .toInt();
+                        return _CubeTextBevyPreview(
+                          scene: scene,
+                          materialImages: _materialImages,
+                          width: width,
+                          height: height,
+                          yaw: _yaw,
+                          pitch: _pitch,
+                          zoom: _zoom,
+                          fov: _fov,
+                          transparentBackground: _transparentBackground,
                         );
-                      }
-                      final double rawWidth = constraints.maxWidth.isFinite
-                          ? constraints.maxWidth
-                          : 1;
-                      final double rawHeight = constraints.maxHeight.isFinite
-                          ? constraints.maxHeight
-                          : 1;
-                      final double pixelRatio = MediaQuery.devicePixelRatioOf(
-                        context,
-                      ).clamp(1.0, 2.5);
-                      final int width = math
-                          .max(1, (rawWidth * pixelRatio).round())
-                          .toInt();
-                      final int height = math
-                          .max(1, (rawHeight * pixelRatio).round())
-                          .toInt();
-                      return _CubeTextBevyPreview(
-                        scene: scene,
-                        materialImages: _materialImages,
-                        width: width,
-                        height: height,
-                        yaw: _yaw,
-                        pitch: _pitch,
-                        zoom: _zoom,
-                        fov: _fov,
-                        transparentBackground: false,
-                      );
-                    },
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -2995,6 +3000,8 @@ class _CubeTextRasterPreviewState extends State<_CubeTextRasterPreview> {
 }
 
 class _CheckerboardPainter extends CustomPainter {
+  const _CheckerboardPainter();
+
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
     _paintCheckerboard(canvas, size);
@@ -3882,8 +3889,8 @@ class _CameraProjector {
     final double cy = y - bounds.center.y;
     final double cz = z - bounds.center.z;
 
-    final double x1 = cx * _yawCos + cz * _yawSin;
-    final double z1 = -cx * _yawSin + cz * _yawCos;
+    final double x1 = cx * _yawCos - cz * _yawSin;
+    final double z1 = cx * _yawSin + cz * _yawCos;
     final double y2 = cy * _pitchCos - z1 * _pitchSin;
     final double z2 = cy * _pitchSin + z1 * _pitchCos;
 
