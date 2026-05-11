@@ -790,7 +790,7 @@ fn contours_to_shapes(contours: Vec<Vec<P2>>) -> Vec<Shape2D> {
         .collect();
 
     for i in 0..infos.len() {
-        let probe = sample_point(&infos[i].points);
+        let probe = contour_probe_point(&infos[i].points);
         let mut parent = None;
         let mut parent_area = f64::MAX;
         for j in 0..infos.len() {
@@ -1027,11 +1027,7 @@ fn triangulate_shape(shape: &Shape2D) -> Vec<[P2; 3]> {
             p2_from_point(verts[1].position()),
             p2_from_point(verts[2].position()),
         ];
-        let centroid = P2 {
-            x: (tri[0].x + tri[1].x + tri[2].x) / 3.0,
-            y: (tri[0].y + tri[1].y + tri[2].y) / 3.0,
-        };
-        if !point_in_shape(centroid, shape) {
+        if !triangle_in_shape(tri, shape) {
             continue;
         }
         if polygon_area(&tri) < 0.0 {
@@ -1746,12 +1742,32 @@ fn bounds_center(bounds: Bounds2D) -> P2 {
     }
 }
 
-fn point_in_shape(point: P2, shape: &Shape2D) -> bool {
-    point_in_polygon(point, &shape.outer)
-        && !shape
-            .holes
-            .iter()
-            .any(|hole| point_in_polygon(point, hole))
+fn triangle_in_shape(tri: [P2; 3], shape: &Shape2D) -> bool {
+    const SAMPLES: [(f64, f64, f64); 10] = [
+        (1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0),
+        (0.5, 0.5, 0.0),
+        (0.5, 0.0, 0.5),
+        (0.0, 0.5, 0.5),
+        (0.6, 0.2, 0.2),
+        (0.2, 0.6, 0.2),
+        (0.2, 0.2, 0.6),
+        (0.2, 0.4, 0.4),
+        (0.4, 0.2, 0.4),
+        (0.4, 0.4, 0.2),
+    ];
+    SAMPLES
+        .iter()
+        .all(|&(a, b, c)| point_in_shape_or_boundary(barycentric_point(tri, a, b, c), shape))
+}
+
+fn point_in_shape_or_boundary(point: P2, shape: &Shape2D) -> bool {
+    if !point_in_polygon(point, &shape.outer) && !point_on_loop(point, &shape.outer) {
+        return false;
+    }
+    !shape
+        .holes
+        .iter()
+        .any(|hole| point_in_polygon(point, hole) && !point_on_loop(point, hole))
 }
 
 fn point_in_polygon(point: P2, polygon: &[P2]) -> bool {
@@ -1763,14 +1779,48 @@ fn point_in_polygon(point: P2, polygon: &[P2]) -> bool {
     for i in 0..polygon.len() {
         let pi = polygon[i];
         let pj = polygon[j];
+        let dy = pj.y - pi.y;
         if ((pi.y > point.y) != (pj.y > point.y))
-            && point.x < (pj.x - pi.x) * (point.y - pi.y) / ((pj.y - pi.y).max(EPSILON)) + pi.x
+            && dy.abs() > EPSILON
+            && point.x < (pj.x - pi.x) * (point.y - pi.y) / dy + pi.x
         {
             inside = !inside;
         }
         j = i;
     }
     inside
+}
+
+fn point_on_loop(point: P2, polygon: &[P2]) -> bool {
+    if polygon.len() < 2 {
+        return false;
+    }
+    for i in 0..polygon.len() {
+        if point_on_segment(point, polygon[i], polygon[(i + 1) % polygon.len()]) {
+            return true;
+        }
+    }
+    false
+}
+
+fn point_on_segment(point: P2, a: P2, b: P2) -> bool {
+    let length2 = distance2(a, b);
+    if length2 <= EPSILON * EPSILON {
+        return distance2(point, a) <= EPSILON * EPSILON;
+    }
+    let area = ((b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x)).abs();
+    if area > EPSILON * length2.sqrt().max(1.0) {
+        return false;
+    }
+    let dot = (point.x - a.x) * (point.x - b.x) + (point.y - a.y) * (point.y - b.y);
+    dot <= EPSILON
+}
+
+fn barycentric_point(tri: [P2; 3], a: f64, b: f64, c: f64) -> P2 {
+    P2 {
+        x: tri[0].x * a + tri[1].x * b + tri[2].x * c,
+        y: tri[0].y * a + tri[1].y * b + tri[2].y * c,
+    }
 }
 
 fn point_in_triangle(p: P2, a: P2, b: P2, c: P2) -> bool {
@@ -1801,18 +1851,8 @@ fn ensure_orientation(points: &mut [P2], ccw: bool) {
     }
 }
 
-fn sample_point(points: &[P2]) -> P2 {
-    let mut x = 0.0;
-    let mut y = 0.0;
-    for point in points {
-        x += point.x;
-        y += point.y;
-    }
-    let inv = 1.0 / points.len().max(1) as f64;
-    P2 {
-        x: x * inv,
-        y: y * inv,
-    }
+fn contour_probe_point(points: &[P2]) -> P2 {
+    points.first().copied().unwrap_or_else(p2_zero)
 }
 
 fn quadratic_point(a: P2, b: P2, c: P2, t: f64) -> P2 {

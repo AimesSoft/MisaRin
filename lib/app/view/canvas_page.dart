@@ -6,7 +6,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:misa_rin/mobile/responsive_dialog.dart';
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/widgets.dart'
     show
         StatefulBuilder,
@@ -37,11 +37,8 @@ import '../models/workspace_layout.dart';
 import '../debug/backend_canvas_timeline.dart';
 import '../palette/palette_importer.dart';
 import '../preferences/app_preferences.dart';
-import '../project/project_binary_codec.dart';
 import '../project/project_document.dart';
 import '../project/project_repository.dart';
-import '../psd/psd_exporter.dart';
-import '../sai2/sai2_exporter.dart';
 import '../toolbars/layouts/painting_toolbar_layout.dart';
 import '../widgets/app_notification.dart';
 import '../widgets/canvas_title_bar.dart';
@@ -53,8 +50,6 @@ import '../utils/ios_photo_saver.dart';
 import '../utils/mobile_export_paths.dart';
 import '../utils/platform_target.dart';
 import '../utils/svg_rasterizer.dart';
-import '../utils/web_file_dialog.dart';
-import '../utils/web_file_saver.dart';
 import '../../mobile/mobile_utils.dart';
 import '../../mobile/mobile_menu_button.dart';
 import '../../mobile/mobile_right_buttons.dart';
@@ -124,14 +119,12 @@ class CanvasPageState extends State<CanvasPage> {
   Timer? _autoSaveTimer;
   WorkspaceLayoutPreference _workspaceLayoutPreference =
       AppPreferences.instance.workspaceLayout;
-  final Map<String, Completer<void>> _boardReadyCompleters =
-      <String, Completer<void>>{};
   Widget? _menuOverlay;
   bool _initialBoardReadyDispatched = false;
 
   PaintingBoardState? get _activeBoard => _boardFor(_document.id);
   bool get _supportsFileDrops =>
-      !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
   bool _isHandlingTabBarDrop = false;
   String? _lastTabBarDropSignature;
   DateTime? _lastTabBarDropAt;
@@ -288,25 +281,6 @@ class CanvasPageState extends State<CanvasPage> {
     return '$baseName.$extension';
   }
 
-  Future<String?> _promptWebFileName({
-    required String title,
-    required String suggestedFileName,
-    String? description,
-    String confirmLabel = '下载',
-  }) async {
-    final String? raw = await showWebFileNameDialog(
-      context: context,
-      title: title,
-      suggestedFileName: suggestedFileName,
-      description: description,
-      confirmLabel: confirmLabel,
-    );
-    if (raw == null) {
-      return null;
-    }
-    return _sanitizeFileName(raw);
-  }
-
   GlobalKey<PaintingBoardState> _ensureBoardKey(String id) {
     return _boardKeys.putIfAbsent(id, () => GlobalKey<PaintingBoardState>());
   }
@@ -317,30 +291,13 @@ class CanvasPageState extends State<CanvasPage> {
 
   void _removeBoardKey(String id) {
     _boardKeys.remove(id);
-    _boardReadyCompleters.remove(id)?.complete();
     _removeDocumentHistory(id);
-  }
-
-  Completer<void>? _trackBoardReady(String id) {
-    if (!kIsWeb) {
-      return null;
-    }
-    final Completer<void> completer = Completer<void>();
-    _boardReadyCompleters[id] = completer;
-    final PaintingBoardState? board = _boardFor(id);
-    if (board != null && board.isBoardReady) {
-      scheduleMicrotask(() {
-        _boardReadyCompleters.remove(id)?.complete();
-      });
-    }
-    return completer;
   }
 
   void _handleBoardReadyChanged(String id, bool ready) {
     if (!ready) {
       return;
     }
-    _boardReadyCompleters.remove(id)?.complete();
     if (id == _document.id) {
       _updateMenuOverlay();
     }
@@ -649,27 +606,7 @@ class CanvasPageState extends State<CanvasPage> {
     if (choice == null) {
       return false;
     }
-    if (kIsWeb) {
-      final String? fileName = await _promptWebFileName(
-        title: l10n.saveProjectAs,
-        suggestedFileName: _suggestedFileName(choice.extension),
-        description: l10n.webSaveDesc,
-        confirmLabel: l10n.download,
-      );
-      if (fileName == null) {
-        return false;
-      }
-      final String normalizedName = _normalizeExportPath(
-        fileName,
-        choice.extension,
-      );
-      return _saveProjectAsOnWeb(
-        board: board,
-        choice: choice,
-        fileName: normalizedName,
-      );
-    }
-    final bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    final bool isMobile = Platform.isAndroid || Platform.isIOS;
     String? normalizedPath;
     if (isMobile) {
       final String? fileName = await showFileNameDialog(
@@ -763,73 +700,6 @@ class CanvasPageState extends State<CanvasPage> {
       });
       _workspace.updateDocument(saved);
       _workspace.markDirty(saved.id, false);
-      board.markSaved();
-      _showInfoBar(successMessage, severity: InfoBarSeverity.success);
-      return true;
-    } catch (error) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-        _showInfoBar(
-          l10n.projectSaveFailed(error),
-          severity: InfoBarSeverity.error,
-        );
-      }
-      return false;
-    }
-  }
-
-  Future<bool> _saveProjectAsOnWeb({
-    required PaintingBoardState board,
-    required _ExportChoice choice,
-    required String fileName,
-  }) async {
-    setState(() => _isSaving = true);
-    final l10n = context.l10n;
-    try {
-      final layers = await board.snapshotLayersForExport();
-      final perspective = board.snapshotPerspectiveGuide();
-      final Uint8List preview = await _exporter.exportToPng(
-        settings: _document.settings,
-        layers: layers,
-        maxDimension: 256,
-      );
-      late ProjectDocument resolved = _document.copyWith(
-        layers: layers,
-        previewBytes: preview,
-        updatedAt: DateTime.now(),
-        perspectiveGuide: perspective,
-      );
-      late Uint8List bytes;
-      late String successMessage;
-      late String mimeType;
-      if (choice.type == _ExportType.rin) {
-        resolved = await _repository.saveDocument(resolved);
-        bytes = ProjectBinaryCodec.encode(resolved);
-        successMessage = l10n.projectDownloaded(fileName);
-        mimeType = 'application/octet-stream';
-      } else if (choice.type == _ExportType.psd) {
-        bytes = await const PsdExporter().exportToBytes(resolved);
-        successMessage = l10n.psdDownloaded(fileName);
-        mimeType = 'image/vnd.adobe.photoshop';
-      } else {
-        bytes = await const Sai2Exporter().exportToBytes(resolved);
-        successMessage = l10n.sai2Downloaded(fileName);
-        mimeType = 'application/octet-stream';
-      }
-      await WebFileSaver.saveBytes(
-        fileName: fileName,
-        bytes: bytes,
-        mimeType: mimeType,
-      );
-      if (!mounted) {
-        return true;
-      }
-      setState(() {
-        _document = resolved;
-        _isSaving = false;
-      });
-      _workspace.updateDocument(resolved);
-      _workspace.markDirty(resolved.id, false);
       board.markSaved();
       _showInfoBar(successMessage, severity: InfoBarSeverity.success);
       return true;
@@ -1102,21 +972,9 @@ class CanvasPageState extends State<CanvasPage> {
         ? 'webp'
         : 'png';
     String? normalizedPath;
-    String? downloadName;
     String? mobileFileName;
     _MobileImageExportDestination? mobileDestination;
-    if (kIsWeb) {
-      final String? fileName = await _promptWebFileName(
-        title: l10n.exportFileTitle(extension.toUpperCase()),
-        suggestedFileName: _suggestedFileName(extension),
-        description: l10n.webExportDesc,
-        confirmLabel: l10n.export,
-      );
-      if (fileName == null) {
-        return false;
-      }
-      downloadName = _normalizeExportPath(fileName, extension);
-    } else if (Platform.isAndroid || Platform.isIOS) {
+    if (Platform.isAndroid || Platform.isIOS) {
       if (Platform.isIOS && !exportVector) {
         mobileDestination = await _showMobileImageExportDestinationDialog();
         if (mobileDestination == null) {
@@ -1191,21 +1049,7 @@ class CanvasPageState extends State<CanvasPage> {
                 options.height.toDouble(),
               ),
             );
-      if (kIsWeb) {
-        await WebFileSaver.saveBytes(
-          fileName: downloadName!,
-          bytes: bytes,
-          mimeType: exportVector
-              ? 'image/svg+xml'
-              : exportWebp
-              ? 'image/webp'
-              : 'image/png',
-        );
-        _showInfoBar(
-          l10n.fileDownloaded(extension.toUpperCase(), downloadName!),
-          severity: InfoBarSeverity.success,
-        );
-      } else if (Platform.isIOS &&
+      if (Platform.isIOS &&
           mobileDestination == _MobileImageExportDestination.photos &&
           !exportVector) {
         await IosPhotoSaver.saveImageToPhotos(bytes, fileName: mobileFileName);
@@ -1535,12 +1379,8 @@ class CanvasPageState extends State<CanvasPage> {
   }
 
   Future<void> openDocument(ProjectDocument document) async {
-    final Completer<void>? readyCompleter = _trackBoardReady(document.id);
     _workspace.open(document, activate: true);
     _switchToEntry(_workspace.entryById(document.id));
-    if (readyCompleter != null) {
-      await readyCompleter.future;
-    }
   }
 
   void _handleTabSelected(String id) {
@@ -1973,7 +1813,7 @@ class CanvasPageState extends State<CanvasPage> {
       }
       result.add(item);
     }
-    if (kIsWeb || !Platform.isMacOS || result.length < 2) {
+    if (!Platform.isMacOS || result.length < 2) {
       return result;
     }
     return _dedupeMacOSFilePromiseItems(result);
@@ -2076,19 +1916,17 @@ class CanvasPageState extends State<CanvasPage> {
     DropItem item, {
     int? svgRasterSizePx,
   }) async {
-    if (!kIsWeb) {
-      final String path = item.path.trim();
-      if (path.isNotEmpty) {
-        return _runWithSecurityScopedAccess<ProjectDocument?>(
-          item,
-          () => _repository.createDocumentFromImage(
-            path,
-            name: _preferredDocumentNameForDrop(item),
-            svgRasterSizePx: svgRasterSizePx,
-            hideBackgroundLayer: true,
-          ),
-        );
-      }
+    final String path = item.path.trim();
+    if (path.isNotEmpty) {
+      return _runWithSecurityScopedAccess<ProjectDocument?>(
+        item,
+        () => _repository.createDocumentFromImage(
+          path,
+          name: _preferredDocumentNameForDrop(item),
+          svgRasterSizePx: svgRasterSizePx,
+          hideBackgroundLayer: true,
+        ),
+      );
     }
     final Uint8List? bytes = await _readDropItemBytes(item);
     if (bytes == null) {
@@ -2103,17 +1941,15 @@ class CanvasPageState extends State<CanvasPage> {
   }
 
   Future<Uint8List?> _readDropItemBytes(DropItem item) async {
-    if (!kIsWeb) {
-      final String path = item.path.trim();
-      if (path.isNotEmpty) {
-        return _runWithSecurityScopedAccess<Uint8List?>(item, () async {
-          final File file = File(path);
-          if (!await file.exists()) {
-            return null;
-          }
-          return file.readAsBytes();
-        });
-      }
+    final String path = item.path.trim();
+    if (path.isNotEmpty) {
+      return _runWithSecurityScopedAccess<Uint8List?>(item, () async {
+        final File file = File(path);
+        if (!await file.exists()) {
+          return null;
+        }
+        return file.readAsBytes();
+      });
     }
     try {
       return await item.readAsBytes();
@@ -2161,8 +1997,7 @@ class CanvasPageState extends State<CanvasPage> {
     DropItem item,
     Future<T> Function() action,
   ) async {
-    if (kIsWeb ||
-        !Platform.isMacOS ||
+    if (!Platform.isMacOS ||
         item.extraAppleBookmark == null ||
         item.extraAppleBookmark!.isEmpty) {
       return action();
@@ -2643,7 +2478,7 @@ class _CanvasStatusOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final FluentThemeData theme = FluentTheme.of(context);
     final l10n = context.l10n;
-    final bool alignStatusLeft = kIsWeb || !isResolvedPlatformMacOS();
+    final bool alignStatusLeft = !isResolvedPlatformMacOS();
 
     final TextStyle textStyle =
         (theme.typography.body ??

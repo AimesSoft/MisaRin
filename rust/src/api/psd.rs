@@ -1,4 +1,3 @@
-#[cfg(not(target_family = "wasm"))]
 use rayon::prelude::*;
 
 pub struct PsdDocument {
@@ -162,20 +161,13 @@ pub fn import_psd(bytes: Vec<u8>) -> Result<PsdDocument, String> {
         };
 
         if src_layers.len() >= 5 {
-            #[cfg(not(target_family = "wasm"))]
-            {
-                src_layers
-                    .par_iter()
-                    .map(process_layer)
-                    .collect::<Vec<_>>()
-                    .into_iter()
-                    .flatten()
-                    .collect()
-            }
-            #[cfg(target_family = "wasm")]
-            {
-                src_layers.iter().filter_map(process_layer).collect()
-            }
+            src_layers
+                .par_iter()
+                .map(process_layer)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .flatten()
+                .collect()
         } else {
             src_layers.iter().filter_map(process_layer).collect()
         }

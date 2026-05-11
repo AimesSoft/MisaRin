@@ -464,25 +464,16 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
         BrushLibrary.brushFileExtension,
         BrushLibrary.abrFileExtension,
       ],
-      withData: kIsWeb,
     );
     if (result == null || result.files.isEmpty) {
       return;
     }
     BrushPreset? imported;
-    if (kIsWeb) {
-      final Uint8List? bytes = result.files.single.bytes;
-      if (bytes == null) {
-        return;
-      }
-      imported = await widget.library.importBrushBytes(bytes);
-    } else {
-      final String? path = result.files.single.path;
-      if (path == null) {
-        return;
-      }
-      imported = await widget.library.importBrushFile(path);
+    final String? path = result.files.single.path;
+    if (path == null) {
+      return;
     }
+    imported = await widget.library.importBrushFile(path);
     if (imported == null) {
       return;
     }
@@ -518,7 +509,7 @@ class _BrushPresetPickerDialogState extends State<_BrushPresetPickerDialog> {
     }
 
     String? outputPath;
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    if (Platform.isAndroid || Platform.isIOS) {
       final String? fileName = await showFileNameDialog(
         context: context,
         title: l10n.exportBrushTitle,

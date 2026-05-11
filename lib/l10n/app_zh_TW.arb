@@ -2,8 +2,6 @@
   "@@locale": "zh_TW",
   "streamline": "流線",
   "streamlineDesc": "類似 Procreate 的 StreamLine：抬筆後對筆畫路徑做平滑重算，並以補間動畫回彈到更順的結果（等級越高越明顯）。",
-  "webLoadingInitializingCanvas": "正在初始化畫板…",
-  "webLoadingMayTakeTime": "Web 端載入需要一些時間，請稍候。",
   "closeAppTitle": "關閉應用",
   "unsavedProjectsWarning": "{count, plural, =1{偵測到 1 個未儲存的專案。如果現在退出，最近的修改將會遺失。} other{偵測到 {count} 個未儲存的專案。如果現在退出，最近的修改將會遺失。}}",
   "@unsavedProjectsWarning": {
@@ -77,8 +75,6 @@
       "error": {}
     }
   },
-  "webPreparingCanvasTitle": "正在準備畫布…",
-  "webPreparingCanvasMessage": "Web 端需要一些時間才能完成初始化，請稍候。",
   "aboutTitle": "關於 Misa Rin",
   "aboutDescription": "Misa Rin 是一款專注於創意繪製與專案管理的應用，旨在為創作者提供流暢的繪圖體驗與可靠的專案存檔能力。",
   "aboutAppIdLabel": "應用識別",
@@ -292,7 +288,6 @@
   "canvasNotReadySave": "畫布未準備好，無法儲存。",
   "saveProjectAs": "專案另存為",
   "saveAsSai2": "另存為 SAI2",
-  "webSaveDesc": "下載專案檔案到您的裝置。",
   "psdExported": "PSD 已匯出到 {path}",
   "@psdExported": {
     "placeholders": {
@@ -330,14 +325,6 @@
   "@exportFileTitle": {
     "placeholders": {
       "extension": {}
-    }
-  },
-  "webExportDesc": "下載匯出的影像到您的裝置。",
-  "fileDownloaded": "{extension} 檔案已下載：{name}",
-  "@fileDownloaded": {
-    "placeholders": {
-      "extension": {},
-      "name": {}
     }
   },
   "fileExported": "檔案已匯出到 {path}",

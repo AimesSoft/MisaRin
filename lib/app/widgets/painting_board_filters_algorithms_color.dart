@@ -11,9 +11,6 @@ Uint8List _computeHueSaturationPreviewPixels(List<Object?> args) {
 }
 
 Future<Uint8List> _generateBlackWhitePreviewBytes(List<Object?> args) async {
-  if (kIsWeb) {
-    return _computeBlackWhitePreviewPixels(args);
-  }
   try {
     return await compute<List<Object?>, Uint8List>(
       _computeBlackWhitePreviewPixels,
@@ -35,9 +32,6 @@ Uint8List _computeBlackWhitePreviewPixels(List<Object?> args) {
 }
 
 Future<Uint8List> _generateBinarizePreviewBytes(List<Object?> args) async {
-  if (kIsWeb) {
-    return _computeBinarizePreviewPixels(args);
-  }
   try {
     return await compute<List<Object?>, Uint8List>(
       _computeBinarizePreviewPixels,
@@ -62,9 +56,6 @@ Uint8List _computeBinarizePreviewPixels(List<Object?> args) {
 Future<Uint8List> _generateScanPaperDrawingPreviewBytes(
   List<Object?> args,
 ) async {
-  if (kIsWeb) {
-    return _computeScanPaperDrawingPreviewPixels(args);
-  }
   try {
     return await compute<List<Object?>, Uint8List>(
       _computeScanPaperDrawingPreviewPixels,
@@ -371,9 +362,6 @@ Future<_ScanPaperDrawingComputeResult> _generateScanPaperDrawingResult(
     whitePoint,
     midTone,
   ];
-  if (kIsWeb) {
-    return _computeScanPaperDrawing(args);
-  }
   try {
     return await compute(_computeScanPaperDrawing, args);
   } on UnsupportedError catch (_) {

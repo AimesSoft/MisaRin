@@ -9,12 +9,6 @@ class AppLocalizationsJa extends AppLocalizations {
   AppLocalizationsJa([String locale = 'ja']) : super(locale);
 
   @override
-  String get webLoadingInitializingCanvas => 'キャンバスを初期化しています…';
-
-  @override
-  String get webLoadingMayTakeTime => 'Web 版の読み込みには少し時間がかかります。しばらくお待ちください。';
-
-  @override
   String get closeAppTitle => 'アプリを終了';
 
   @override
@@ -134,12 +128,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String importClipboardImageFailed(Object error) {
     return 'クリップボード画像のインポートに失敗しました: $error';
   }
-
-  @override
-  String get webPreparingCanvasTitle => 'キャンバスを準備しています…';
-
-  @override
-  String get webPreparingCanvasMessage => 'Web 版の初期化には少し時間がかかります。しばらくお待ちください。';
 
   @override
   String get aboutTitle => 'Misa Rin について';
@@ -1783,17 +1771,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get exportPaletteTitle => 'パレットを書き出し';
 
   @override
-  String get webDownloadDesc => 'ブラウザはデフォルトのダウンロードディレクトリにパレットを保存します。';
-
-  @override
-  String get download => 'ダウンロード';
-
-  @override
-  String paletteDownloaded(Object name) {
-    return 'パレットをダウンロードしました: $name';
-  }
-
-  @override
   String paletteExported(Object path) {
     return 'パレットを $path に書き出しました';
   }
@@ -2015,9 +1992,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get saveProjectAs => 'プロジェクトを別名で保存';
 
   @override
-  String get webSaveDesc => 'プロジェクトファイルをデバイスにダウンロードします。';
-
-  @override
   String psdExported(Object path) {
     return 'PSD を $path に書き出しました';
   }
@@ -2054,14 +2028,6 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String exportFileTitle(Object extension) {
     return '$extension ファイルを書き出し';
-  }
-
-  @override
-  String get webExportDesc => '書き出した画像をデバイスにダウンロードします。';
-
-  @override
-  String fileDownloaded(Object extension, Object name) {
-    return '$extension ファイルをダウンロードしました: $name';
   }
 
   @override

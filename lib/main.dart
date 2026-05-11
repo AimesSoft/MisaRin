@@ -33,10 +33,8 @@ Future<void> main() async {
   try {
     await ensureRustInitialized();
     // Configure Rust logging level early so native startup logs are controlled.
-    if (!kIsWeb) {
-      CanvasBackendFacade.instance;
-    }
-    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    CanvasBackendFacade.instance;
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       if (CanvasBackendState.backend == CanvasBackend.rustWgpu) {
         // Initialize the Rust WGPU compositor and pre-warm shaders/pipelines.
         await CanvasRasterBackend.prewarmRustWgpuEngine();
@@ -53,27 +51,21 @@ Future<void> main() async {
 
   final Future<void> preloadFuture = _preloadCoreServices();
 
-  if (kIsWeb) {
-    runApp(const _MisarinWebLoadingApp());
-  }
-
   await preloadFuture;
 
   await _initializeDesktopWindowIfNeeded();
 
-  final bool showCustomMenu = kIsWeb ||
-      (!kIsWeb &&
-          (Platform.isWindows ||
-              Platform.isLinux ||
-              Platform.isMacOS ||
-              Platform.isAndroid ||
-              Platform.isIOS));
-  final bool showCustomMenuItems = kIsWeb ||
-      (!kIsWeb &&
-          (Platform.isWindows ||
-              Platform.isLinux ||
-              Platform.isAndroid ||
-              Platform.isIOS));
+  final bool showCustomMenu =
+      Platform.isWindows ||
+      Platform.isLinux ||
+      Platform.isMacOS ||
+      Platform.isAndroid ||
+      Platform.isIOS;
+  final bool showCustomMenuItems =
+      Platform.isWindows ||
+      Platform.isLinux ||
+      Platform.isAndroid ||
+      Platform.isIOS;
   final app = MisarinApp(
     showCustomMenu: showCustomMenu,
     showCustomMenuItems: showCustomMenuItems,
@@ -83,7 +75,7 @@ Future<void> main() async {
 }
 
 Future<void> _configureSystemUi() async {
-  if (kIsWeb || !Platform.isIOS) {
+  if (!Platform.isIOS) {
     return;
   }
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -92,20 +84,18 @@ Future<void> _configureSystemUi() async {
 Future<void> _preloadCoreServices() async {
   await AppPreferences.load();
   await BrushLibrary.load(prefs: AppPreferences.instance);
-  if (!kIsWeb) {
-    await _initializePerformancePulse();
-  }
+  await _initializePerformancePulse();
 }
 
 Future<void> _initializeDesktopWindowIfNeeded() async {
   final bool isDesktop =
-      !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   if (!isDesktop) {
     return;
   }
   await windowManager.ensureInitialized();
 
-  final bool isWindowsDesktop = !kIsWeb && Platform.isWindows;
+  final bool isWindowsDesktop = Platform.isWindows;
   final Color windowBackgroundColor = isWindowsDesktop
       ? const Color(0xFF0F0F0F)
       : const Color(0x00000000);
@@ -180,67 +170,6 @@ Future<void> _initializePerformancePulse() async {
   }
 }
 
-class _MisarinWebLoadingApp extends StatelessWidget {
-  const _MisarinWebLoadingApp();
-
-  @override
-  Widget build(BuildContext context) {
-    return FluentApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Misa Rin',
-      localizationsDelegates: <LocalizationsDelegate<dynamic>>[
-        ...AppLocalizations.localizationsDelegates,
-        FluentLocalizations.delegate,
-      ],
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: const _MisarinWebLoadingScreen(),
-      theme: FluentThemeData(
-        brightness: Brightness.dark,
-        accentColor: Colors.white.toAccentColor(),
-      ),
-    );
-  }
-}
-
-class _MisarinWebLoadingScreen extends StatelessWidget {
-  const _MisarinWebLoadingScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final FluentThemeData theme = FluentTheme.of(context);
-    final l10n = context.l10n;
-    return Container(
-      color: theme.micaBackgroundColor,
-      padding: const EdgeInsets.all(24),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const ProgressBar(),
-              const SizedBox(height: 16),
-              Text(
-                l10n.webLoadingInitializingCanvas,
-                style: theme.typography.subtitle,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Opacity(
-                opacity: 0.75,
-                child: Text(
-                  l10n.webLoadingMayTakeTime,
-                  style: theme.typography.body,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 Future<void> _prewarmImageDecoder() async {
   try {

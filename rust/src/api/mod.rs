@@ -6,10 +6,6 @@ pub mod cpu_filters;
 pub mod cpu_image;
 pub mod cpu_transform;
 pub mod cube_text;
-#[cfg(not(target_family = "wasm"))]
-pub mod gpu_brush;
-#[cfg(target_family = "wasm")]
-#[path = "gpu_brush_stub.rs"]
 pub mod gpu_brush;
 pub mod gpu_composite;
 pub mod image_ops;

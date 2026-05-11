@@ -9,12 +9,6 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get webLoadingInitializingCanvas => '正在初始化画板…';
-
-  @override
-  String get webLoadingMayTakeTime => 'Web 端加载需要一些时间，请稍候。';
-
-  @override
   String get closeAppTitle => '关闭应用';
 
   @override
@@ -134,12 +128,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String importClipboardImageFailed(Object error) {
     return '导入剪贴板图像失败：$error';
   }
-
-  @override
-  String get webPreparingCanvasTitle => '正在准备画布…';
-
-  @override
-  String get webPreparingCanvasMessage => 'Web 端需要一些时间才能完成初始化，请稍候。';
 
   @override
   String get aboutTitle => '关于 Misa Rin';
@@ -1768,17 +1756,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportPaletteTitle => '导出调色盘';
 
   @override
-  String get webDownloadDesc => '浏览器会将调色盘保存到默认的下载目录。';
-
-  @override
-  String get download => '下载';
-
-  @override
-  String paletteDownloaded(Object name) {
-    return '调色盘已下载：$name';
-  }
-
-  @override
   String paletteExported(Object path) {
     return '调色盘已导出到 $path';
   }
@@ -2000,9 +1977,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get saveProjectAs => 'Save Project As';
 
   @override
-  String get webSaveDesc => 'Download the project file to your device.';
-
-  @override
   String psdExported(Object path) {
     return 'PSD exported to $path';
   }
@@ -2039,14 +2013,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String exportFileTitle(Object extension) {
     return 'Export $extension File';
-  }
-
-  @override
-  String get webExportDesc => 'Download the exported image to your device.';
-
-  @override
-  String fileDownloaded(Object extension, Object name) {
-    return '$extension file downloaded: $name';
   }
 
   @override
@@ -2300,12 +2266,6 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   AppLocalizationsZhCn() : super('zh_CN');
 
   @override
-  String get webLoadingInitializingCanvas => '正在初始化画板…';
-
-  @override
-  String get webLoadingMayTakeTime => 'Web 端加载需要一些时间，请稍候。';
-
-  @override
   String get closeAppTitle => '关闭应用';
 
   @override
@@ -2425,12 +2385,6 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String importClipboardImageFailed(Object error) {
     return '导入剪贴板图像失败：$error';
   }
-
-  @override
-  String get webPreparingCanvasTitle => '正在准备画布…';
-
-  @override
-  String get webPreparingCanvasMessage => 'Web 端需要一些时间才能完成初始化，请稍候。';
 
   @override
   String get aboutTitle => '关于 Misa Rin';
@@ -3138,9 +3092,6 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String get saveProjectAs => '项目另存为';
 
   @override
-  String get webSaveDesc => '下载项目文件到您的设备。';
-
-  @override
   String psdExported(Object path) {
     return 'PSD 已导出到 $path';
   }
@@ -3177,14 +3128,6 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   @override
   String exportFileTitle(Object extension) {
     return '导出 $extension 文件';
-  }
-
-  @override
-  String get webExportDesc => '下载导出的图像到您的设备。';
-
-  @override
-  String fileDownloaded(Object extension, Object name) {
-    return '$extension 文件已下载：$name';
   }
 
   @override
@@ -3435,12 +3378,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   AppLocalizationsZhTw() : super('zh_TW');
 
   @override
-  String get webLoadingInitializingCanvas => '正在初始化畫板…';
-
-  @override
-  String get webLoadingMayTakeTime => 'Web 端載入需要一些時間，請稍候。';
-
-  @override
   String get closeAppTitle => '關閉應用';
 
   @override
@@ -3560,12 +3497,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String importClipboardImageFailed(Object error) {
     return '匯入剪貼簿影像失敗：$error';
   }
-
-  @override
-  String get webPreparingCanvasTitle => '正在準備畫布…';
-
-  @override
-  String get webPreparingCanvasMessage => 'Web 端需要一些時間才能完成初始化，請稍候。';
 
   @override
   String get aboutTitle => '關於 Misa Rin';
@@ -4292,9 +4223,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get saveProjectAs => '專案另存為';
 
   @override
-  String get webSaveDesc => '下載專案檔案到您的裝置。';
-
-  @override
   String psdExported(Object path) {
     return 'PSD 已匯出到 $path';
   }
@@ -4331,14 +4259,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   @override
   String exportFileTitle(Object extension) {
     return '匯出 $extension 檔案';
-  }
-
-  @override
-  String get webExportDesc => '下載匯出的影像到您的裝置。';
-
-  @override
-  String fileDownloaded(Object extension, Object name) {
-    return '$extension 檔案已下載：$name';
   }
 
   @override

@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/widgets.dart'
     show
         ClampingScrollPhysics,
@@ -34,8 +34,7 @@ class CanvasTitleBar extends StatelessWidget {
     final theme = FluentTheme.of(context);
     final CanvasWorkspaceController controller =
         CanvasWorkspaceController.instance;
-    final bool showLinuxControls =
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
+    final bool showLinuxControls = defaultTargetPlatform == TargetPlatform.linux;
     const EdgeInsets padding = EdgeInsets.only(
       left: 12,
       right: 12,

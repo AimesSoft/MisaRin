@@ -290,8 +290,7 @@ _RustWgpuStrokeDrawData? _controllerRustWgpuStrokeFromCommand(
 
 void _controllerFlushDeferredStrokeCommands(BitmapCanvasController controller) {
   PaintingDrawCommand? overlayCommand;
-  final bool snapToPixel = controller._currentStrokeSnapToPixel;
-  final bool showCommitOverlay = !(kIsWeb && snapToPixel);
+  const bool showCommitOverlay = true;
   if (controller._currentStrokePoints.isNotEmpty &&
       controller._currentStrokePoints.length ==
           controller._currentStrokeRadii.length) {
@@ -369,15 +368,7 @@ void _controllerFlushDeferredStrokeCommands(BitmapCanvasController controller) {
           if (!showCommitOverlay) {
             return;
           }
-          if (kIsWeb && !snapToPixel) {
-            unawaited(
-              controller._waitForNextFrame().whenComplete(() {
-                controller._startCommitOverlayFade(command);
-              }),
-            );
-          } else {
-            controller._removeCommitOverlay(command);
-          }
+          controller._removeCommitOverlay(command);
         }
       }());
       return;
@@ -387,28 +378,13 @@ void _controllerFlushDeferredStrokeCommands(BitmapCanvasController controller) {
   controller._commitDeferredStrokeCommandsAsRaster();
   if (overlayCommand != null && showCommitOverlay) {
     final PaintingDrawCommand command = overlayCommand;
-    if (kIsWeb) {
-      unawaited(
-        controller._waitForNextFrame().whenComplete(() {
-          if (!controller._committingStrokes.contains(command)) {
-            return;
-          }
-          if (snapToPixel) {
-            controller._removeCommitOverlay(command);
-          } else {
-            controller._startCommitOverlayFade(command);
-          }
-        }),
-      );
-    } else {
-      unawaited(
-        controller._enqueueRustWgpuBrushTask<void>(() async {}).whenComplete(
-          () {
-            controller._removeCommitOverlay(command);
-          },
-        ),
-      );
-    }
+    unawaited(
+      controller._enqueueRustWgpuBrushTask<void>(() async {}).whenComplete(
+        () {
+          controller._removeCommitOverlay(command);
+        },
+      ),
+    );
   }
 }
 
@@ -775,36 +751,6 @@ void _controllerFlushRealtimeStrokeCommands(BitmapCanvasController controller) {
   if (controller._currentStrokeHollowEnabled &&
       !controller._currentStrokeEraseOccludedParts) {
     return;
-  }
-  if (kIsWeb && !controller._currentStrokeSnapToPixel) {
-    return;
-  }
-  if (kIsWeb) {
-    final int now = DateTime.now().millisecondsSinceEpoch;
-    final int elapsed = now - controller._lastWebRasterFlushMs;
-    if (elapsed < BitmapCanvasController._kWebRasterFlushMinIntervalMs) {
-      if (controller._realtimeStrokeFlushScheduled) {
-        return;
-      }
-      controller._realtimeStrokeFlushScheduled = true;
-      controller._webRasterFlushTimer?.cancel();
-      controller._webRasterFlushTimer = Timer(
-        Duration(
-          milliseconds:
-              BitmapCanvasController._kWebRasterFlushMinIntervalMs - elapsed,
-        ),
-        () {
-          controller._realtimeStrokeFlushScheduled = false;
-          controller._lastWebRasterFlushMs =
-              DateTime.now().millisecondsSinceEpoch;
-          controller._commitDeferredStrokeCommandsAsRaster(
-            keepStrokeState: true,
-          );
-        },
-      );
-      return;
-    }
-    controller._lastWebRasterFlushMs = now;
   }
   if (controller._realtimeStrokeFlushScheduled) {
     return;

@@ -17,7 +17,6 @@ import 'package:flutter/foundation.dart'
         debugPrint,
         defaultTargetPlatform,
         TargetPlatform,
-        kIsWeb,
         protected,
         kDebugMode;
 import 'package:misa_rin/utils/io_shim.dart';
@@ -144,8 +143,6 @@ import '../palette/palette_exporter.dart';
 import '../utils/file_name_dialog.dart';
 import '../utils/ios_photo_saver.dart';
 import '../utils/mobile_export_paths.dart';
-import '../utils/web_file_dialog.dart';
-import '../utils/web_file_saver.dart';
 import '../utils/platform_target.dart';
 import '../utils/clipboard_image_reader.dart';
 import '../utils/svg_rasterizer.dart';

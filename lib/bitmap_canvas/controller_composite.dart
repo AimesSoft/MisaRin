@@ -18,33 +18,6 @@ void _compositeScheduleRefresh(BitmapCanvasController controller) {
   if (!controller._rasterOutputEnabled) {
     return;
   }
-  if (kIsWeb) {
-    final int now = DateTime.now().millisecondsSinceEpoch;
-    final int elapsed = now - controller._lastWebCompositeMs;
-    if (elapsed < BitmapCanvasController._kWebCompositeMinIntervalMs) {
-      if (controller._refreshScheduled) {
-        return;
-      }
-      controller._refreshScheduled = true;
-      controller._webCompositeTimer?.cancel();
-      controller._webCompositeTimer = Timer(
-        Duration(
-          milliseconds:
-              BitmapCanvasController._kWebCompositeMinIntervalMs - elapsed,
-        ),
-        () {
-          controller._refreshScheduled = false;
-          controller._lastWebCompositeMs =
-              DateTime.now().millisecondsSinceEpoch;
-          _compositeProcessScheduled(controller);
-        },
-      );
-      SchedulerBinding.instance?.ensureVisualUpdate();
-      controller._notify();
-      return;
-    }
-    controller._lastWebCompositeMs = now;
-  }
   if (controller._refreshScheduled) {
     return;
   }

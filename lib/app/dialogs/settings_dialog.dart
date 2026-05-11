@@ -118,7 +118,7 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
     _selectedSection = widget.initialSection;
     unawaited(_loadPackageInfo());
     unawaited(_loadBrushShapeFolderPath());
-    if (!kIsWeb && Platform.isAndroid) {
+    if (Platform.isAndroid) {
       unawaited(_loadAndroidExportDirectory());
       unawaited(_loadAndroidDefaultExportDirectory());
     }
@@ -339,36 +339,34 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
                 },
               ),
             ),
-            if (!kIsWeb) ...[
-              const SizedBox(height: 16),
-              InfoLabel(
-                label: l10n.developerOptionsLabel,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text(l10n.performanceOverlayLabel)),
-                        ToggleSwitch(
-                          checked: _fpsOverlayEnabled,
-                          onChanged: (value) {
-                            setState(() => _fpsOverlayEnabled = value);
-                            final AppPreferences prefs = AppPreferences.instance;
-                            prefs.updateShowFpsOverlay(value);
-                            unawaited(AppPreferences.save());
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      l10n.performanceOverlayDesc,
-                      style: theme.typography.caption,
-                    ),
-                  ],
-                ),
+            const SizedBox(height: 16),
+            InfoLabel(
+              label: l10n.developerOptionsLabel,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(l10n.performanceOverlayLabel)),
+                      ToggleSwitch(
+                        checked: _fpsOverlayEnabled,
+                        onChanged: (value) {
+                          setState(() => _fpsOverlayEnabled = value);
+                          final AppPreferences prefs = AppPreferences.instance;
+                          prefs.updateShowFpsOverlay(value);
+                          unawaited(AppPreferences.save());
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.performanceOverlayDesc,
+                    style: theme.typography.caption,
+                  ),
+                ],
               ),
-            ],
+            ),
           ],
         );
       case _SettingsSection.input:
@@ -414,30 +412,28 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
                 ],
               ),
             ),
-            if (!kIsWeb) ...[
-              const SizedBox(height: 16),
-              InfoLabel(
-                label: l10n.brushShapeFolderLabel,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Button(
-                      onPressed: _brushShapeFolderPath == null
-                          ? null
-                          : () => revealInFileManager(_brushShapeFolderPath!),
-                      child: Text(l10n.openBrushShapesFolder),
+            const SizedBox(height: 16),
+            InfoLabel(
+              label: l10n.brushShapeFolderLabel,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Button(
+                    onPressed: _brushShapeFolderPath == null
+                        ? null
+                        : () => revealInFileManager(_brushShapeFolderPath!),
+                    child: Text(l10n.openBrushShapesFolder),
+                  ),
+                  if (_brushShapeFolderPath != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      _brushShapeFolderPath!,
+                      style: theme.typography.caption,
                     ),
-                    if (_brushShapeFolderPath != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        _brushShapeFolderPath!,
-                        style: theme.typography.caption,
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
-            ],
+            ),
           ],
         );
       case _SettingsSection.storage:
@@ -449,8 +445,7 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
             AppPreferences.maxAutoSaveCleanupThresholdMb;
         final int autoSaveDivisions =
             ((maxAutoSave - minAutoSave) / _autoSaveCleanupStepMb).round();
-        final bool showAndroidExport =
-            !kIsWeb && Platform.isAndroid;
+        final bool showAndroidExport = Platform.isAndroid;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

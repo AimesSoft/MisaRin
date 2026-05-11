@@ -424,7 +424,7 @@ extension _PaintingBoardInteractionBackendImpl
       return;
     }
     _backendFlushScheduled = true;
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
       scheduleMicrotask(() {
         _backendFlushScheduled = false;
         if (!mounted) {

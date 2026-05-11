@@ -18,7 +18,6 @@ const bool _kDebugRasterTiles = bool.fromEnvironment(
   defaultValue: false,
 );
 const double _kFullSurfaceDirtyThreshold = 0.35;
-const double _kWebFullSurfaceDirtyThreshold = 0.1;
 
 class RasterTileCache {
   RasterTileCache({
@@ -55,9 +54,6 @@ class RasterTileCache {
   }) async {
     bool forceFullSurface = fullSurface;
     if (!forceFullSurface && dirtyRegions.isNotEmpty) {
-      final double threshold = kIsWeb
-          ? _kWebFullSurfaceDirtyThreshold
-          : _kFullSurfaceDirtyThreshold;
       final int surfacePixels = surfaceWidth * surfaceHeight;
       int dirtyPixels = 0;
       for (final RasterIntRect rect in dirtyRegions) {
@@ -67,7 +63,7 @@ class RasterTileCache {
         }
       }
       if (surfacePixels > 0 &&
-          dirtyPixels >= (surfacePixels * threshold)) {
+          dirtyPixels >= (surfacePixels * _kFullSurfaceDirtyThreshold)) {
         forceFullSurface = true;
       }
     }

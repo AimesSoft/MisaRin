@@ -25,835 +25,464 @@ import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 
-abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
-  RustLibApiImplPlatform({
-    required super.handler,
-    required super.wire,
-    required super.generalizedFrbRustBinding,
-    required super.portManager,
-  });
 
-  @protected
-  String dco_decode_String(dynamic raw);
 
-  @protected
-  AbrFile dco_decode_abr_file(dynamic raw);
 
-  @protected
-  AbrTip dco_decode_abr_tip(dynamic raw);
+                abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
+                  RustLibApiImplPlatform({
+                    required super.handler,
+                    required super.wire,
+                    required super.generalizedFrbRustBinding,
+                    required super.portManager,
+                  });
 
-  @protected
-  bool dco_decode_bool(dynamic raw);
+                  
 
-  @protected
-  bool dco_decode_box_autoadd_bool(dynamic raw);
+                  @protected String dco_decode_String(dynamic raw);
 
-  @protected
-  double dco_decode_box_autoadd_f_32(dynamic raw);
+@protected AbrFile dco_decode_abr_file(dynamic raw);
 
-  @protected
-  int dco_decode_box_autoadd_i_32(dynamic raw);
+@protected AbrTip dco_decode_abr_tip(dynamic raw);
 
-  @protected
-  int dco_decode_box_autoadd_u_32(dynamic raw);
+@protected bool dco_decode_bool(dynamic raw);
 
-  @protected
-  WorkspaceEntry dco_decode_box_autoadd_workspace_entry(dynamic raw);
+@protected bool dco_decode_box_autoadd_bool(dynamic raw);
 
-  @protected
-  CpuBlendOverflowResult dco_decode_cpu_blend_overflow_result(dynamic raw);
+@protected double dco_decode_box_autoadd_f_32(dynamic raw);
 
-  @protected
-  CpuBlendResult dco_decode_cpu_blend_result(dynamic raw);
+@protected int dco_decode_box_autoadd_i_32(dynamic raw);
 
-  @protected
-  CpuBrushCommand dco_decode_cpu_brush_command(dynamic raw);
+@protected int dco_decode_box_autoadd_u_32(dynamic raw);
 
-  @protected
-  CpuBrushResult dco_decode_cpu_brush_result(dynamic raw);
+@protected WorkspaceEntry dco_decode_box_autoadd_workspace_entry(dynamic raw);
 
-  @protected
-  CpuFiltersBytesResult dco_decode_cpu_filters_bytes_result(dynamic raw);
+@protected CpuBlendOverflowResult dco_decode_cpu_blend_overflow_result(dynamic raw);
 
-  @protected
-  CpuFiltersResult dco_decode_cpu_filters_result(dynamic raw);
+@protected CpuBlendResult dco_decode_cpu_blend_result(dynamic raw);
 
-  @protected
-  CpuImageBoundsResult dco_decode_cpu_image_bounds_result(dynamic raw);
+@protected CpuBrushCommand dco_decode_cpu_brush_command(dynamic raw);
 
-  @protected
-  CpuStreamlineResult dco_decode_cpu_streamline_result(dynamic raw);
+@protected CpuBrushResult dco_decode_cpu_brush_result(dynamic raw);
 
-  @protected
-  CpuTransformSnapshotResult dco_decode_cpu_transform_snapshot_result(
-    dynamic raw,
-  );
+@protected CpuFiltersBytesResult dco_decode_cpu_filters_bytes_result(dynamic raw);
 
-  @protected
-  CpuTransformTranslateResult dco_decode_cpu_transform_translate_result(
-    dynamic raw,
-  );
+@protected CpuFiltersResult dco_decode_cpu_filters_result(dynamic raw);
 
-  @protected
-  CubeTextExportResult dco_decode_cube_text_export_result(dynamic raw);
+@protected CpuImageBoundsResult dco_decode_cpu_image_bounds_result(dynamic raw);
 
-  @protected
-  CubeTextFontAsset dco_decode_cube_text_font_asset(dynamic raw);
+@protected CpuStreamlineResult dco_decode_cpu_streamline_result(dynamic raw);
 
-  @protected
-  CubeTextFontConvertResult dco_decode_cube_text_font_convert_result(
-    dynamic raw,
-  );
+@protected CpuTransformSnapshotResult dco_decode_cpu_transform_snapshot_result(dynamic raw);
 
-  @protected
-  CubeTextMaterialOption dco_decode_cube_text_material_option(dynamic raw);
+@protected CpuTransformTranslateResult dco_decode_cpu_transform_translate_result(dynamic raw);
 
-  @protected
-  CubeTextMaterials dco_decode_cube_text_materials(dynamic raw);
+@protected CubeTextExportResult dco_decode_cube_text_export_result(dynamic raw);
 
-  @protected
-  CubeTextObject dco_decode_cube_text_object(dynamic raw);
+@protected CubeTextFontAsset dco_decode_cube_text_font_asset(dynamic raw);
 
-  @protected
-  CubeTextOptions dco_decode_cube_text_options(dynamic raw);
+@protected CubeTextFontConvertResult dco_decode_cube_text_font_convert_result(dynamic raw);
 
-  @protected
-  CubeTextScene dco_decode_cube_text_scene(dynamic raw);
+@protected CubeTextMaterialOption dco_decode_cube_text_material_option(dynamic raw);
 
-  @protected
-  CubeTextSceneMaterial dco_decode_cube_text_scene_material(dynamic raw);
+@protected CubeTextMaterials dco_decode_cube_text_materials(dynamic raw);
 
-  @protected
-  double dco_decode_f_32(dynamic raw);
+@protected CubeTextObject dco_decode_cube_text_object(dynamic raw);
 
-  @protected
-  double dco_decode_f_64(dynamic raw);
+@protected CubeTextOptions dco_decode_cube_text_options(dynamic raw);
 
-  @protected
-  FloodFillPatch dco_decode_flood_fill_patch(dynamic raw);
+@protected CubeTextScene dco_decode_cube_text_scene(dynamic raw);
 
-  @protected
-  FloodFillRect dco_decode_flood_fill_rect(dynamic raw);
+@protected CubeTextSceneMaterial dco_decode_cube_text_scene_material(dynamic raw);
 
-  @protected
-  GpuLayerData dco_decode_gpu_layer_data(dynamic raw);
+@protected double dco_decode_f_32(dynamic raw);
 
-  @protected
-  GpuPoint2D dco_decode_gpu_point_2_d(dynamic raw);
+@protected double dco_decode_f_64(dynamic raw);
 
-  @protected
-  GpuStrokeResult dco_decode_gpu_stroke_result(dynamic raw);
+@protected FloodFillPatch dco_decode_flood_fill_patch(dynamic raw);
 
-  @protected
-  int dco_decode_i_32(dynamic raw);
+@protected FloodFillRect dco_decode_flood_fill_rect(dynamic raw);
 
-  @protected
-  List<String> dco_decode_list_String(dynamic raw);
+@protected GpuLayerData dco_decode_gpu_layer_data(dynamic raw);
 
-  @protected
-  List<AbrTip> dco_decode_list_abr_tip(dynamic raw);
+@protected GpuPoint2D dco_decode_gpu_point_2_d(dynamic raw);
 
-  @protected
-  List<CpuBrushCommand> dco_decode_list_cpu_brush_command(dynamic raw);
+@protected GpuStrokeResult dco_decode_gpu_stroke_result(dynamic raw);
 
-  @protected
-  List<CubeTextFontAsset> dco_decode_list_cube_text_font_asset(dynamic raw);
+@protected int dco_decode_i_32(dynamic raw);
 
-  @protected
-  List<CubeTextObject> dco_decode_list_cube_text_object(dynamic raw);
+@protected List<String> dco_decode_list_String(dynamic raw);
 
-  @protected
-  List<CubeTextSceneMaterial> dco_decode_list_cube_text_scene_material(
-    dynamic raw,
-  );
+@protected List<AbrTip> dco_decode_list_abr_tip(dynamic raw);
 
-  @protected
-  List<GpuLayerData> dco_decode_list_gpu_layer_data(dynamic raw);
+@protected List<CpuBrushCommand> dco_decode_list_cpu_brush_command(dynamic raw);
 
-  @protected
-  List<GpuPoint2D> dco_decode_list_gpu_point_2_d(dynamic raw);
+@protected List<CubeTextFontAsset> dco_decode_list_cube_text_font_asset(dynamic raw);
 
-  @protected
-  List<double> dco_decode_list_prim_f_32_loose(dynamic raw);
+@protected List<CubeTextObject> dco_decode_list_cube_text_object(dynamic raw);
 
-  @protected
-  Float32List dco_decode_list_prim_f_32_strict(dynamic raw);
+@protected List<CubeTextSceneMaterial> dco_decode_list_cube_text_scene_material(dynamic raw);
 
-  @protected
-  List<int> dco_decode_list_prim_i_32_loose(dynamic raw);
+@protected List<GpuLayerData> dco_decode_list_gpu_layer_data(dynamic raw);
 
-  @protected
-  Int32List dco_decode_list_prim_i_32_strict(dynamic raw);
+@protected List<GpuPoint2D> dco_decode_list_gpu_point_2_d(dynamic raw);
 
-  @protected
-  List<int> dco_decode_list_prim_u_32_loose(dynamic raw);
+@protected List<double> dco_decode_list_prim_f_32_loose(dynamic raw);
 
-  @protected
-  Uint32List dco_decode_list_prim_u_32_strict(dynamic raw);
+@protected Float32List dco_decode_list_prim_f_32_strict(dynamic raw);
 
-  @protected
-  List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
+@protected List<int> dco_decode_list_prim_i_32_loose(dynamic raw);
 
-  @protected
-  Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+@protected Int32List dco_decode_list_prim_i_32_strict(dynamic raw);
 
-  @protected
-  List<PsdLayer> dco_decode_list_psd_layer(dynamic raw);
+@protected List<int> dco_decode_list_prim_u_32_loose(dynamic raw);
 
-  @protected
-  List<WorkspaceEntry> dco_decode_list_workspace_entry(dynamic raw);
+@protected Uint32List dco_decode_list_prim_u_32_strict(dynamic raw);
 
-  @protected
-  String? dco_decode_opt_String(dynamic raw);
+@protected List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
 
-  @protected
-  bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
+@protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
-  @protected
-  double? dco_decode_opt_box_autoadd_f_32(dynamic raw);
+@protected List<PsdLayer> dco_decode_list_psd_layer(dynamic raw);
 
-  @protected
-  int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
+@protected List<WorkspaceEntry> dco_decode_list_workspace_entry(dynamic raw);
 
-  @protected
-  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+@protected String? dco_decode_opt_String(dynamic raw);
 
-  @protected
-  WorkspaceEntry? dco_decode_opt_box_autoadd_workspace_entry(dynamic raw);
+@protected bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
 
-  @protected
-  Uint32List? dco_decode_opt_list_prim_u_32_strict(dynamic raw);
+@protected double? dco_decode_opt_box_autoadd_f_32(dynamic raw);
 
-  @protected
-  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
+@protected int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
 
-  @protected
-  PsdDocument dco_decode_psd_document(dynamic raw);
+@protected int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
 
-  @protected
-  PsdLayer dco_decode_psd_layer(dynamic raw);
+@protected WorkspaceEntry? dco_decode_opt_box_autoadd_workspace_entry(dynamic raw);
 
-  @protected
-  int dco_decode_u_32(dynamic raw);
+@protected Uint32List? dco_decode_opt_list_prim_u_32_strict(dynamic raw);
 
-  @protected
-  BigInt dco_decode_u_64(dynamic raw);
+@protected Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
 
-  @protected
-  int dco_decode_u_8(dynamic raw);
+@protected PsdDocument dco_decode_psd_document(dynamic raw);
 
-  @protected
-  void dco_decode_unit(dynamic raw);
+@protected PsdLayer dco_decode_psd_layer(dynamic raw);
 
-  @protected
-  BigInt dco_decode_usize(dynamic raw);
+@protected int dco_decode_u_32(dynamic raw);
 
-  @protected
-  WorkspaceEntry dco_decode_workspace_entry(dynamic raw);
+@protected BigInt dco_decode_u_64(dynamic raw);
 
-  @protected
-  WorkspaceState dco_decode_workspace_state(dynamic raw);
+@protected int dco_decode_u_8(dynamic raw);
 
-  @protected
-  String sse_decode_String(SseDeserializer deserializer);
+@protected void dco_decode_unit(dynamic raw);
 
-  @protected
-  AbrFile sse_decode_abr_file(SseDeserializer deserializer);
+@protected BigInt dco_decode_usize(dynamic raw);
 
-  @protected
-  AbrTip sse_decode_abr_tip(SseDeserializer deserializer);
+@protected WorkspaceEntry dco_decode_workspace_entry(dynamic raw);
 
-  @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
+@protected WorkspaceState dco_decode_workspace_state(dynamic raw);
 
-  @protected
-  bool sse_decode_box_autoadd_bool(SseDeserializer deserializer);
+@protected String sse_decode_String(SseDeserializer deserializer);
 
-  @protected
-  double sse_decode_box_autoadd_f_32(SseDeserializer deserializer);
+@protected AbrFile sse_decode_abr_file(SseDeserializer deserializer);
 
-  @protected
-  int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
+@protected AbrTip sse_decode_abr_tip(SseDeserializer deserializer);
 
-  @protected
-  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
+@protected bool sse_decode_bool(SseDeserializer deserializer);
 
-  @protected
-  WorkspaceEntry sse_decode_box_autoadd_workspace_entry(
-    SseDeserializer deserializer,
-  );
+@protected bool sse_decode_box_autoadd_bool(SseDeserializer deserializer);
 
-  @protected
-  CpuBlendOverflowResult sse_decode_cpu_blend_overflow_result(
-    SseDeserializer deserializer,
-  );
+@protected double sse_decode_box_autoadd_f_32(SseDeserializer deserializer);
 
-  @protected
-  CpuBlendResult sse_decode_cpu_blend_result(SseDeserializer deserializer);
+@protected int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
 
-  @protected
-  CpuBrushCommand sse_decode_cpu_brush_command(SseDeserializer deserializer);
+@protected int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
-  @protected
-  CpuBrushResult sse_decode_cpu_brush_result(SseDeserializer deserializer);
+@protected WorkspaceEntry sse_decode_box_autoadd_workspace_entry(SseDeserializer deserializer);
 
-  @protected
-  CpuFiltersBytesResult sse_decode_cpu_filters_bytes_result(
-    SseDeserializer deserializer,
-  );
+@protected CpuBlendOverflowResult sse_decode_cpu_blend_overflow_result(SseDeserializer deserializer);
 
-  @protected
-  CpuFiltersResult sse_decode_cpu_filters_result(SseDeserializer deserializer);
+@protected CpuBlendResult sse_decode_cpu_blend_result(SseDeserializer deserializer);
 
-  @protected
-  CpuImageBoundsResult sse_decode_cpu_image_bounds_result(
-    SseDeserializer deserializer,
-  );
+@protected CpuBrushCommand sse_decode_cpu_brush_command(SseDeserializer deserializer);
 
-  @protected
-  CpuStreamlineResult sse_decode_cpu_streamline_result(
-    SseDeserializer deserializer,
-  );
+@protected CpuBrushResult sse_decode_cpu_brush_result(SseDeserializer deserializer);
 
-  @protected
-  CpuTransformSnapshotResult sse_decode_cpu_transform_snapshot_result(
-    SseDeserializer deserializer,
-  );
+@protected CpuFiltersBytesResult sse_decode_cpu_filters_bytes_result(SseDeserializer deserializer);
 
-  @protected
-  CpuTransformTranslateResult sse_decode_cpu_transform_translate_result(
-    SseDeserializer deserializer,
-  );
+@protected CpuFiltersResult sse_decode_cpu_filters_result(SseDeserializer deserializer);
 
-  @protected
-  CubeTextExportResult sse_decode_cube_text_export_result(
-    SseDeserializer deserializer,
-  );
+@protected CpuImageBoundsResult sse_decode_cpu_image_bounds_result(SseDeserializer deserializer);
 
-  @protected
-  CubeTextFontAsset sse_decode_cube_text_font_asset(
-    SseDeserializer deserializer,
-  );
+@protected CpuStreamlineResult sse_decode_cpu_streamline_result(SseDeserializer deserializer);
 
-  @protected
-  CubeTextFontConvertResult sse_decode_cube_text_font_convert_result(
-    SseDeserializer deserializer,
-  );
+@protected CpuTransformSnapshotResult sse_decode_cpu_transform_snapshot_result(SseDeserializer deserializer);
 
-  @protected
-  CubeTextMaterialOption sse_decode_cube_text_material_option(
-    SseDeserializer deserializer,
-  );
+@protected CpuTransformTranslateResult sse_decode_cpu_transform_translate_result(SseDeserializer deserializer);
 
-  @protected
-  CubeTextMaterials sse_decode_cube_text_materials(
-    SseDeserializer deserializer,
-  );
+@protected CubeTextExportResult sse_decode_cube_text_export_result(SseDeserializer deserializer);
 
-  @protected
-  CubeTextObject sse_decode_cube_text_object(SseDeserializer deserializer);
+@protected CubeTextFontAsset sse_decode_cube_text_font_asset(SseDeserializer deserializer);
 
-  @protected
-  CubeTextOptions sse_decode_cube_text_options(SseDeserializer deserializer);
+@protected CubeTextFontConvertResult sse_decode_cube_text_font_convert_result(SseDeserializer deserializer);
 
-  @protected
-  CubeTextScene sse_decode_cube_text_scene(SseDeserializer deserializer);
+@protected CubeTextMaterialOption sse_decode_cube_text_material_option(SseDeserializer deserializer);
 
-  @protected
-  CubeTextSceneMaterial sse_decode_cube_text_scene_material(
-    SseDeserializer deserializer,
-  );
+@protected CubeTextMaterials sse_decode_cube_text_materials(SseDeserializer deserializer);
 
-  @protected
-  double sse_decode_f_32(SseDeserializer deserializer);
+@protected CubeTextObject sse_decode_cube_text_object(SseDeserializer deserializer);
 
-  @protected
-  double sse_decode_f_64(SseDeserializer deserializer);
+@protected CubeTextOptions sse_decode_cube_text_options(SseDeserializer deserializer);
 
-  @protected
-  FloodFillPatch sse_decode_flood_fill_patch(SseDeserializer deserializer);
+@protected CubeTextScene sse_decode_cube_text_scene(SseDeserializer deserializer);
 
-  @protected
-  FloodFillRect sse_decode_flood_fill_rect(SseDeserializer deserializer);
+@protected CubeTextSceneMaterial sse_decode_cube_text_scene_material(SseDeserializer deserializer);
 
-  @protected
-  GpuLayerData sse_decode_gpu_layer_data(SseDeserializer deserializer);
+@protected double sse_decode_f_32(SseDeserializer deserializer);
 
-  @protected
-  GpuPoint2D sse_decode_gpu_point_2_d(SseDeserializer deserializer);
+@protected double sse_decode_f_64(SseDeserializer deserializer);
 
-  @protected
-  GpuStrokeResult sse_decode_gpu_stroke_result(SseDeserializer deserializer);
+@protected FloodFillPatch sse_decode_flood_fill_patch(SseDeserializer deserializer);
 
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
+@protected FloodFillRect sse_decode_flood_fill_rect(SseDeserializer deserializer);
 
-  @protected
-  List<String> sse_decode_list_String(SseDeserializer deserializer);
+@protected GpuLayerData sse_decode_gpu_layer_data(SseDeserializer deserializer);
 
-  @protected
-  List<AbrTip> sse_decode_list_abr_tip(SseDeserializer deserializer);
+@protected GpuPoint2D sse_decode_gpu_point_2_d(SseDeserializer deserializer);
 
-  @protected
-  List<CpuBrushCommand> sse_decode_list_cpu_brush_command(
-    SseDeserializer deserializer,
-  );
+@protected GpuStrokeResult sse_decode_gpu_stroke_result(SseDeserializer deserializer);
 
-  @protected
-  List<CubeTextFontAsset> sse_decode_list_cube_text_font_asset(
-    SseDeserializer deserializer,
-  );
+@protected int sse_decode_i_32(SseDeserializer deserializer);
 
-  @protected
-  List<CubeTextObject> sse_decode_list_cube_text_object(
-    SseDeserializer deserializer,
-  );
+@protected List<String> sse_decode_list_String(SseDeserializer deserializer);
 
-  @protected
-  List<CubeTextSceneMaterial> sse_decode_list_cube_text_scene_material(
-    SseDeserializer deserializer,
-  );
+@protected List<AbrTip> sse_decode_list_abr_tip(SseDeserializer deserializer);
 
-  @protected
-  List<GpuLayerData> sse_decode_list_gpu_layer_data(
-    SseDeserializer deserializer,
-  );
+@protected List<CpuBrushCommand> sse_decode_list_cpu_brush_command(SseDeserializer deserializer);
 
-  @protected
-  List<GpuPoint2D> sse_decode_list_gpu_point_2_d(SseDeserializer deserializer);
+@protected List<CubeTextFontAsset> sse_decode_list_cube_text_font_asset(SseDeserializer deserializer);
 
-  @protected
-  List<double> sse_decode_list_prim_f_32_loose(SseDeserializer deserializer);
+@protected List<CubeTextObject> sse_decode_list_cube_text_object(SseDeserializer deserializer);
 
-  @protected
-  Float32List sse_decode_list_prim_f_32_strict(SseDeserializer deserializer);
+@protected List<CubeTextSceneMaterial> sse_decode_list_cube_text_scene_material(SseDeserializer deserializer);
 
-  @protected
-  List<int> sse_decode_list_prim_i_32_loose(SseDeserializer deserializer);
+@protected List<GpuLayerData> sse_decode_list_gpu_layer_data(SseDeserializer deserializer);
 
-  @protected
-  Int32List sse_decode_list_prim_i_32_strict(SseDeserializer deserializer);
+@protected List<GpuPoint2D> sse_decode_list_gpu_point_2_d(SseDeserializer deserializer);
 
-  @protected
-  List<int> sse_decode_list_prim_u_32_loose(SseDeserializer deserializer);
+@protected List<double> sse_decode_list_prim_f_32_loose(SseDeserializer deserializer);
 
-  @protected
-  Uint32List sse_decode_list_prim_u_32_strict(SseDeserializer deserializer);
+@protected Float32List sse_decode_list_prim_f_32_strict(SseDeserializer deserializer);
 
-  @protected
-  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
+@protected List<int> sse_decode_list_prim_i_32_loose(SseDeserializer deserializer);
 
-  @protected
-  Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+@protected Int32List sse_decode_list_prim_i_32_strict(SseDeserializer deserializer);
 
-  @protected
-  List<PsdLayer> sse_decode_list_psd_layer(SseDeserializer deserializer);
+@protected List<int> sse_decode_list_prim_u_32_loose(SseDeserializer deserializer);
 
-  @protected
-  List<WorkspaceEntry> sse_decode_list_workspace_entry(
-    SseDeserializer deserializer,
-  );
+@protected Uint32List sse_decode_list_prim_u_32_strict(SseDeserializer deserializer);
 
-  @protected
-  String? sse_decode_opt_String(SseDeserializer deserializer);
+@protected List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
 
-  @protected
-  bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
+@protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
-  @protected
-  double? sse_decode_opt_box_autoadd_f_32(SseDeserializer deserializer);
+@protected List<PsdLayer> sse_decode_list_psd_layer(SseDeserializer deserializer);
 
-  @protected
-  int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
+@protected List<WorkspaceEntry> sse_decode_list_workspace_entry(SseDeserializer deserializer);
 
-  @protected
-  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+@protected String? sse_decode_opt_String(SseDeserializer deserializer);
 
-  @protected
-  WorkspaceEntry? sse_decode_opt_box_autoadd_workspace_entry(
-    SseDeserializer deserializer,
-  );
+@protected bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
 
-  @protected
-  Uint32List? sse_decode_opt_list_prim_u_32_strict(
-    SseDeserializer deserializer,
-  );
+@protected double? sse_decode_opt_box_autoadd_f_32(SseDeserializer deserializer);
 
-  @protected
-  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
+@protected int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
 
-  @protected
-  PsdDocument sse_decode_psd_document(SseDeserializer deserializer);
+@protected int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
 
-  @protected
-  PsdLayer sse_decode_psd_layer(SseDeserializer deserializer);
+@protected WorkspaceEntry? sse_decode_opt_box_autoadd_workspace_entry(SseDeserializer deserializer);
 
-  @protected
-  int sse_decode_u_32(SseDeserializer deserializer);
+@protected Uint32List? sse_decode_opt_list_prim_u_32_strict(SseDeserializer deserializer);
 
-  @protected
-  BigInt sse_decode_u_64(SseDeserializer deserializer);
+@protected Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
 
-  @protected
-  int sse_decode_u_8(SseDeserializer deserializer);
+@protected PsdDocument sse_decode_psd_document(SseDeserializer deserializer);
 
-  @protected
-  void sse_decode_unit(SseDeserializer deserializer);
+@protected PsdLayer sse_decode_psd_layer(SseDeserializer deserializer);
 
-  @protected
-  BigInt sse_decode_usize(SseDeserializer deserializer);
+@protected int sse_decode_u_32(SseDeserializer deserializer);
 
-  @protected
-  WorkspaceEntry sse_decode_workspace_entry(SseDeserializer deserializer);
+@protected BigInt sse_decode_u_64(SseDeserializer deserializer);
 
-  @protected
-  WorkspaceState sse_decode_workspace_state(SseDeserializer deserializer);
+@protected int sse_decode_u_8(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_String(String self, SseSerializer serializer);
+@protected void sse_decode_unit(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_abr_file(AbrFile self, SseSerializer serializer);
+@protected BigInt sse_decode_usize(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_abr_tip(AbrTip self, SseSerializer serializer);
+@protected WorkspaceEntry sse_decode_workspace_entry(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
+@protected WorkspaceState sse_decode_workspace_state(SseDeserializer deserializer);
 
-  @protected
-  void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer);
+@protected void sse_encode_String(String self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_box_autoadd_f_32(double self, SseSerializer serializer);
+@protected void sse_encode_abr_file(AbrFile self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
+@protected void sse_encode_abr_tip(AbrTip self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
+@protected void sse_encode_bool(bool self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_box_autoadd_workspace_entry(
-    WorkspaceEntry self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cpu_blend_overflow_result(
-    CpuBlendOverflowResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_box_autoadd_f_32(double self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cpu_blend_result(
-    CpuBlendResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cpu_brush_command(
-    CpuBrushCommand self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cpu_brush_result(
-    CpuBrushResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_box_autoadd_workspace_entry(WorkspaceEntry self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cpu_filters_bytes_result(
-    CpuFiltersBytesResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cpu_blend_overflow_result(CpuBlendOverflowResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cpu_filters_result(
-    CpuFiltersResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cpu_blend_result(CpuBlendResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cpu_image_bounds_result(
-    CpuImageBoundsResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cpu_brush_command(CpuBrushCommand self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cpu_streamline_result(
-    CpuStreamlineResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cpu_brush_result(CpuBrushResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cpu_transform_snapshot_result(
-    CpuTransformSnapshotResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cpu_filters_bytes_result(CpuFiltersBytesResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cpu_transform_translate_result(
-    CpuTransformTranslateResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cpu_filters_result(CpuFiltersResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cube_text_export_result(
-    CubeTextExportResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cpu_image_bounds_result(CpuImageBoundsResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cube_text_font_asset(
-    CubeTextFontAsset self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cpu_streamline_result(CpuStreamlineResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cube_text_font_convert_result(
-    CubeTextFontConvertResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cpu_transform_snapshot_result(CpuTransformSnapshotResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cube_text_material_option(
-    CubeTextMaterialOption self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cpu_transform_translate_result(CpuTransformTranslateResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cube_text_materials(
-    CubeTextMaterials self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cube_text_export_result(CubeTextExportResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cube_text_object(
-    CubeTextObject self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cube_text_font_asset(CubeTextFontAsset self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cube_text_options(
-    CubeTextOptions self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cube_text_font_convert_result(CubeTextFontConvertResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cube_text_scene(CubeTextScene self, SseSerializer serializer);
+@protected void sse_encode_cube_text_material_option(CubeTextMaterialOption self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_cube_text_scene_material(
-    CubeTextSceneMaterial self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cube_text_materials(CubeTextMaterials self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_f_32(double self, SseSerializer serializer);
+@protected void sse_encode_cube_text_object(CubeTextObject self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_f_64(double self, SseSerializer serializer);
+@protected void sse_encode_cube_text_options(CubeTextOptions self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_flood_fill_patch(
-    FloodFillPatch self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_cube_text_scene(CubeTextScene self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_flood_fill_rect(FloodFillRect self, SseSerializer serializer);
+@protected void sse_encode_cube_text_scene_material(CubeTextSceneMaterial self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_gpu_layer_data(GpuLayerData self, SseSerializer serializer);
+@protected void sse_encode_f_32(double self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_gpu_point_2_d(GpuPoint2D self, SseSerializer serializer);
+@protected void sse_encode_f_64(double self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_gpu_stroke_result(
-    GpuStrokeResult self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_flood_fill_patch(FloodFillPatch self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
+@protected void sse_encode_flood_fill_rect(FloodFillRect self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+@protected void sse_encode_gpu_layer_data(GpuLayerData self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_abr_tip(List<AbrTip> self, SseSerializer serializer);
+@protected void sse_encode_gpu_point_2_d(GpuPoint2D self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_cpu_brush_command(
-    List<CpuBrushCommand> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_gpu_stroke_result(GpuStrokeResult self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_cube_text_font_asset(
-    List<CubeTextFontAsset> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_i_32(int self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_cube_text_object(
-    List<CubeTextObject> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_cube_text_scene_material(
-    List<CubeTextSceneMaterial> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_abr_tip(List<AbrTip> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_gpu_layer_data(
-    List<GpuLayerData> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_cpu_brush_command(List<CpuBrushCommand> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_gpu_point_2_d(
-    List<GpuPoint2D> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_cube_text_font_asset(List<CubeTextFontAsset> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_prim_f_32_loose(
-    List<double> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_cube_text_object(List<CubeTextObject> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_prim_f_32_strict(
-    Float32List self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_cube_text_scene_material(List<CubeTextSceneMaterial> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_prim_i_32_loose(
-    List<int> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_gpu_layer_data(List<GpuLayerData> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_prim_i_32_strict(
-    Int32List self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_gpu_point_2_d(List<GpuPoint2D> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_prim_u_32_loose(
-    List<int> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_prim_f_32_loose(List<double> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_prim_u_32_strict(
-    Uint32List self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_prim_f_32_strict(Float32List self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
+@protected void sse_encode_list_prim_i_32_loose(List<int> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_prim_u_8_strict(
-    Uint8List self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_prim_i_32_strict(Int32List self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_psd_layer(List<PsdLayer> self, SseSerializer serializer);
+@protected void sse_encode_list_prim_u_32_loose(List<int> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_list_workspace_entry(
-    List<WorkspaceEntry> self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_list_prim_u_32_strict(Uint32List self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_opt_String(String? self, SseSerializer serializer);
+@protected void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
+@protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_opt_box_autoadd_f_32(double? self, SseSerializer serializer);
+@protected void sse_encode_list_psd_layer(List<PsdLayer> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
+@protected void sse_encode_list_workspace_entry(List<WorkspaceEntry> self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+@protected void sse_encode_opt_String(String? self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_opt_box_autoadd_workspace_entry(
-    WorkspaceEntry? self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_opt_list_prim_u_32_strict(
-    Uint32List? self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_opt_box_autoadd_f_32(double? self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_opt_list_prim_u_8_strict(
-    Uint8List? self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_psd_document(PsdDocument self, SseSerializer serializer);
+@protected void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_psd_layer(PsdLayer self, SseSerializer serializer);
+@protected void sse_encode_opt_box_autoadd_workspace_entry(WorkspaceEntry? self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_u_32(int self, SseSerializer serializer);
+@protected void sse_encode_opt_list_prim_u_32_strict(Uint32List? self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_u_64(BigInt self, SseSerializer serializer);
+@protected void sse_encode_opt_list_prim_u_8_strict(Uint8List? self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_u_8(int self, SseSerializer serializer);
+@protected void sse_encode_psd_document(PsdDocument self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_unit(void self, SseSerializer serializer);
+@protected void sse_encode_psd_layer(PsdLayer self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_usize(BigInt self, SseSerializer serializer);
+@protected void sse_encode_u_32(int self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_workspace_entry(
-    WorkspaceEntry self,
-    SseSerializer serializer,
-  );
+@protected void sse_encode_u_64(BigInt self, SseSerializer serializer);
 
-  @protected
-  void sse_encode_workspace_state(
-    WorkspaceState self,
-    SseSerializer serializer,
-  );
-}
+@protected void sse_encode_u_8(int self, SseSerializer serializer);
+
+@protected void sse_encode_unit(void self, SseSerializer serializer);
+
+@protected void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+@protected void sse_encode_workspace_entry(WorkspaceEntry self, SseSerializer serializer);
+
+@protected void sse_encode_workspace_state(WorkspaceState self, SseSerializer serializer);
+                }
+                
+
 
 // Section: wire_class
 
-class RustLibWire implements BaseWire {
-  factory RustLibWire.fromExternalLibrary(ExternalLibrary lib) =>
-      RustLibWire(lib.ffiDynamicLibrary);
 
-  /// Holds the symbol lookup function.
-  final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
-  _lookup;
+        class RustLibWire implements BaseWire {
 
-  /// The symbols are looked up in [dynamicLibrary].
-  RustLibWire(ffi.DynamicLibrary dynamicLibrary)
-    : _lookup = dynamicLibrary.lookup;
-}
+            factory RustLibWire.fromExternalLibrary(ExternalLibrary lib) =>
+              RustLibWire(lib.ffiDynamicLibrary);
+        
+            /// Holds the symbol lookup function.
+            final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
+                _lookup;
+  
+            /// The symbols are looked up in [dynamicLibrary].
+            RustLibWire(ffi.DynamicLibrary dynamicLibrary)
+                : _lookup = dynamicLibrary.lookup;
+
+            
+        }
+        

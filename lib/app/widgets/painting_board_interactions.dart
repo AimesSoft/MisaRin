@@ -524,7 +524,7 @@ mixin _PaintingBoardInteractionMixin
     if (_backendRasterOutputSuppressed) {
       return;
     }
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.windows) {
+    if (defaultTargetPlatform != TargetPlatform.windows) {
       return;
     }
     if (!_backend.isSupported || !_controller.rasterOutputEnabled) {

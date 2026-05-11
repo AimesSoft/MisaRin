@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:misa_rin/utils/io_shim.dart';
 import 'package:path/path.dart' as p;
 
@@ -44,7 +43,7 @@ class _MisarinHomePageState extends State<MisarinHomePage> {
   DateTime? _lastHomeDropAt;
 
   bool get _supportsFileDrops =>
-      !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
   @override
   void initState() {
@@ -285,7 +284,7 @@ class _MisarinHomePageState extends State<MisarinHomePage> {
       }
       result.add(item);
     }
-    if (kIsWeb || !Platform.isMacOS || result.length < 2) {
+    if (!Platform.isMacOS || result.length < 2) {
       return result;
     }
     return _dedupeMacOSFilePromiseItems(result);
@@ -388,19 +387,17 @@ class _MisarinHomePageState extends State<MisarinHomePage> {
     DropItem item, {
     int? svgRasterSizePx,
   }) async {
-    if (!kIsWeb) {
-      final String path = item.path.trim();
-      if (path.isNotEmpty) {
-        return _runWithSecurityScopedAccess<ProjectDocument?>(
-          item,
-          () => _repository.createDocumentFromImage(
-            path,
-            name: _preferredDocumentNameForDrop(item),
-            svgRasterSizePx: svgRasterSizePx,
-            hideBackgroundLayer: true,
-          ),
-        );
-      }
+    final String path = item.path.trim();
+    if (path.isNotEmpty) {
+      return _runWithSecurityScopedAccess<ProjectDocument?>(
+        item,
+        () => _repository.createDocumentFromImage(
+          path,
+          name: _preferredDocumentNameForDrop(item),
+          svgRasterSizePx: svgRasterSizePx,
+          hideBackgroundLayer: true,
+        ),
+      );
     }
     final Uint8List? bytes = await _readDropItemBytes(item);
     if (bytes == null) {
@@ -415,17 +412,15 @@ class _MisarinHomePageState extends State<MisarinHomePage> {
   }
 
   Future<Uint8List?> _readDropItemBytes(DropItem item) async {
-    if (!kIsWeb) {
-      final String path = item.path.trim();
-      if (path.isNotEmpty) {
-        return _runWithSecurityScopedAccess<Uint8List?>(item, () async {
-          final File file = File(path);
-          if (!await file.exists()) {
-            return null;
-          }
-          return file.readAsBytes();
-        });
-      }
+    final String path = item.path.trim();
+    if (path.isNotEmpty) {
+      return _runWithSecurityScopedAccess<Uint8List?>(item, () async {
+        final File file = File(path);
+        if (!await file.exists()) {
+          return null;
+        }
+        return file.readAsBytes();
+      });
     }
     try {
       return await item.readAsBytes();
@@ -462,8 +457,7 @@ class _MisarinHomePageState extends State<MisarinHomePage> {
     DropItem item,
     Future<T> Function() action,
   ) async {
-    if (kIsWeb ||
-        !Platform.isMacOS ||
+    if (!Platform.isMacOS ||
         item.extraAppleBookmark == null ||
         item.extraAppleBookmark!.isEmpty) {
       return action();

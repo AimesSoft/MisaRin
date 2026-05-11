@@ -5,9 +5,6 @@ Future<void> revealInFileManager(String projectPath) async {
   if (projectPath.isEmpty) {
     return;
   }
-  if (kIsWeb) {
-    return;
-  }
   final File file = File(projectPath);
   final Directory directory = file.parent;
   try {
@@ -39,9 +36,6 @@ Future<void> revealInFileManager(String projectPath) async {
 
 Future<void> revealDirectoryInFileManager(String directoryPath) async {
   if (directoryPath.isEmpty) {
-    return;
-  }
-  if (kIsWeb) {
     return;
   }
   final Directory directory = Directory(directoryPath);

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:misa_rin/utils/io_shim.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -10,7 +9,7 @@ class MobileExportPaths {
   static const String _androidExportKey = 'misa_rin.android_export_directory';
 
   static Future<String?> readAndroidExportDirectory() async {
-    if (kIsWeb || !Platform.isAndroid) {
+    if (!Platform.isAndroid) {
       return null;
     }
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -22,7 +21,7 @@ class MobileExportPaths {
   }
 
   static Future<void> writeAndroidExportDirectory(String? path) async {
-    if (kIsWeb || !Platform.isAndroid) {
+    if (!Platform.isAndroid) {
       return;
     }
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -37,9 +36,6 @@ class MobileExportPaths {
   static Future<String> resolveExportDirectory({
     bool useAndroidPreference = true,
   }) async {
-    if (kIsWeb) {
-      throw UnsupportedError('Export directory is not available on web.');
-    }
     if (useAndroidPreference && Platform.isAndroid) {
       final String? stored = await readAndroidExportDirectory();
       if (stored != null) {

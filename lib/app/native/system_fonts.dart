@@ -73,9 +73,6 @@ class SystemFonts {
   }
 
   static bool get _supportsNativeFonts {
-    if (kIsWeb) {
-      return false;
-    }
     return Platform.isMacOS || Platform.isWindows || Platform.isLinux;
   }
 

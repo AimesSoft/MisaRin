@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:misa_rin/utils/io_shim.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -26,15 +25,11 @@ class ProjectRepository {
   Directory? _projectDirectory;
   Directory? _autoSaveDirectory;
   RecentProjectsIndex? _recentIndex;
-  final _WebProjectStore? _webStore = kIsWeb ? _WebProjectStore() : null;
 
   static const String _folderName = 'MisaRin';
   static const String _autoSaveFolderName = 'autosaves';
 
   Future<Directory> _ensureProjectDirectory() async {
-    if (kIsWeb) {
-      throw UnsupportedError('Project directory is not available on web.');
-    }
     if (_projectDirectory != null) {
       return _projectDirectory!;
     }
@@ -49,9 +44,6 @@ class ProjectRepository {
   }
 
   Future<Directory> _ensureAutoSaveDirectory() async {
-    if (kIsWeb) {
-      throw UnsupportedError('Project directory is not available on web.');
-    }
     if (_autoSaveDirectory != null) {
       return _autoSaveDirectory!;
     }
@@ -102,9 +94,6 @@ class ProjectRepository {
   }
 
   Future<ProjectDocument> saveDocument(ProjectDocument document) async {
-    if (kIsWeb) {
-      return _saveDocumentOnWeb(document);
-    }
     final Directory directory = await _ensureAutoSaveDirectory();
     final String fileName = document.path == null
         ? _buildFileName(document)
@@ -125,9 +114,6 @@ class ProjectRepository {
     ProjectDocument document,
     String absolutePath,
   ) async {
-    if (kIsWeb) {
-      throw UnsupportedError('Web 当前不支持“另存为”本地项目文件。');
-    }
     await _ensureProjectDirectory();
     final File file = File(absolutePath);
     await file.parent.create(recursive: true);
@@ -142,9 +128,6 @@ class ProjectRepository {
   }
 
   Future<ProjectDocument> loadDocument(String path) async {
-    if (kIsWeb) {
-      return _loadDocumentOnWeb(path);
-    }
     await _ensureProjectDirectory();
     final File file = File(path);
     final Uint8List bytes = await file.readAsBytes();
@@ -156,22 +139,7 @@ class ProjectRepository {
     return document;
   }
 
-  Future<ProjectDocument> loadDocumentFromBytes(Uint8List bytes) async {
-    if (!kIsWeb) {
-      throw UnsupportedError('仅 Web 平台支持从字节流加载项目文件。');
-    }
-    final ProjectDocument decoded = ProjectBinaryCodec.decode(bytes);
-    final String fileName = _buildFileName(decoded);
-    final String virtualPath = _buildVirtualPath(fileName);
-    final ProjectDocument resolved = decoded.copyWith(path: virtualPath);
-    await _webStore!.write(virtualPath, resolved, lastOpened: DateTime.now());
-    return resolved;
-  }
-
   Future<List<ProjectSummary>> listRecentProjects() async {
-    if (kIsWeb) {
-      return _webStore!.listRecentProjects();
-    }
     final List<ProjectSummary> summaries = <ProjectSummary>[];
     await for (final ProjectSummary summary in streamRecentProjects()) {
       summaries.add(summary);
@@ -180,10 +148,6 @@ class ProjectRepository {
   }
 
   Stream<ProjectSummary> streamRecentProjects() async* {
-    if (kIsWeb) {
-      yield* _webStore!.streamRecentProjects();
-      return;
-    }
     await _ensureProjectDirectory();
     final List<_IndexedEntry> entries = await _loadIndexEntries();
     entries.sort((a, b) => b.lastOpened.compareTo(a.lastOpened));
@@ -208,9 +172,6 @@ class ProjectRepository {
   }
 
   Future<List<StoredProjectInfo>> listStoredProjects() async {
-    if (kIsWeb) {
-      return _webStore!.listStoredProjects();
-    }
     final List<StoredProjectInfo> items = <StoredProjectInfo>[];
     await for (final StoredProjectInfo info in streamStoredProjects()) {
       items.add(info);
@@ -220,10 +181,6 @@ class ProjectRepository {
   }
 
   Stream<StoredProjectInfo> streamStoredProjects() async* {
-    if (kIsWeb) {
-      yield* _webStore!.streamStoredProjects();
-      return;
-    }
     final Directory directory = await _ensureAutoSaveDirectory();
     await for (final FileSystemEntity entity in directory.list(
       recursive: false,
@@ -268,9 +225,6 @@ class ProjectRepository {
   }
 
   Future<int> autoSaveDirectorySizeBytes() async {
-    if (kIsWeb) {
-      return 0;
-    }
     final Directory directory = await _ensureAutoSaveDirectory();
     int total = 0;
     try {
@@ -293,9 +247,6 @@ class ProjectRepository {
   }
 
   Future<int> deleteAutoSavedProjects() async {
-    if (kIsWeb) {
-      return 0;
-    }
     final Directory directory = await _ensureAutoSaveDirectory();
     int deleted = 0;
     try {
@@ -319,10 +270,6 @@ class ProjectRepository {
   }
 
   Future<void> deleteProject(String path) async {
-    if (kIsWeb) {
-      await _webStore!.delete(path);
-      return;
-    }
     await _ensureProjectDirectory();
     final File file = File(path);
     if (await file.exists()) {
@@ -332,9 +279,6 @@ class ProjectRepository {
   }
 
   Future<List<_IndexedEntry>> _loadIndexEntries() async {
-    if (kIsWeb) {
-      return _webStore!.loadIndexEntries();
-    }
     final List<_IndexedEntry> entries = <_IndexedEntry>[];
     final List<RecentProjectRecord> raw =
         await (_recentIndex?.entries() ??
@@ -356,41 +300,15 @@ class ProjectRepository {
     return '${document.id}_$namePart.rin';
   }
 
-  String _buildVirtualPath(String fileName) {
-    return 'web_projects/$fileName';
-  }
-
-  Future<ProjectDocument> _saveDocumentOnWeb(ProjectDocument document) async {
-    final String fileName = document.path == null
-        ? _buildFileName(document)
-        : p.basename(document.path!);
-    final String virtualPath = document.path ?? _buildVirtualPath(fileName);
-    final ProjectDocument resolved = document.copyWith(
-      path: virtualPath,
-      updatedAt: DateTime.now(),
-    );
-    await _webStore!.write(virtualPath, resolved);
-    return resolved;
-  }
-
-  Future<ProjectDocument> _loadDocumentOnWeb(String path) async {
-    return _webStore!.read(path);
-  }
-
   Future<ProjectDocument> createDocumentFromSettings(
     CanvasSettings settings, {
     String name = '未命名项目',
   }) async {
-    if (!kIsWeb) {
-      await _ensureProjectDirectory();
-    }
+    await _ensureProjectDirectory();
     return ProjectDocument.newProject(settings: settings, name: name);
   }
 
   Future<ProjectDocument> importPsd(String path) async {
-    if (kIsWeb) {
-      throw UnsupportedError('Web 暂不支持导入 PSD 文件。');
-    }
     await _ensureProjectDirectory();
     const PsdImporter importer = PsdImporter();
     return importer.importFile(path);
@@ -408,9 +326,6 @@ class ProjectRepository {
   }
 
   Future<ProjectDocument> importSai2(String path) async {
-    if (kIsWeb) {
-      throw UnsupportedError('Web 暂不支持导入 SAI2 文件。');
-    }
     await _ensureProjectDirectory();
     const Sai2Importer importer = Sai2Importer();
     return importer.importFile(path);
@@ -431,9 +346,6 @@ class ProjectRepository {
     required ProjectDocument document,
     required String path,
   }) async {
-    if (kIsWeb) {
-      throw UnsupportedError('Web 暂不支持导出 PSD 文件。');
-    }
     const PsdExporter exporter = PsdExporter();
     await exporter.export(document, path);
   }
@@ -442,9 +354,6 @@ class ProjectRepository {
     required ProjectDocument document,
     required String path,
   }) async {
-    if (kIsWeb) {
-      throw UnsupportedError('Web 暂不支持导出 SAI2 文件。');
-    }
     const Sai2Exporter exporter = Sai2Exporter();
     await exporter.export(document, path);
   }
@@ -455,9 +364,6 @@ class ProjectRepository {
     int? svgRasterSizePx,
     bool hideBackgroundLayer = false,
   }) async {
-    if (kIsWeb) {
-      throw UnsupportedError('Web 暂不支持从本地路径读取图像。');
-    }
     await _ensureProjectDirectory();
     final File file = File(path);
     if (!await file.exists()) {
@@ -485,9 +391,7 @@ class ProjectRepository {
     int? svgRasterSizePx,
     bool hideBackgroundLayer = false,
   }) async {
-    if (!kIsWeb) {
-      await _ensureProjectDirectory();
-    }
+    await _ensureProjectDirectory();
     final _DecodedImage decoded = await _decodeImageBytes(
       bytes,
       svgRasterSizePx: svgRasterSizePx,
@@ -617,125 +521,4 @@ class StoredProjectInfo {
   final int fileSize;
   final DateTime lastModified;
   final ProjectSummary? summary;
-}
-
-class _WebProjectStore {
-  final Map<String, _WebStoredProject> _projects =
-      <String, _WebStoredProject>{};
-  final Map<String, DateTime> _recentEntries = <String, DateTime>{};
-
-  Future<void> write(
-    String path,
-    ProjectDocument document, {
-    DateTime? lastOpened,
-  }) async {
-    final DateTime updatedAt = document.updatedAt;
-    final Uint8List bytes = ProjectBinaryCodec.encode(document);
-    _projects[path] = _WebStoredProject(bytes: bytes, lastModified: updatedAt);
-    _touch(path, lastOpened ?? updatedAt);
-  }
-
-  Future<ProjectDocument> read(String path) async {
-    final _WebStoredProject? stored = _projects[path];
-    if (stored == null) {
-      throw Exception('未在当前浏览器会话中找到项目：$path');
-    }
-    final ProjectDocument document = ProjectBinaryCodec.decode(
-      stored.bytes,
-      path: path,
-    );
-    _touch(path, DateTime.now());
-    return document;
-  }
-
-  Future<void> delete(String path) async {
-    _projects.remove(path);
-    _recentEntries.remove(path);
-  }
-
-  Future<List<ProjectSummary>> listRecentProjects() async {
-    final List<ProjectSummary> summaries = <ProjectSummary>[];
-    await for (final ProjectSummary summary in streamRecentProjects()) {
-      summaries.add(summary);
-    }
-    return summaries;
-  }
-
-  Stream<ProjectSummary> streamRecentProjects() async* {
-    final List<_IndexedEntry> entries = await loadIndexEntries();
-    for (final _IndexedEntry entry in entries) {
-      final _WebStoredProject? stored = _projects[entry.path];
-      if (stored == null) {
-        continue;
-      }
-      try {
-        final ProjectSummary summary = ProjectBinaryCodec.decodeSummary(
-          stored.bytes,
-          path: entry.path,
-          lastOpened: entry.lastOpened,
-        );
-        yield summary;
-      } catch (_) {
-        // ignore malformed data
-      }
-    }
-  }
-
-  Future<List<StoredProjectInfo>> listStoredProjects() async {
-    final List<StoredProjectInfo> items = <StoredProjectInfo>[];
-    await for (final StoredProjectInfo info in streamStoredProjects()) {
-      items.add(info);
-    }
-    return items;
-  }
-
-  Stream<StoredProjectInfo> streamStoredProjects() async* {
-    final List<MapEntry<String, _WebStoredProject>> entries = _projects.entries
-        .toList(growable: false);
-    entries.sort(
-      (a, b) => b.value.lastModified.compareTo(a.value.lastModified),
-    );
-    for (final MapEntry<String, _WebStoredProject> entry in entries) {
-      final _WebStoredProject stored = entry.value;
-      ProjectSummary? summary;
-      String displayName = p.basename(entry.key);
-      try {
-        summary = ProjectBinaryCodec.decodeSummary(
-          stored.bytes,
-          path: entry.key,
-          lastOpened: stored.lastModified,
-        );
-        displayName = summary.name;
-      } catch (_) {
-        // ignore broken payloads, keep fallback name
-      }
-      yield StoredProjectInfo(
-        path: entry.key,
-        fileName: p.basename(entry.key),
-        displayName: displayName,
-        fileSize: stored.bytes.length,
-        lastModified: stored.lastModified,
-        summary: summary,
-      );
-    }
-  }
-
-  Future<List<_IndexedEntry>> loadIndexEntries() async {
-    final List<_IndexedEntry> entries = _recentEntries.entries
-        .map((entry) => _IndexedEntry(entry.key, entry.value))
-        .toList(growable: false);
-    entries.sort((a, b) => b.lastOpened.compareTo(a.lastOpened));
-    return entries;
-  }
-
-  void _touch(String path, DateTime timestamp) {
-    _recentEntries[path] = timestamp;
-  }
-}
-
-class _WebStoredProject {
-  const _WebStoredProject({required this.bytes, required this.lastModified});
-
-  final Uint8List bytes;
-  final DateTime lastModified;
 }

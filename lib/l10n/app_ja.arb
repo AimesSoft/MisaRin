@@ -1,7 +1,5 @@
 {
   "@@locale": "ja",
-  "webLoadingInitializingCanvas": "キャンバスを初期化しています…",
-  "webLoadingMayTakeTime": "Web 版の読み込みには少し時間がかかります。しばらくお待ちください。",
   "closeAppTitle": "アプリを終了",
   "unsavedProjectsWarning": "{count, plural, =1{未保存のプロジェクトが 1 件あります。今終了すると、最新の変更が失われます。} other{未保存のプロジェクトが {count} 件あります。今終了すると、最新の変更が失われます。}}",
   "@unsavedProjectsWarning": {
@@ -77,8 +75,6 @@
       "error": {}
     }
   },
-  "webPreparingCanvasTitle": "キャンバスを準備しています…",
-  "webPreparingCanvasMessage": "Web 版の初期化には少し時間がかかります。しばらくお待ちください。",
   "aboutTitle": "Misa Rin について",
   "aboutDescription": "Misa Rin は、創作とプロジェクト管理に特化したアプリです。スムーズな描画体験と信頼できるプロジェクト保存機能を提供します。",
   "aboutAppIdLabel": "アプリ ID",
@@ -779,14 +775,6 @@
   "paletteDefaultName": "パレット",
   "paletteEmptyExport": "このパレットには書き出し可能な色がありません。",
   "exportPaletteTitle": "パレットを書き出し",
-  "webDownloadDesc": "ブラウザはデフォルトのダウンロードディレクトリにパレットを保存します。",
-  "download": "ダウンロード",
-  "paletteDownloaded": "パレットをダウンロードしました: {name}",
-  "@paletteDownloaded": {
-    "placeholders": {
-      "name": {}
-    }
-  },
   "paletteExported": "パレットを {path} に書き出しました",
   "@paletteExported": {
     "placeholders": {
@@ -891,7 +879,6 @@
   },
   "canvasNotReadySave": "キャンバスの準備ができていないため保存できません。",
   "saveProjectAs": "プロジェクトを別名で保存",
-  "webSaveDesc": "プロジェクトファイルをデバイスにダウンロードします。",
   "psdExported": "PSD を {path} に書き出しました",
   "@psdExported": {
     "placeholders": {
@@ -929,14 +916,6 @@
   "@exportFileTitle": {
     "placeholders": {
       "extension": {}
-    }
-  },
-  "webExportDesc": "書き出した画像をデバイスにダウンロードします。",
-  "fileDownloaded": "{extension} ファイルをダウンロードしました: {name}",
-  "@fileDownloaded": {
-    "placeholders": {
-      "extension": {},
-      "name": {}
     }
   },
   "fileExported": "ファイルを {path} に書き出しました",

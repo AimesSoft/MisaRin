@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/widgets.dart'
     show StatefulElement, State, StatefulWidget;
 import 'package:image_picker/image_picker.dart';
@@ -52,7 +52,7 @@ class AppMenuActions {
       _applyWorkspacePreset(config.workspacePreset);
       ProjectDocument document = await ProjectRepository.instance
           .createDocumentFromSettings(config.settings, name: config.name);
-      if (!kIsWeb && CanvasBackendFacade.instance.isSupported) {
+      if (CanvasBackendFacade.instance.isSupported) {
         unawaited(
           BackendCanvasSurface.prewarm(
             surfaceKey: document.id,
@@ -184,9 +184,6 @@ class AppMenuActions {
   }
 
   static bool _shouldPromptImageSource() {
-    if (kIsWeb) {
-      return false;
-    }
     final TargetPlatform platform = defaultTargetPlatform;
     return platform == TargetPlatform.iOS || platform == TargetPlatform.android;
   }
@@ -326,10 +323,7 @@ class AppMenuActions {
       }
       try {
         final ProjectDocument document =
-            await _runWithWebProgress<ProjectDocument>(
-              context,
-              title: l10n.openingProjectTitle,
-              message: l10n.openingProjectMessage(picked.name),
+            await _runProjectOpenAction<ProjectDocument>(
               action: () async {
                 final String name = p.basenameWithoutExtension(picked.name);
                 return ProjectRepository.instance.createDocumentFromImage(
@@ -378,13 +372,12 @@ class AppMenuActions {
         'svg',
         'avif',
       ],
-      withData: kIsWeb,
     );
     final PlatformFile? file = result?.files.singleOrNull;
     if (file == null || !context.mounted) {
       return;
     }
-    final String? path = kIsWeb ? null : file.path;
+    final String? path = file.path;
     final Uint8List? bytes = file.bytes;
     if (path == null && bytes == null) {
       return;
@@ -402,13 +395,10 @@ class AppMenuActions {
     }
     try {
       final ProjectDocument document =
-          await _runWithWebProgress<ProjectDocument>(
-            context,
-            title: l10n.openingProjectTitle,
-            message: l10n.openingProjectMessage(file.name),
+          await _runProjectOpenAction<ProjectDocument>(
             action: () async {
               if (extension == '.psd') {
-                if (path != null && !kIsWeb) {
+                if (path != null) {
                   return ProjectRepository.instance.importPsd(path);
                 } else if (bytes != null) {
                   return ProjectRepository.instance.importPsdFromBytes(
@@ -419,7 +409,7 @@ class AppMenuActions {
                 throw Exception(l10n.cannotReadPsdContent);
               }
               if (extension == '.sai2') {
-                if (path != null && !kIsWeb) {
+                if (path != null) {
                   return ProjectRepository.instance.importSai2(path);
                 } else if (bytes != null) {
                   return ProjectRepository.instance.importSai2FromBytes(
@@ -436,7 +426,7 @@ class AppMenuActions {
                   extension == '.svg' ||
                   extension == '.avif') {
                 final String name = p.basenameWithoutExtension(file.name);
-                if (path != null && !kIsWeb) {
+                if (path != null) {
                   return ProjectRepository.instance.createDocumentFromImage(
                     path,
                     name: name,
@@ -453,11 +443,8 @@ class AppMenuActions {
                 }
                 throw Exception(l10n.cannotReadProjectFileContent);
               }
-              if (path != null && !kIsWeb) {
+              if (path != null) {
                 return ProjectRepository.instance.loadDocument(path);
-              }
-              if (bytes != null) {
-                return ProjectRepository.instance.loadDocumentFromBytes(bytes);
               }
               throw Exception(l10n.cannotReadProjectFileContent);
             },
@@ -568,7 +555,6 @@ class AppMenuActions {
         'webp',
         'svg',
       ],
-      withData: kIsWeb,
     );
     final PlatformFile? file = result?.files.singleOrNull;
     if (file == null || !context.mounted) {
@@ -585,13 +571,13 @@ class AppMenuActions {
         return;
       }
     }
-    final String? path = kIsWeb ? null : file.path;
+    final String? path = file.path;
     final Uint8List? bytes = file.bytes;
     if (path == null && bytes == null) {
       return;
     }
     try {
-      final ProjectDocument document = path != null && !kIsWeb
+      final ProjectDocument document = path != null
           ? await ProjectRepository.instance.createDocumentFromImage(
               path,
               name: file.name,
@@ -682,18 +668,6 @@ class AppMenuActions {
     BuildContext context,
     ProjectDocument document,
   ) async {
-    OverlayEntry? loadingOverlay;
-    void hideLoadingOverlay() {
-      if (loadingOverlay == null) {
-        return;
-      }
-      loadingOverlay!.remove();
-      loadingOverlay = null;
-    }
-
-    if (kIsWeb) {
-      loadingOverlay = _showWebCanvasLoadingOverlay(context);
-    }
     final CanvasPageState? canvasState = () {
       final CanvasPageState? ancestor = context
           .findAncestorStateOfType<CanvasPageState>();
@@ -708,7 +682,7 @@ class AppMenuActions {
       }
       return null;
     }();
-    if (!kIsWeb && CanvasBackendFacade.instance.isSupported) {
+    if (CanvasBackendFacade.instance.isSupported) {
       try {
         await BackendCanvasSurface.prewarm(
           surfaceKey: document.id,
@@ -718,26 +692,19 @@ class AppMenuActions {
         );
       } catch (_) {}
     }
-    try {
-      if (canvasState != null) {
-        await canvasState.openDocument(document);
-      } else {
-        if (!context.mounted) {
-          return;
-        }
-        await Navigator.of(context).push(
-          PageRouteBuilder<void>(
-            pageBuilder: (_, __, ___) => CanvasPage(
-              document: document,
-              onInitialBoardReady: kIsWeb ? hideLoadingOverlay : null,
-            ),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
-        );
+    if (canvasState != null) {
+      await canvasState.openDocument(document);
+    } else {
+      if (!context.mounted) {
+        return;
       }
-    } finally {
-      hideLoadingOverlay();
+      await Navigator.of(context).push(
+        PageRouteBuilder<void>(
+          pageBuilder: (_, __, ___) => CanvasPage(document: document),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
     }
   }
 
@@ -749,111 +716,9 @@ class AppMenuActions {
     AppNotifications.show(context, message: message, severity: severity);
   }
 
-  static Future<T> _runWithWebProgress<T>(
-    BuildContext context, {
+  static Future<T> _runProjectOpenAction<T>({
     required Future<T> Function() action,
-    required String title,
-    String? message,
   }) async {
-    if (!context.mounted || !kIsWeb) {
-      return action();
-    }
-    final OverlayState? overlay = Overlay.of(context, rootOverlay: true);
-    if (overlay == null) {
-      return action();
-    }
-    final OverlayEntry entry = OverlayEntry(
-      builder: (context) => AbsorbPointer(
-        absorbing: true,
-        child: _WebProgressOverlay(title: title, message: message),
-      ),
-    );
-    overlay.insert(entry);
-    // Give Flutter a frame to render the overlay before running heavy tasks.
-    await Future<void>.delayed(Duration.zero);
-    try {
-      return await action();
-    } finally {
-      entry.remove();
-    }
-  }
-
-  static OverlayEntry? _showWebCanvasLoadingOverlay(BuildContext context) {
-    if (!context.mounted) {
-      return null;
-    }
-    final OverlayState? overlay = Overlay.of(context, rootOverlay: true);
-    if (overlay == null) {
-      return null;
-    }
-    final l10n = context.l10n;
-    final OverlayEntry entry = OverlayEntry(
-      builder: (context) => _WebProgressOverlay(
-        title: l10n.webPreparingCanvasTitle,
-        message: l10n.webPreparingCanvasMessage,
-      ),
-    );
-    overlay.insert(entry);
-    return entry;
-  }
-}
-
-class _WebProgressOverlay extends StatelessWidget {
-  const _WebProgressOverlay({required this.title, this.message});
-
-  final String title;
-  final String? message;
-
-  @override
-  Widget build(BuildContext context) {
-    final FluentThemeData theme = FluentTheme.of(context);
-    final Color overlayColor = theme.micaBackgroundColor.withOpacity(0.65);
-    return Stack(
-      children: [
-        Positioned.fill(child: ColoredBox(color: overlayColor)),
-        Positioned.fill(
-          child: Center(
-            child: Container(
-              width: 360,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              decoration: BoxDecoration(
-                color: theme.cardColor,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x33000000),
-                    blurRadius: 32,
-                    offset: Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: theme.typography.subtitle,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  const ProgressBar(),
-                  if (message != null) ...[
-                    const SizedBox(height: 12),
-                    Opacity(
-                      opacity: 0.8,
-                      child: Text(
-                        message!,
-                        style: theme.typography.body,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+    return action();
   }
 }

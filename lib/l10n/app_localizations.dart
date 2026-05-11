@@ -104,18 +104,6 @@ abstract class AppLocalizations {
     Locale('zh', 'TW'),
   ];
 
-  /// No description provided for @webLoadingInitializingCanvas.
-  ///
-  /// In en, this message translates to:
-  /// **'Initializing canvas…'**
-  String get webLoadingInitializingCanvas;
-
-  /// No description provided for @webLoadingMayTakeTime.
-  ///
-  /// In en, this message translates to:
-  /// **'Loading on web may take a moment. Please wait.'**
-  String get webLoadingMayTakeTime;
-
   /// No description provided for @closeAppTitle.
   ///
   /// In en, this message translates to:
@@ -313,18 +301,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to import clipboard image: {error}'**
   String importClipboardImageFailed(Object error);
-
-  /// No description provided for @webPreparingCanvasTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Preparing canvas…'**
-  String get webPreparingCanvasTitle;
-
-  /// No description provided for @webPreparingCanvasMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Initializing on web may take a moment. Please wait.'**
-  String get webPreparingCanvasMessage;
 
   /// No description provided for @aboutTitle.
   ///
@@ -3428,24 +3404,6 @@ abstract class AppLocalizations {
   /// **'Export Palette'**
   String get exportPaletteTitle;
 
-  /// No description provided for @webDownloadDesc.
-  ///
-  /// In en, this message translates to:
-  /// **'Browser will save palette to default download directory.'**
-  String get webDownloadDesc;
-
-  /// No description provided for @download.
-  ///
-  /// In en, this message translates to:
-  /// **'Download'**
-  String get download;
-
-  /// No description provided for @paletteDownloaded.
-  ///
-  /// In en, this message translates to:
-  /// **'Palette downloaded: {name}'**
-  String paletteDownloaded(Object name);
-
   /// No description provided for @paletteExported.
   ///
   /// In en, this message translates to:
@@ -3860,12 +3818,6 @@ abstract class AppLocalizations {
   /// **'Save Project As'**
   String get saveProjectAs;
 
-  /// No description provided for @webSaveDesc.
-  ///
-  /// In en, this message translates to:
-  /// **'Download the project file to your device.'**
-  String get webSaveDesc;
-
   /// No description provided for @psdExported.
   ///
   /// In en, this message translates to:
@@ -3919,18 +3871,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export {extension} File'**
   String exportFileTitle(Object extension);
-
-  /// No description provided for @webExportDesc.
-  ///
-  /// In en, this message translates to:
-  /// **'Download the exported image to your device.'**
-  String get webExportDesc;
-
-  /// No description provided for @fileDownloaded.
-  ///
-  /// In en, this message translates to:
-  /// **'{extension} file downloaded: {name}'**
-  String fileDownloaded(Object extension, Object name);
 
   /// No description provided for @fileExported.
   ///

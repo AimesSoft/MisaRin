@@ -1,7 +1,5 @@
 {
   "@@locale": "en",
-  "webLoadingInitializingCanvas": "Initializing canvas…",
-  "webLoadingMayTakeTime": "Loading on web may take a moment. Please wait.",
   "closeAppTitle": "Quit App",
   "unsavedProjectsWarning": "{count, plural, =1{Detected 1 unsaved project. If you quit now, your recent changes will be lost.} other{Detected {count} unsaved projects. If you quit now, your recent changes will be lost.}}",
   "@unsavedProjectsWarning": {
@@ -75,8 +73,6 @@
       "error": {}
     }
   },
-  "webPreparingCanvasTitle": "Preparing canvas…",
-  "webPreparingCanvasMessage": "Initializing on web may take a moment. Please wait.",
   "aboutTitle": "About Misa Rin",
   "aboutDescription": "Misa Rin is an app focused on creative drawing and project management, designed to provide creators with a smooth painting experience and reliable project archiving.",
   "aboutAppIdLabel": "App ID",
@@ -777,14 +773,6 @@
   "paletteDefaultName": "Palette",
   "paletteEmptyExport": "This palette has no exportable colors.",
   "exportPaletteTitle": "Export Palette",
-  "webDownloadDesc": "Browser will save palette to default download directory.",
-  "download": "Download",
-  "paletteDownloaded": "Palette downloaded: {name}",
-  "@paletteDownloaded": {
-    "placeholders": {
-      "name": {}
-    }
-  },
   "paletteExported": "Palette exported to {path}",
   "@paletteExported": {
     "placeholders": {
@@ -889,7 +877,6 @@
   },
   "canvasNotReadySave": "Canvas is not ready to save.",
   "saveProjectAs": "Save Project As",
-  "webSaveDesc": "Download the project file to your device.",
   "psdExported": "PSD exported to {path}",
   "@psdExported": {
     "placeholders": {
@@ -927,14 +914,6 @@
   "@exportFileTitle": {
     "placeholders": {
       "extension": {}
-    }
-  },
-  "webExportDesc": "Download the exported image to your device.",
-  "fileDownloaded": "{extension} file downloaded: {name}",
-  "@fileDownloaded": {
-    "placeholders": {
-      "extension": {},
-      "name": {}
     }
   },
   "fileExported": "File exported to {path}",

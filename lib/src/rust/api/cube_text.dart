@@ -6,396 +6,285 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `add_side_loop`, `add_triangle`, `append_loop_for_triangulation`, `append_text_materials`, `apply_normal`, `apply`, `base64_encode`, `bounds_center`, `build_glb`, `build_scene`, `build_text_mesh`, `clean_loop`, `compute_bounds3`, `contours_to_shapes`, `convert_ttf_to_font_json`, `create_outline_shapes`, `cross3`, `cross`, `cubic_point`, `distance2`, `ensure_orientation`, `export_gltf`, `export_obj`, `export_stl`, `extrude_shapes`, `finish_contour`, `font_name`, `font_names_json`, `from_options`, `glyph_json_for_ttf_glyph`, `layout_text_shapes`, `line_intersection`, `local_p3`, `material_base_color`, `new`, `new`, `normal_at`, `normalize3`, `normalize`, `offset_polygon_miter`, `outward_normal`, `p2_from_point`, `p2_zero`, `p3_zero`, `pad4`, `parse_color`, `parse_glyph_contours`, `parse_number`, `placeholder_shapes`, `point_in_polygon`, `point_in_shape`, `point_in_triangle`, `polygon_area`, `push_f32_buffer`, `push_point`, `push_u32_buffer`, `quadratic_point`, `rotate`, `round_f64`, `sample_point`, `shapes_bounds`, `shapes_from_glyph_outline`, `side_material_slot`, `sub3`, `triangulate_shape`, `triangulate_simple_polygon`, `uv_for_point`, `vertex_at`
+
+            // These functions are ignored because they are not marked as `pub`: `add_side_loop`, `add_triangle`, `append_loop_for_triangulation`, `append_text_materials`, `apply_normal`, `apply`, `base64_encode`, `bounds_center`, `build_glb`, `build_scene`, `build_text_mesh`, `clean_loop`, `compute_bounds3`, `contours_to_shapes`, `convert_ttf_to_font_json`, `create_outline_shapes`, `cross3`, `cross`, `cubic_point`, `distance2`, `ensure_orientation`, `export_gltf`, `export_obj`, `export_stl`, `extrude_shapes`, `finish_contour`, `font_name`, `font_names_json`, `from_options`, `glyph_json_for_ttf_glyph`, `layout_text_shapes`, `line_intersection`, `local_p3`, `material_base_color`, `new`, `new`, `normal_at`, `normalize3`, `normalize`, `offset_polygon_miter`, `outward_normal`, `p2_from_point`, `p2_zero`, `p3_zero`, `pad4`, `parse_color`, `parse_glyph_contours`, `parse_number`, `placeholder_shapes`, `point_in_polygon`, `point_in_shape`, `point_in_triangle`, `polygon_area`, `push_f32_buffer`, `push_point`, `push_u32_buffer`, `quadratic_point`, `rotate`, `round_f64`, `sample_point`, `shapes_bounds`, `shapes_from_glyph_outline`, `side_material_slot`, `sub3`, `triangulate_shape`, `triangulate_simple_polygon`, `uv_for_point`, `vertex_at`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Bounds2D`, `Bounds3D`, `ContourInfo`, `FaceTypeOutlineBuilder`, `FontJson`, `GlyphJson`, `MeshBuilder`, `P2`, `P3`, `Shape2D`, `TextTransform`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `close`, `curve_to`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `line_to`, `move_to`, `quad_to`
 
-Future<CubeTextScene> cubeTextBuildScene({
-  required List<CubeTextFontAsset> fonts,
-  required String globalFontId,
-  required List<CubeTextObject> texts,
-}) => RustLib.instance.api.crateApiCubeTextCubeTextBuildScene(
-  fonts: fonts,
-  globalFontId: globalFontId,
-  texts: texts,
-);
 
-Future<CubeTextExportResult> cubeTextExportScene({
-  required List<CubeTextFontAsset> fonts,
-  required String globalFontId,
-  required List<CubeTextObject> texts,
-  required String format,
-}) => RustLib.instance.api.crateApiCubeTextCubeTextExportScene(
-  fonts: fonts,
-  globalFontId: globalFontId,
-  texts: texts,
-  format: format,
-);
+            Future<CubeTextScene>  cubeTextBuildScene({required List<CubeTextFontAsset> fonts , required String globalFontId , required List<CubeTextObject> texts }) => RustLib.instance.api.crateApiCubeTextCubeTextBuildScene(fonts: fonts, globalFontId: globalFontId, texts: texts);
 
-Future<CubeTextFontConvertResult> cubeTextConvertTtfToFontJson({
-  required List<int> bytes,
-}) => RustLib.instance.api.crateApiCubeTextCubeTextConvertTtfToFontJson(
-  bytes: bytes,
-);
+Future<CubeTextExportResult>  cubeTextExportScene({required List<CubeTextFontAsset> fonts , required String globalFontId , required List<CubeTextObject> texts , required String format }) => RustLib.instance.api.crateApiCubeTextCubeTextExportScene(fonts: fonts, globalFontId: globalFontId, texts: texts, format: format);
 
-class CubeTextExportResult {
-  final String fileName;
-  final String mimeType;
-  final Uint8List bytes;
-  final List<String> warnings;
+Future<CubeTextFontConvertResult>  cubeTextConvertTtfToFontJson({required List<int> bytes }) => RustLib.instance.api.crateApiCubeTextCubeTextConvertTtfToFontJson(bytes: bytes);
 
-  const CubeTextExportResult({
-    required this.fileName,
-    required this.mimeType,
-    required this.bytes,
-    required this.warnings,
-  });
+            class CubeTextExportResult  {
+                final String fileName;
+final String mimeType;
+final Uint8List bytes;
+final List<String> warnings;
 
-  static Future<CubeTextExportResult> default_() =>
-      RustLib.instance.api.crateApiCubeTextCubeTextExportResultDefault();
+                const CubeTextExportResult({required this.fileName ,required this.mimeType ,required this.bytes ,required this.warnings ,});
 
-  @override
-  int get hashCode =>
-      fileName.hashCode ^
-      mimeType.hashCode ^
-      bytes.hashCode ^
-      warnings.hashCode;
+                static Future<CubeTextExportResult>  default_()=>RustLib.instance.api.crateApiCubeTextCubeTextExportResultDefault();
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CubeTextExportResult &&
-          runtimeType == other.runtimeType &&
-          fileName == other.fileName &&
-          mimeType == other.mimeType &&
-          bytes == other.bytes &&
-          warnings == other.warnings;
-}
 
-class CubeTextFontAsset {
-  final String id;
-  final String json;
+                
 
-  const CubeTextFontAsset({required this.id, required this.json});
+                
+        @override
+        int get hashCode => fileName.hashCode^mimeType.hashCode^bytes.hashCode^warnings.hashCode;
+        
 
-  static Future<CubeTextFontAsset> default_() =>
-      RustLib.instance.api.crateApiCubeTextCubeTextFontAssetDefault();
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CubeTextExportResult &&
+                runtimeType == other.runtimeType
+                && fileName == other.fileName&& mimeType == other.mimeType&& bytes == other.bytes&& warnings == other.warnings;
+        
+            }
 
-  @override
-  int get hashCode => id.hashCode ^ json.hashCode;
+class CubeTextFontAsset  {
+                final String id;
+final String json;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CubeTextFontAsset &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          json == other.json;
-}
+                const CubeTextFontAsset({required this.id ,required this.json ,});
 
-class CubeTextFontConvertResult {
-  final String fontId;
-  final String json;
+                static Future<CubeTextFontAsset>  default_()=>RustLib.instance.api.crateApiCubeTextCubeTextFontAssetDefault();
 
-  const CubeTextFontConvertResult({required this.fontId, required this.json});
 
-  static Future<CubeTextFontConvertResult> default_() =>
-      RustLib.instance.api.crateApiCubeTextCubeTextFontConvertResultDefault();
+                
 
-  @override
-  int get hashCode => fontId.hashCode ^ json.hashCode;
+                
+        @override
+        int get hashCode => id.hashCode^json.hashCode;
+        
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CubeTextFontConvertResult &&
-          runtimeType == other.runtimeType &&
-          fontId == other.fontId &&
-          json == other.json;
-}
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CubeTextFontAsset &&
+                runtimeType == other.runtimeType
+                && id == other.id&& json == other.json;
+        
+            }
 
-class CubeTextMaterialOption {
-  final String mode;
-  final String color;
-  final String colorGradualStart;
-  final String colorGradualEnd;
-  final double repeat;
-  final double offset;
-  final String image;
-  final double repeatX;
-  final double repeatY;
-  final double offsetX;
-  final double offsetY;
+class CubeTextFontConvertResult  {
+                final String fontId;
+final String json;
 
-  const CubeTextMaterialOption({
-    required this.mode,
-    required this.color,
-    required this.colorGradualStart,
-    required this.colorGradualEnd,
-    required this.repeat,
-    required this.offset,
-    required this.image,
-    required this.repeatX,
-    required this.repeatY,
-    required this.offsetX,
-    required this.offsetY,
-  });
+                const CubeTextFontConvertResult({required this.fontId ,required this.json ,});
 
-  static Future<CubeTextMaterialOption> default_() =>
-      RustLib.instance.api.crateApiCubeTextCubeTextMaterialOptionDefault();
+                static Future<CubeTextFontConvertResult>  default_()=>RustLib.instance.api.crateApiCubeTextCubeTextFontConvertResultDefault();
 
-  @override
-  int get hashCode =>
-      mode.hashCode ^
-      color.hashCode ^
-      colorGradualStart.hashCode ^
-      colorGradualEnd.hashCode ^
-      repeat.hashCode ^
-      offset.hashCode ^
-      image.hashCode ^
-      repeatX.hashCode ^
-      repeatY.hashCode ^
-      offsetX.hashCode ^
-      offsetY.hashCode;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CubeTextMaterialOption &&
-          runtimeType == other.runtimeType &&
-          mode == other.mode &&
-          color == other.color &&
-          colorGradualStart == other.colorGradualStart &&
-          colorGradualEnd == other.colorGradualEnd &&
-          repeat == other.repeat &&
-          offset == other.offset &&
-          image == other.image &&
-          repeatX == other.repeatX &&
-          repeatY == other.repeatY &&
-          offsetX == other.offsetX &&
-          offsetY == other.offsetY;
-}
+                
 
-class CubeTextMaterials {
-  final CubeTextMaterialOption front;
-  final CubeTextMaterialOption back;
-  final CubeTextMaterialOption up;
-  final CubeTextMaterialOption down;
-  final CubeTextMaterialOption left;
-  final CubeTextMaterialOption right;
-  final CubeTextMaterialOption outline;
+                
+        @override
+        int get hashCode => fontId.hashCode^json.hashCode;
+        
 
-  const CubeTextMaterials({
-    required this.front,
-    required this.back,
-    required this.up,
-    required this.down,
-    required this.left,
-    required this.right,
-    required this.outline,
-  });
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CubeTextFontConvertResult &&
+                runtimeType == other.runtimeType
+                && fontId == other.fontId&& json == other.json;
+        
+            }
 
-  static Future<CubeTextMaterials> default_() =>
-      RustLib.instance.api.crateApiCubeTextCubeTextMaterialsDefault();
+class CubeTextMaterialOption  {
+                final String mode;
+final String color;
+final String colorGradualStart;
+final String colorGradualEnd;
+final double repeat;
+final double offset;
+final String image;
+final double repeatX;
+final double repeatY;
+final double offsetX;
+final double offsetY;
 
-  @override
-  int get hashCode =>
-      front.hashCode ^
-      back.hashCode ^
-      up.hashCode ^
-      down.hashCode ^
-      left.hashCode ^
-      right.hashCode ^
-      outline.hashCode;
+                const CubeTextMaterialOption({required this.mode ,required this.color ,required this.colorGradualStart ,required this.colorGradualEnd ,required this.repeat ,required this.offset ,required this.image ,required this.repeatX ,required this.repeatY ,required this.offsetX ,required this.offsetY ,});
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CubeTextMaterials &&
-          runtimeType == other.runtimeType &&
-          front == other.front &&
-          back == other.back &&
-          up == other.up &&
-          down == other.down &&
-          left == other.left &&
-          right == other.right &&
-          outline == other.outline;
-}
+                static Future<CubeTextMaterialOption>  default_()=>RustLib.instance.api.crateApiCubeTextCubeTextMaterialOptionDefault();
 
-class CubeTextObject {
-  final String content;
-  final String fontId;
-  final CubeTextOptions opts;
 
-  const CubeTextObject({
-    required this.content,
-    required this.fontId,
-    required this.opts,
-  });
+                
 
-  static Future<CubeTextObject> default_() =>
-      RustLib.instance.api.crateApiCubeTextCubeTextObjectDefault();
+                
+        @override
+        int get hashCode => mode.hashCode^color.hashCode^colorGradualStart.hashCode^colorGradualEnd.hashCode^repeat.hashCode^offset.hashCode^image.hashCode^repeatX.hashCode^repeatY.hashCode^offsetX.hashCode^offsetY.hashCode;
+        
 
-  @override
-  int get hashCode => content.hashCode ^ fontId.hashCode ^ opts.hashCode;
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CubeTextMaterialOption &&
+                runtimeType == other.runtimeType
+                && mode == other.mode&& color == other.color&& colorGradualStart == other.colorGradualStart&& colorGradualEnd == other.colorGradualEnd&& repeat == other.repeat&& offset == other.offset&& image == other.image&& repeatX == other.repeatX&& repeatY == other.repeatY&& offsetX == other.offsetX&& offsetY == other.offsetY;
+        
+            }
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CubeTextObject &&
-          runtimeType == other.runtimeType &&
-          content == other.content &&
-          fontId == other.fontId &&
-          opts == other.opts;
-}
+class CubeTextMaterials  {
+                final CubeTextMaterialOption front;
+final CubeTextMaterialOption back;
+final CubeTextMaterialOption up;
+final CubeTextMaterialOption down;
+final CubeTextMaterialOption left;
+final CubeTextMaterialOption right;
+final CubeTextMaterialOption outline;
 
-class CubeTextOptions {
-  final double size;
-  final double depth;
-  final double x;
-  final double y;
-  final double z;
-  final double rotY;
-  final double rotX;
-  final double rotZ;
-  final double outlineWidth;
-  final double letterSpacing;
-  final double spacingWidth;
-  final String overlay;
-  final CubeTextMaterials materials;
+                const CubeTextMaterials({required this.front ,required this.back ,required this.up ,required this.down ,required this.left ,required this.right ,required this.outline ,});
 
-  const CubeTextOptions({
-    required this.size,
-    required this.depth,
-    required this.x,
-    required this.y,
-    required this.z,
-    required this.rotY,
-    required this.rotX,
-    required this.rotZ,
-    required this.outlineWidth,
-    required this.letterSpacing,
-    required this.spacingWidth,
-    required this.overlay,
-    required this.materials,
-  });
+                static Future<CubeTextMaterials>  default_()=>RustLib.instance.api.crateApiCubeTextCubeTextMaterialsDefault();
 
-  static Future<CubeTextOptions> default_() =>
-      RustLib.instance.api.crateApiCubeTextCubeTextOptionsDefault();
 
-  @override
-  int get hashCode =>
-      size.hashCode ^
-      depth.hashCode ^
-      x.hashCode ^
-      y.hashCode ^
-      z.hashCode ^
-      rotY.hashCode ^
-      rotX.hashCode ^
-      rotZ.hashCode ^
-      outlineWidth.hashCode ^
-      letterSpacing.hashCode ^
-      spacingWidth.hashCode ^
-      overlay.hashCode ^
-      materials.hashCode;
+                
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CubeTextOptions &&
-          runtimeType == other.runtimeType &&
-          size == other.size &&
-          depth == other.depth &&
-          x == other.x &&
-          y == other.y &&
-          z == other.z &&
-          rotY == other.rotY &&
-          rotX == other.rotX &&
-          rotZ == other.rotZ &&
-          outlineWidth == other.outlineWidth &&
-          letterSpacing == other.letterSpacing &&
-          spacingWidth == other.spacingWidth &&
-          overlay == other.overlay &&
-          materials == other.materials;
-}
+                
+        @override
+        int get hashCode => front.hashCode^back.hashCode^up.hashCode^down.hashCode^left.hashCode^right.hashCode^outline.hashCode;
+        
 
-class CubeTextScene {
-  final Float32List positions;
-  final Float32List normals;
-  final Float32List uvs;
-  final Uint32List indices;
-  final Int32List materialIndices;
-  final List<CubeTextSceneMaterial> materials;
-  final Float32List boundsMin;
-  final Float32List boundsMax;
-  final List<String> warnings;
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CubeTextMaterials &&
+                runtimeType == other.runtimeType
+                && front == other.front&& back == other.back&& up == other.up&& down == other.down&& left == other.left&& right == other.right&& outline == other.outline;
+        
+            }
 
-  const CubeTextScene({
-    required this.positions,
-    required this.normals,
-    required this.uvs,
-    required this.indices,
-    required this.materialIndices,
-    required this.materials,
-    required this.boundsMin,
-    required this.boundsMax,
-    required this.warnings,
-  });
+class CubeTextObject  {
+                final String content;
+final String fontId;
+final CubeTextOptions opts;
 
-  static Future<CubeTextScene> default_() =>
-      RustLib.instance.api.crateApiCubeTextCubeTextSceneDefault();
+                const CubeTextObject({required this.content ,required this.fontId ,required this.opts ,});
 
-  @override
-  int get hashCode =>
-      positions.hashCode ^
-      normals.hashCode ^
-      uvs.hashCode ^
-      indices.hashCode ^
-      materialIndices.hashCode ^
-      materials.hashCode ^
-      boundsMin.hashCode ^
-      boundsMax.hashCode ^
-      warnings.hashCode;
+                static Future<CubeTextObject>  default_()=>RustLib.instance.api.crateApiCubeTextCubeTextObjectDefault();
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CubeTextScene &&
-          runtimeType == other.runtimeType &&
-          positions == other.positions &&
-          normals == other.normals &&
-          uvs == other.uvs &&
-          indices == other.indices &&
-          materialIndices == other.materialIndices &&
-          materials == other.materials &&
-          boundsMin == other.boundsMin &&
-          boundsMax == other.boundsMax &&
-          warnings == other.warnings;
-}
 
-class CubeTextSceneMaterial {
-  final String name;
-  final String slot;
-  final CubeTextMaterialOption option;
+                
 
-  const CubeTextSceneMaterial({
-    required this.name,
-    required this.slot,
-    required this.option,
-  });
+                
+        @override
+        int get hashCode => content.hashCode^fontId.hashCode^opts.hashCode;
+        
 
-  static Future<CubeTextSceneMaterial> default_() =>
-      RustLib.instance.api.crateApiCubeTextCubeTextSceneMaterialDefault();
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CubeTextObject &&
+                runtimeType == other.runtimeType
+                && content == other.content&& fontId == other.fontId&& opts == other.opts;
+        
+            }
 
-  @override
-  int get hashCode => name.hashCode ^ slot.hashCode ^ option.hashCode;
+class CubeTextOptions  {
+                final double size;
+final double depth;
+final double x;
+final double y;
+final double z;
+final double rotY;
+final double rotX;
+final double rotZ;
+final double outlineWidth;
+final double letterSpacing;
+final double spacingWidth;
+final String overlay;
+final CubeTextMaterials materials;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CubeTextSceneMaterial &&
-          runtimeType == other.runtimeType &&
-          name == other.name &&
-          slot == other.slot &&
-          option == other.option;
-}
+                const CubeTextOptions({required this.size ,required this.depth ,required this.x ,required this.y ,required this.z ,required this.rotY ,required this.rotX ,required this.rotZ ,required this.outlineWidth ,required this.letterSpacing ,required this.spacingWidth ,required this.overlay ,required this.materials ,});
+
+                static Future<CubeTextOptions>  default_()=>RustLib.instance.api.crateApiCubeTextCubeTextOptionsDefault();
+
+
+                
+
+                
+        @override
+        int get hashCode => size.hashCode^depth.hashCode^x.hashCode^y.hashCode^z.hashCode^rotY.hashCode^rotX.hashCode^rotZ.hashCode^outlineWidth.hashCode^letterSpacing.hashCode^spacingWidth.hashCode^overlay.hashCode^materials.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CubeTextOptions &&
+                runtimeType == other.runtimeType
+                && size == other.size&& depth == other.depth&& x == other.x&& y == other.y&& z == other.z&& rotY == other.rotY&& rotX == other.rotX&& rotZ == other.rotZ&& outlineWidth == other.outlineWidth&& letterSpacing == other.letterSpacing&& spacingWidth == other.spacingWidth&& overlay == other.overlay&& materials == other.materials;
+        
+            }
+
+class CubeTextScene  {
+                final Float32List positions;
+final Float32List normals;
+final Float32List uvs;
+final Uint32List indices;
+final Int32List materialIndices;
+final List<CubeTextSceneMaterial> materials;
+final Float32List boundsMin;
+final Float32List boundsMax;
+final List<String> warnings;
+
+                const CubeTextScene({required this.positions ,required this.normals ,required this.uvs ,required this.indices ,required this.materialIndices ,required this.materials ,required this.boundsMin ,required this.boundsMax ,required this.warnings ,});
+
+                static Future<CubeTextScene>  default_()=>RustLib.instance.api.crateApiCubeTextCubeTextSceneDefault();
+
+
+                
+
+                
+        @override
+        int get hashCode => positions.hashCode^normals.hashCode^uvs.hashCode^indices.hashCode^materialIndices.hashCode^materials.hashCode^boundsMin.hashCode^boundsMax.hashCode^warnings.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CubeTextScene &&
+                runtimeType == other.runtimeType
+                && positions == other.positions&& normals == other.normals&& uvs == other.uvs&& indices == other.indices&& materialIndices == other.materialIndices&& materials == other.materials&& boundsMin == other.boundsMin&& boundsMax == other.boundsMax&& warnings == other.warnings;
+        
+            }
+
+class CubeTextSceneMaterial  {
+                final String name;
+final String slot;
+final CubeTextMaterialOption option;
+
+                const CubeTextSceneMaterial({required this.name ,required this.slot ,required this.option ,});
+
+                static Future<CubeTextSceneMaterial>  default_()=>RustLib.instance.api.crateApiCubeTextCubeTextSceneMaterialDefault();
+
+
+                
+
+                
+        @override
+        int get hashCode => name.hashCode^slot.hashCode^option.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CubeTextSceneMaterial &&
+                runtimeType == other.runtimeType
+                && name == other.name&& slot == other.slot&& option == other.option;
+        
+            }
+            

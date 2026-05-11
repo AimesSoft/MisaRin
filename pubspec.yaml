@@ -1,5 +1,5 @@
 name: misa_rin
-description: "Misa Rin is a Fluent UI inspired cross-platform digital painting and pixel art studio for desktop and web."
+description: "Misa Rin is a Fluent UI inspired cross-platform digital painting and pixel art studio for desktop and mobile."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -149,11 +149,6 @@ flutter_launcher_icons:
   image_path_android: "icons/icons-winLinuxAndroidWeb.png"
   image_path_ios: "icons/icons-macIos.png"
   remove_alpha_ios: true
-  web:
-    generate: true
-    image_path: "icons/icons-winLinuxAndroidWeb.png"
-    background_color: "#ffffff"
-    theme_color: "#0175C2"
   windows:
     generate: true
     image_path: "icons/icons-winLinuxAndroidWeb.png"

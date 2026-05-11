@@ -9,9 +9,6 @@ double _gaussianBlurSigmaForRadius(double radius) {
 }
 
 Future<Uint8List> _generateGaussianBlurPreviewBytes(List<Object?> args) async {
-  if (kIsWeb) {
-    return _computeGaussianBlurPreviewPixels(args);
-  }
   final int width = (args[1] as num).toInt();
   final int height = (args[2] as num).toInt();
   if (width > 0 && height > 0 && width * height <= 65536) {

@@ -1,13 +1,9 @@
 part of 'painting_board.dart';
 
 const Color _kVectorEraserPreviewColor = _kSelectionPreviewFillColor;
-const int _kWebOverlayMaxPoints = 120;
 
 int _overlayStepForPoints(int count) {
-  if (!kIsWeb || count <= _kWebOverlayMaxPoints) {
-    return 1;
-  }
-  return (count / _kWebOverlayMaxPoints).ceil();
+  return 1;
 }
 
 void _paintStrokeOverlay({

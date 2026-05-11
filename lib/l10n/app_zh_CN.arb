@@ -1,7 +1,5 @@
 {
   "@@locale": "zh_CN",
-  "webLoadingInitializingCanvas": "正在初始化画板…",
-  "webLoadingMayTakeTime": "Web 端加载需要一些时间，请稍候。",
   "closeAppTitle": "关闭应用",
   "unsavedProjectsWarning": "{count, plural, =1{检测到 1 个未保存的项目。如果现在退出，最近的修改将会丢失。} other{检测到 {count} 个未保存的项目。如果现在退出，最近的修改将会丢失。}}",
   "@unsavedProjectsWarning": {
@@ -75,8 +73,6 @@
       "error": {}
     }
   },
-  "webPreparingCanvasTitle": "正在准备画布…",
-  "webPreparingCanvasMessage": "Web 端需要一些时间才能完成初始化，请稍候。",
   "aboutTitle": "关于 Misa Rin",
   "aboutDescription": "Misa Rin 是一款专注于创意绘制与项目管理的应用，旨在为创作者提供流畅的绘图体验与可靠的项目存档能力。",
   "aboutAppIdLabel": "应用标识",
@@ -300,7 +296,6 @@
   "canvasNotReadySave": "画布未准备好，无法保存。",
   "saveProjectAs": "项目另存为",
   "saveAsSai2": "保存为 SAI2",
-  "webSaveDesc": "下载项目文件到您的设备。",
   "psdExported": "PSD 已导出到 {path}",
   "@psdExported": {
     "placeholders": {
@@ -338,14 +333,6 @@
   "@exportFileTitle": {
     "placeholders": {
       "extension": {}
-    }
-  },
-  "webExportDesc": "下载导出的图像到您的设备。",
-  "fileDownloaded": "{extension} 文件已下载：{name}",
-  "@fileDownloaded": {
-    "placeholders": {
-      "extension": {},
-      "name": {}
     }
   },
   "fileExported": "文件已导出到 {path}",

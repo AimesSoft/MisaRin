@@ -1,7 +1,5 @@
 {
   "@@locale": "zh",
-  "webLoadingInitializingCanvas": "正在初始化画板…",
-  "webLoadingMayTakeTime": "Web 端加载需要一些时间，请稍候。",
   "closeAppTitle": "关闭应用",
   "unsavedProjectsWarning": "{count, plural, =1{检测到 1 个未保存的项目。如果现在退出，最近的修改将会丢失。} other{检测到 {count} 个未保存的项目。如果现在退出，最近的修改将会丢失。}}",
   "@unsavedProjectsWarning": {
@@ -75,8 +73,6 @@
       "error": {}
     }
   },
-  "webPreparingCanvasTitle": "正在准备画布…",
-  "webPreparingCanvasMessage": "Web 端需要一些时间才能完成初始化，请稍候。",
   "aboutTitle": "关于 Misa Rin",
   "aboutDescription": "Misa Rin 是一款专注于创意绘制与项目管理的应用，旨在为创作者提供流畅的绘图体验与可靠的项目存档能力。",
   "aboutAppIdLabel": "应用标识",
@@ -783,14 +779,6 @@
   "paletteDefaultName": "调色盘",
   "paletteEmptyExport": "该调色盘没有可导出的颜色。",
   "exportPaletteTitle": "导出调色盘",
-  "webDownloadDesc": "浏览器会将调色盘保存到默认的下载目录。",
-  "download": "下载",
-  "paletteDownloaded": "调色盘已下载：{name}",
-  "@paletteDownloaded": {
-    "placeholders": {
-      "name": {}
-    }
-  },
   "paletteExported": "调色盘已导出到 {path}",
   "@paletteExported": {
     "placeholders": {

@@ -6,7 +6,6 @@ import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart' show PointerScrollEvent;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:misa_rin/utils/io_shim.dart';
@@ -17,7 +16,6 @@ import '../../src/rust/api/cube_text.dart' as cube_text;
 import '../../src/rust/rust_init.dart';
 import '../utils/file_name_dialog.dart';
 import '../utils/mobile_export_paths.dart';
-import '../utils/web_file_saver.dart';
 
 class ArtTextImageResult {
   const ArtTextImageResult({required this.bytes, required this.layerName});
@@ -75,6 +73,33 @@ const Map<String, String> _kMaterialFaceLabels = <String, String>{
   'outline': '描边',
 };
 
+const int _kRasterAntialiasSamples = 2;
+const int _kPreviewMaxSupersampledPixels = 10000000;
+
+int _objectSerial = 0;
+
+double _previewPixelRatio(
+  double logicalWidth,
+  double logicalHeight,
+  double devicePixelRatio,
+) {
+  final double logicalPixels = math.max(1.0, logicalWidth * logicalHeight);
+  final double maxRatio = math.sqrt(
+    _kPreviewMaxSupersampledPixels /
+        (logicalPixels * _kRasterAntialiasSamples * _kRasterAntialiasSamples),
+  );
+  final double targetRatio = devicePixelRatio.clamp(1.0, 2.0).toDouble();
+  return math.max(1.0, math.min(targetRatio, maxRatio));
+}
+
+int _exportAntialiasSamples(int width, int height) {
+  final int pixels = math.max(1, width) * math.max(1, height);
+  return pixels * _kRasterAntialiasSamples * _kRasterAntialiasSamples <=
+          12000000
+      ? _kRasterAntialiasSamples
+      : 1;
+}
+
 class _OverlayChoice {
   const _OverlayChoice(this.value, this.label);
 
@@ -110,8 +135,8 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
   String? _statusMessage;
   InfoBarSeverity _statusSeverity = InfoBarSeverity.info;
 
-  double _yaw = -34;
-  double _pitch = 22;
+  double _yaw = 0;
+  double _pitch = -22;
   double _zoom = 1.0;
   double _fov = 75;
   int _outputWidth = 1600;
@@ -370,8 +395,8 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
 
   void _resetCamera() {
     setState(() {
-      _yaw = -34;
-      _pitch = 22;
+      _yaw = 0;
+      _pitch = -22;
       _zoom = 1.0;
       _fov = 75;
     });
@@ -381,7 +406,6 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: <String>['ttf', 'otf', 'json'],
-      withData: kIsWeb,
     );
     if (result == null || result.files.isEmpty) {
       return;
@@ -454,7 +478,6 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: <String>['json'],
-      withData: kIsWeb,
     );
     if (result == null || result.files.isEmpty) {
       return;
@@ -537,7 +560,6 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: <String>['json'],
-      withData: kIsWeb,
     );
     if (result == null || result.files.isEmpty) {
       return;
@@ -587,7 +609,6 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
   Future<void> _importImageForMaterial(String face) async {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.image,
-      withData: kIsWeb,
     );
     if (result == null || result.files.isEmpty) {
       return;
@@ -691,25 +712,18 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
     if (scene == null) {
       throw StateError('网格尚未生成。');
     }
-    final ui.PictureRecorder recorder = ui.PictureRecorder();
-    final ui.Canvas canvas = ui.Canvas(recorder);
-    final _CubeTextMeshPainter painter = _CubeTextMeshPainter(
+    ui.Image image = await _renderCubeTextRasterImage(
       scene: scene,
       texts: _texts,
+      width: _outputWidth,
+      height: _outputHeight,
       yaw: _yaw,
       pitch: _pitch,
       zoom: _zoom,
       fov: _fov,
       transparentBackground: _transparentBackground,
       materialImages: _materialImages,
-    );
-    painter.paint(
-      canvas,
-      ui.Size(_outputWidth.toDouble(), _outputHeight.toDouble()),
-    );
-    ui.Image image = await recorder.endRecording().toImage(
-      _outputWidth,
-      _outputHeight,
+      antialiasSamples: _exportAntialiasSamples(_outputWidth, _outputHeight),
     );
     if (_transparentBackground) {
       final ui.Image? cropped = await _cropTransparentImage(image, padding: 8);
@@ -741,26 +755,6 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       normalizedExtension,
     );
     try {
-      if (kIsWeb) {
-        final String? downloadName = await showFileNameDialog(
-          context: context,
-          title: title,
-          suggestedFileName: suggestedName,
-          description: '浏览器会把文件保存到下载目录。',
-          confirmLabel: '下载',
-        );
-        if (downloadName == null) {
-          return;
-        }
-        await WebFileSaver.saveBytes(
-          fileName: _normalizeFileName(downloadName, normalizedExtension),
-          bytes: bytes,
-          mimeType: mimeType,
-        );
-        _setStatus('已下载：$downloadName', InfoBarSeverity.success);
-        return;
-      }
-
       String? outputPath;
       if (Platform.isAndroid || Platform.isIOS) {
         final String? pickedName = await showFileNameDialog(
@@ -1035,27 +1029,47 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                       );
                     });
                   },
-                  child: CustomPaint(
-                    painter: scene == null
-                        ? null
-                        : _CubeTextMeshPainter(
-                            scene: scene,
-                            texts: _texts,
-                            yaw: _yaw,
-                            pitch: _pitch,
-                            zoom: _zoom,
-                            fov: _fov,
-                            transparentBackground: false,
-                            materialImages: _materialImages,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (scene == null) {
+                        return Center(
+                          child: Text(
+                            _statusMessage ?? '正在生成真实 3D 网格...',
+                            textAlign: TextAlign.center,
                           ),
-                    child: scene == null
-                        ? Center(
-                            child: Text(
-                              _statusMessage ?? '正在生成真实 3D 网格...',
-                              textAlign: TextAlign.center,
-                            ),
-                          )
-                        : const SizedBox.expand(),
+                        );
+                      }
+                      final double rawWidth = constraints.maxWidth.isFinite
+                          ? constraints.maxWidth
+                          : 1;
+                      final double rawHeight = constraints.maxHeight.isFinite
+                          ? constraints.maxHeight
+                          : 1;
+                      final double pixelRatio = _previewPixelRatio(
+                        rawWidth,
+                        rawHeight,
+                        MediaQuery.devicePixelRatioOf(context),
+                      );
+                      final int width = math
+                          .max(1, (rawWidth * pixelRatio).round())
+                          .toInt();
+                      final int height = math
+                          .max(1, (rawHeight * pixelRatio).round())
+                          .toInt();
+                      return _CubeTextRasterPreview(
+                        scene: scene,
+                        texts: _texts,
+                        width: width,
+                        height: height,
+                        pixelRatio: pixelRatio,
+                        yaw: _yaw,
+                        pitch: _pitch,
+                        zoom: _zoom,
+                        fov: _fov,
+                        transparentBackground: false,
+                        materialImages: _materialImages,
+                      );
+                    },
                   ),
                 ),
               ),
@@ -1783,7 +1797,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           ),
           const SizedBox(width: 8),
           Expanded(
-          child: TextBox(
+            child: TextBox(
               placeholder: value,
               onSubmitted: (String raw) {
                 final String next = raw.trim().isEmpty ? '#ffffff' : raw.trim();
@@ -2505,6 +2519,627 @@ class _MaterialSwatch extends StatelessWidget {
   }
 }
 
+class _CubeTextRasterPreview extends StatefulWidget {
+  const _CubeTextRasterPreview({
+    required this.scene,
+    required this.texts,
+    required this.width,
+    required this.height,
+    required this.pixelRatio,
+    required this.yaw,
+    required this.pitch,
+    required this.zoom,
+    required this.fov,
+    required this.transparentBackground,
+    required this.materialImages,
+  });
+
+  final cube_text.CubeTextScene scene;
+  final List<_ArtTextObject> texts;
+  final int width;
+  final int height;
+  final double pixelRatio;
+  final double yaw;
+  final double pitch;
+  final double zoom;
+  final double fov;
+  final bool transparentBackground;
+  final Map<String, ui.Image> materialImages;
+
+  @override
+  State<_CubeTextRasterPreview> createState() => _CubeTextRasterPreviewState();
+}
+
+class _CubeTextRasterPreviewState extends State<_CubeTextRasterPreview> {
+  ui.Image? _image;
+  int _renderSerial = 0;
+  bool _rendering = false;
+  bool _renderQueued = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleRender();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CubeTextRasterPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scene != widget.scene ||
+        oldWidget.width != widget.width ||
+        oldWidget.height != widget.height ||
+        oldWidget.pixelRatio != widget.pixelRatio ||
+        oldWidget.yaw != widget.yaw ||
+        oldWidget.pitch != widget.pitch ||
+        oldWidget.zoom != widget.zoom ||
+        oldWidget.fov != widget.fov ||
+        oldWidget.transparentBackground != widget.transparentBackground ||
+        oldWidget.materialImages.length != widget.materialImages.length) {
+      _scheduleRender();
+    }
+  }
+
+  @override
+  void dispose() {
+    _image?.dispose();
+    _renderSerial++;
+    super.dispose();
+  }
+
+  void _scheduleRender() {
+    if (_rendering) {
+      _renderQueued = true;
+      return;
+    }
+    unawaited(_render());
+  }
+
+  Future<void> _render() async {
+    _rendering = true;
+    final int serial = ++_renderSerial;
+    late final ui.Image image;
+    try {
+      image = await _renderCubeTextRasterImage(
+        scene: widget.scene,
+        texts: widget.texts,
+        width: widget.width,
+        height: widget.height,
+        yaw: widget.yaw,
+        pitch: widget.pitch,
+        zoom: widget.zoom,
+        fov: widget.fov,
+        transparentBackground: widget.transparentBackground,
+        materialImages: widget.materialImages,
+        checkerboardScale: widget.pixelRatio,
+        antialiasSamples: _kRasterAntialiasSamples,
+      );
+    } finally {
+      _rendering = false;
+    }
+    if (!mounted || serial != _renderSerial) {
+      image.dispose();
+      _flushQueuedRender();
+      return;
+    }
+    setState(() {
+      _image?.dispose();
+      _image = image;
+    });
+    _flushQueuedRender();
+  }
+
+  void _flushQueuedRender() {
+    if (!_renderQueued || !mounted) {
+      return;
+    }
+    _renderQueued = false;
+    _scheduleRender();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ui.Image? image = _image;
+    if (image == null) {
+      return CustomPaint(
+        painter: _CheckerboardPainter(),
+        child: const SizedBox.expand(),
+      );
+    }
+    return SizedBox.expand(
+      child: RawImage(
+        image: image,
+        fit: BoxFit.fill,
+        filterQuality: FilterQuality.high,
+      ),
+    );
+  }
+}
+
+class _CheckerboardPainter extends CustomPainter {
+  @override
+  void paint(ui.Canvas canvas, ui.Size size) {
+    _paintCheckerboard(canvas, size);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CheckerboardPainter oldDelegate) => false;
+}
+
+Future<ui.Image> _renderCubeTextRasterImage({
+  required cube_text.CubeTextScene scene,
+  required List<_ArtTextObject> texts,
+  required int width,
+  required int height,
+  required double yaw,
+  required double pitch,
+  required double zoom,
+  required double fov,
+  required bool transparentBackground,
+  required Map<String, ui.Image> materialImages,
+  double checkerboardScale = 1,
+  int antialiasSamples = 1,
+}) async {
+  final int safeWidth = math.max(1, width);
+  final int safeHeight = math.max(1, height);
+  final int samples = math.max(1, antialiasSamples).toInt();
+  final int rasterWidth = safeWidth * samples;
+  final int rasterHeight = safeHeight * samples;
+  final Uint8List pixels = Uint8List(rasterWidth * rasterHeight * 4);
+  if (!transparentBackground) {
+    _fillCheckerboardPixels(
+      pixels,
+      rasterWidth,
+      rasterHeight,
+      checkerboardScale * samples,
+    );
+  }
+  if (scene.positions.isEmpty || scene.indices.isEmpty) {
+    return _finishRasterImage(
+      pixels,
+      rasterWidth,
+      rasterHeight,
+      safeWidth,
+      safeHeight,
+    );
+  }
+
+  final Map<String, _RasterImagePixels> imagePixels = await _rasterImagePixels(
+    materialImages,
+  );
+  final _Bounds3 bounds = _Bounds3.fromScene(scene);
+  final _CameraProjector projector = _CameraProjector(
+    bounds: bounds,
+    positions: scene.positions,
+    size: ui.Size(rasterWidth.toDouble(), rasterHeight.toDouble()),
+    yaw: yaw,
+    pitch: pitch,
+    zoom: zoom,
+    fov: fov,
+  );
+  final List<_ProjectedTriangle> triangles = _projectSceneTriangles(
+    scene,
+    projector,
+  );
+
+  _rasterizeTrianglePass(
+    pixels: pixels,
+    width: rasterWidth,
+    height: rasterHeight,
+    scene: scene,
+    triangles: triangles,
+    outline: true,
+    imagePixels: imagePixels,
+  );
+  _rasterizeTrianglePass(
+    pixels: pixels,
+    width: rasterWidth,
+    height: rasterHeight,
+    scene: scene,
+    triangles: triangles,
+    outline: false,
+    imagePixels: imagePixels,
+  );
+  return _finishRasterImage(
+    pixels,
+    rasterWidth,
+    rasterHeight,
+    safeWidth,
+    safeHeight,
+  );
+}
+
+List<_ProjectedTriangle> _projectSceneTriangles(
+  cube_text.CubeTextScene scene,
+  _CameraProjector projector,
+) {
+  final List<_ProjectedTriangle> triangles = <_ProjectedTriangle>[];
+  final Float32List positions = scene.positions;
+  final Float32List normals = scene.normals;
+  final Uint32List indices = scene.indices;
+  final Int32List materialIndices = scene.materialIndices;
+  for (int triIndex = 0; triIndex + 2 < indices.length; triIndex += 3) {
+    final int i0 = indices[triIndex] * 3;
+    final int i1 = indices[triIndex + 1] * 3;
+    final int i2 = indices[triIndex + 2] * 3;
+    if (i2 + 2 >= positions.length) {
+      continue;
+    }
+    final _ProjectedPoint? p0 = projector.project(
+      positions[i0],
+      positions[i0 + 1],
+      positions[i0 + 2],
+    );
+    final _ProjectedPoint? p1 = projector.project(
+      positions[i1],
+      positions[i1 + 1],
+      positions[i1 + 2],
+    );
+    final _ProjectedPoint? p2 = projector.project(
+      positions[i2],
+      positions[i2 + 1],
+      positions[i2 + 2],
+    );
+    if (p0 == null || p1 == null || p2 == null) {
+      continue;
+    }
+    if (_screenArea(p0.offset, p1.offset, p2.offset).abs() < 0.05) {
+      continue;
+    }
+    final int vertexIndex = indices[triIndex] * 3;
+    final _Vec3 normal = vertexIndex + 2 < normals.length
+        ? _Vec3(
+            normals[vertexIndex],
+            normals[vertexIndex + 1],
+            normals[vertexIndex + 2],
+          ).normalized()
+        : const _Vec3(0, 0, 1);
+    final int logicalTri = triIndex ~/ 3;
+    final int materialIndex = logicalTri < materialIndices.length
+        ? materialIndices[logicalTri].clamp(0, scene.materials.length - 1)
+        : 0;
+    triangles.add(
+      _ProjectedTriangle(
+        points: <_ProjectedPoint>[p0, p1, p2],
+        normal: normal,
+        materialIndex: materialIndex,
+        depth: math.max(p0.depth, math.max(p1.depth, p2.depth)),
+      ),
+    );
+  }
+  return triangles;
+}
+
+void _rasterizeTrianglePass({
+  required Uint8List pixels,
+  required int width,
+  required int height,
+  required cube_text.CubeTextScene scene,
+  required List<_ProjectedTriangle> triangles,
+  required bool outline,
+  required Map<String, _RasterImagePixels> imagePixels,
+}) {
+  final Float32List depthBuffer = Float32List(width * height);
+  for (int i = 0; i < depthBuffer.length; i++) {
+    depthBuffer[i] = double.negativeInfinity;
+  }
+
+  final List<_ProjectedTriangle> visibleTriangles = <_ProjectedTriangle>[];
+  final Map<int, ui.Rect> materialBounds = <int, ui.Rect>{};
+  for (final _ProjectedTriangle triangle in triangles) {
+    final int materialIndex = triangle.materialIndex.clamp(
+      0,
+      scene.materials.length - 1,
+    );
+    final cube_text.CubeTextSceneMaterial material =
+        scene.materials[materialIndex];
+    if ((material.slot == 'outline') != outline) {
+      continue;
+    }
+    if (!_isTriangleVisibleForMaterial(triangle, material)) {
+      continue;
+    }
+    visibleTriangles.add(triangle);
+    materialBounds[materialIndex] =
+        materialBounds[materialIndex]?.expandToInclude(triangle.screenBounds) ??
+        triangle.screenBounds;
+  }
+
+  for (final _ProjectedTriangle triangle in visibleTriangles) {
+    final int materialIndex = triangle.materialIndex.clamp(
+      0,
+      scene.materials.length - 1,
+    );
+    _rasterizeTriangle(
+      pixels: pixels,
+      depthBuffer: depthBuffer,
+      width: width,
+      height: height,
+      triangle: triangle,
+      material: scene.materials[materialIndex],
+      materialBounds: materialBounds[materialIndex] ?? triangle.screenBounds,
+      imagePixels: imagePixels,
+    );
+  }
+}
+
+bool _isTriangleVisibleForMaterial(
+  _ProjectedTriangle triangle,
+  cube_text.CubeTextSceneMaterial material,
+) {
+  final double area = _screenArea(
+    triangle.points[0].offset,
+    triangle.points[1].offset,
+    triangle.points[2].offset,
+  );
+  if (material.slot == 'outline') {
+    return area > 0;
+  }
+  return area < 0;
+}
+
+void _rasterizeTriangle({
+  required Uint8List pixels,
+  required Float32List depthBuffer,
+  required int width,
+  required int height,
+  required _ProjectedTriangle triangle,
+  required cube_text.CubeTextSceneMaterial material,
+  required ui.Rect materialBounds,
+  required Map<String, _RasterImagePixels> imagePixels,
+}) {
+  final _ProjectedPoint p0 = triangle.points[0];
+  final _ProjectedPoint p1 = triangle.points[1];
+  final _ProjectedPoint p2 = triangle.points[2];
+  final double x0 = p0.offset.dx;
+  final double y0 = p0.offset.dy;
+  final double x1 = p1.offset.dx;
+  final double y1 = p1.offset.dy;
+  final double x2 = p2.offset.dx;
+  final double y2 = p2.offset.dy;
+  final double denom = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
+  if (denom.abs() <= 1e-9) {
+    return;
+  }
+
+  final int minX = math
+      .max(0, triangle.screenBounds.left.floor())
+      .clamp(0, width - 1)
+      .toInt();
+  final int maxX = math
+      .min(width - 1, triangle.screenBounds.right.ceil())
+      .clamp(0, width - 1)
+      .toInt();
+  final int minY = math
+      .max(0, triangle.screenBounds.top.floor())
+      .clamp(0, height - 1)
+      .toInt();
+  final int maxY = math
+      .min(height - 1, triangle.screenBounds.bottom.ceil())
+      .clamp(0, height - 1)
+      .toInt();
+  if (maxX < minX || maxY < minY) {
+    return;
+  }
+
+  for (int y = minY; y <= maxY; y++) {
+    final double py = y + 0.5;
+    for (int x = minX; x <= maxX; x++) {
+      final double px = x + 0.5;
+      final double w0 = ((y1 - y2) * (px - x2) + (x2 - x1) * (py - y2)) / denom;
+      final double w1 = ((y2 - y0) * (px - x2) + (x0 - x2) * (py - y2)) / denom;
+      final double w2 = 1.0 - w0 - w1;
+      if (w0 < -1e-5 || w1 < -1e-5 || w2 < -1e-5) {
+        continue;
+      }
+      final double depth = w0 / p0.depth + w1 / p1.depth + w2 / p2.depth;
+      final int pixelIndex = y * width + x;
+      if (depth <= depthBuffer[pixelIndex]) {
+        continue;
+      }
+      depthBuffer[pixelIndex] = depth;
+      final int color = _rasterMaterialColor(
+        material,
+        materialBounds,
+        px,
+        py,
+        imagePixels,
+      );
+      final int byteIndex = pixelIndex * 4;
+      pixels[byteIndex] = (color >> 24) & 0xFF;
+      pixels[byteIndex + 1] = (color >> 16) & 0xFF;
+      pixels[byteIndex + 2] = (color >> 8) & 0xFF;
+      pixels[byteIndex + 3] = color & 0xFF;
+    }
+  }
+}
+
+int _rasterMaterialColor(
+  cube_text.CubeTextSceneMaterial material,
+  ui.Rect bounds,
+  double x,
+  double y,
+  Map<String, _RasterImagePixels> imagePixels,
+) {
+  final cube_text.CubeTextMaterialOption option = material.option;
+  if (option.mode == 'gradient') {
+    final Color start =
+        _parseColor(option.colorGradualStart) ?? const Color(0xFFFFFFFF);
+    final Color end = _parseColor(option.colorGradualEnd) ?? start;
+    final double repeat = option.repeat <= 0 ? 1 : option.repeat;
+    final double offset = option.offset % 1.0;
+    final double y0 = bounds.top - bounds.height * offset;
+    final double y1 = bounds.bottom / repeat + bounds.top * (1 - 1 / repeat);
+    final double t = y1 == y0 ? 0 : ((y - y0) / (y1 - y0)).clamp(0.0, 1.0);
+    return _lerpArgb(start, end, t);
+  }
+  if (option.mode == 'image') {
+    final _RasterImagePixels? image = imagePixels[option.image];
+    if (image != null) {
+      return image.sample(
+        x,
+        y,
+        repeatX: math.max(0.02, option.repeatX) * 24,
+        repeatY: math.max(0.02, option.repeatY) * 24,
+        offsetX: option.offsetX,
+        offsetY: option.offsetY,
+      );
+    }
+    return _rgbaInt(const Color(0xFF8CB7D5));
+  }
+  return _rgbaInt(_parseColor(option.color) ?? const Color(0xFFFFFFFF));
+}
+
+int _lerpArgb(Color a, Color b, double t) {
+  final int av = a.toARGB32();
+  final int bv = b.toARGB32();
+  final int aa = (av >> 24) & 0xFF;
+  final int ar = (av >> 16) & 0xFF;
+  final int ag = (av >> 8) & 0xFF;
+  final int ab = av & 0xFF;
+  final int ba = (bv >> 24) & 0xFF;
+  final int br = (bv >> 16) & 0xFF;
+  final int bg = (bv >> 8) & 0xFF;
+  final int bb = bv & 0xFF;
+  final int outA = (aa + (ba - aa) * t).round().clamp(0, 255);
+  final int outR = (ar + (br - ar) * t).round().clamp(0, 255);
+  final int outG = (ag + (bg - ag) * t).round().clamp(0, 255);
+  final int outB = (ab + (bb - ab) * t).round().clamp(0, 255);
+  return (outR << 24) | (outG << 16) | (outB << 8) | outA;
+}
+
+int _rgbaInt(Color color) {
+  final int value = color.toARGB32();
+  final int a = (value >> 24) & 0xFF;
+  final int r = (value >> 16) & 0xFF;
+  final int g = (value >> 8) & 0xFF;
+  final int b = value & 0xFF;
+  return (r << 24) | (g << 16) | (b << 8) | a;
+}
+
+Future<Map<String, _RasterImagePixels>> _rasterImagePixels(
+  Map<String, ui.Image> materialImages,
+) async {
+  final Map<String, _RasterImagePixels> result = <String, _RasterImagePixels>{};
+  for (final MapEntry<String, ui.Image> entry in materialImages.entries) {
+    final ByteData? data = await entry.value.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    );
+    if (data == null) {
+      continue;
+    }
+    result[entry.key] = _RasterImagePixels(
+      width: entry.value.width,
+      height: entry.value.height,
+      pixels: data.buffer.asUint8List(),
+    );
+  }
+  return result;
+}
+
+class _RasterImagePixels {
+  const _RasterImagePixels({
+    required this.width,
+    required this.height,
+    required this.pixels,
+  });
+
+  final int width;
+  final int height;
+  final Uint8List pixels;
+
+  int sample(
+    double x,
+    double y, {
+    required double repeatX,
+    required double repeatY,
+    required double offsetX,
+    required double offsetY,
+  }) {
+    final double u = _fract(x / repeatX + offsetX);
+    final double v = _fract(y / repeatY + offsetY);
+    final int sx = (u * width).floor().clamp(0, width - 1);
+    final int sy = (v * height).floor().clamp(0, height - 1);
+    final int index = (sy * width + sx) * 4;
+    final int r = pixels[index];
+    final int g = pixels[index + 1];
+    final int b = pixels[index + 2];
+    final int a = pixels[index + 3];
+    return (r << 24) | (g << 16) | (b << 8) | a;
+  }
+}
+
+double _fract(double value) => value - value.floorToDouble();
+
+Future<ui.Image> _decodePixelsToImage(Uint8List pixels, int width, int height) {
+  final Completer<ui.Image> completer = Completer<ui.Image>();
+  ui.decodeImageFromPixels(
+    pixels,
+    width,
+    height,
+    ui.PixelFormat.rgba8888,
+    completer.complete,
+  );
+  return completer.future;
+}
+
+Future<ui.Image> _finishRasterImage(
+  Uint8List pixels,
+  int rasterWidth,
+  int rasterHeight,
+  int width,
+  int height,
+) async {
+  final ui.Image image = await _decodePixelsToImage(
+    pixels,
+    rasterWidth,
+    rasterHeight,
+  );
+  if (rasterWidth == width && rasterHeight == height) {
+    return image;
+  }
+  final ui.Image downsampled = await _downsampleImage(image, width, height);
+  image.dispose();
+  return downsampled;
+}
+
+Future<ui.Image> _downsampleImage(ui.Image image, int width, int height) {
+  final ui.PictureRecorder recorder = ui.PictureRecorder();
+  final ui.Canvas canvas = ui.Canvas(recorder);
+  final ui.Paint paint = ui.Paint()
+    ..filterQuality = ui.FilterQuality.high
+    ..isAntiAlias = true;
+  canvas.drawImageRect(
+    image,
+    ui.Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+    ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+    paint,
+  );
+  return recorder.endRecording().toImage(width, height);
+}
+
+void _fillCheckerboardPixels(
+  Uint8List pixels,
+  int width,
+  int height,
+  double scale,
+) {
+  const int white = 0xFFFFFFFF;
+  const int square = 0xE3E8EFFF;
+  final int cell = math.max(1, (18 * scale).round());
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      final bool useSquare = ((x ~/ cell) + (y ~/ cell)).isEven;
+      final int color = useSquare ? square : white;
+      final int index = (y * width + x) * 4;
+      pixels[index] = (color >> 24) & 0xFF;
+      pixels[index + 1] = (color >> 16) & 0xFF;
+      pixels[index + 2] = (color >> 8) & 0xFF;
+      pixels[index + 3] = color & 0xFF;
+    }
+  }
+}
+
+// ignore: unused_element
 class _CubeTextMeshPainter extends CustomPainter {
   const _CubeTextMeshPainter({
     required this.scene,
@@ -2538,6 +3173,7 @@ class _CubeTextMeshPainter extends CustomPainter {
     final _Bounds3 bounds = _Bounds3.fromScene(scene);
     final _CameraProjector projector = _CameraProjector(
       bounds: bounds,
+      positions: scene.positions,
       size: size,
       yaw: yaw,
       pitch: pitch,
@@ -2595,45 +3231,94 @@ class _CubeTextMeshPainter extends CustomPainter {
           points: <_ProjectedPoint>[p0, p1, p2],
           normal: normal,
           materialIndex: materialIndex,
-          depth: (p0.depth + p1.depth + p2.depth) / 3,
+          depth: math.max(p0.depth, math.max(p1.depth, p2.depth)),
         ),
       );
     }
 
     triangles.sort((a, b) => b.depth.compareTo(a.depth));
+    _paintTrianglePass(canvas, triangles, outline: true);
+    _paintTrianglePass(canvas, triangles, outline: false);
+  }
+
+  void _paintTrianglePass(
+    ui.Canvas canvas,
+    List<_ProjectedTriangle> triangles, {
+    required bool outline,
+  }) {
+    final List<_ProjectedTriangle> visibleTriangles = <_ProjectedTriangle>[];
+    final Map<int, ui.Rect> materialBounds = <int, ui.Rect>{};
     for (final _ProjectedTriangle triangle in triangles) {
+      final int materialIndex = triangle.materialIndex.clamp(
+        0,
+        scene.materials.length - 1,
+      );
       final cube_text.CubeTextSceneMaterial material =
-          scene.materials[triangle.materialIndex.clamp(
-            0,
-            scene.materials.length - 1,
-          )];
-      _paintTriangle(canvas, triangle, material);
+          scene.materials[materialIndex];
+      if ((material.slot == 'outline') != outline) {
+        continue;
+      }
+      if (!_isTriangleVisibleForMaterial(triangle, material)) {
+        continue;
+      }
+      visibleTriangles.add(triangle);
+      final ui.Rect rect = triangle.screenBounds;
+      materialBounds[materialIndex] =
+          materialBounds[materialIndex]?.expandToInclude(rect) ?? rect;
     }
+
+    for (final _ProjectedTriangle triangle in visibleTriangles) {
+      final int materialIndex = triangle.materialIndex.clamp(
+        0,
+        scene.materials.length - 1,
+      );
+      _paintTriangle(
+        canvas,
+        triangle,
+        scene.materials[materialIndex],
+        materialBounds[materialIndex] ?? triangle.screenBounds,
+      );
+    }
+  }
+
+  bool _isTriangleVisibleForMaterial(
+    _ProjectedTriangle triangle,
+    cube_text.CubeTextSceneMaterial material,
+  ) {
+    final double area = _screenArea(
+      triangle.points[0].offset,
+      triangle.points[1].offset,
+      triangle.points[2].offset,
+    );
+    if (material.slot == 'outline') {
+      return area > 0;
+    }
+    return area < 0;
   }
 
   void _paintTriangle(
     ui.Canvas canvas,
     _ProjectedTriangle triangle,
     cube_text.CubeTextSceneMaterial material,
+    ui.Rect materialBounds,
   ) {
     final ui.Path path = ui.Path()
       ..moveTo(triangle.points[0].offset.dx, triangle.points[0].offset.dy)
       ..lineTo(triangle.points[1].offset.dx, triangle.points[1].offset.dy)
       ..lineTo(triangle.points[2].offset.dx, triangle.points[2].offset.dy)
       ..close();
-    final ui.Rect rect = path.getBounds();
+    final ui.Rect rect = materialBounds;
+    if (rect.isEmpty) {
+      return;
+    }
     final cube_text.CubeTextMaterialOption option = material.option;
-    final ui.Paint paint = ui.Paint()..style = ui.PaintingStyle.fill;
-    final double brightness = _brightnessForNormal(triangle.normal);
+    final ui.Paint paint = ui.Paint()
+      ..style = ui.PaintingStyle.fill
+      ..isAntiAlias = false;
     if (option.mode == 'gradient') {
-      final Color start = _shadeColor(
-        _parseColor(option.colorGradualStart) ?? const Color(0xFFFFFFFF),
-        brightness,
-      );
-      final Color end = _shadeColor(
-        _parseColor(option.colorGradualEnd) ?? start,
-        brightness,
-      );
+      final Color start =
+          _parseColor(option.colorGradualStart) ?? const Color(0xFFFFFFFF);
+      final Color end = _parseColor(option.colorGradualEnd) ?? start;
       final double repeat = option.repeat <= 0 ? 1 : option.repeat;
       final double offset = option.offset % 1.0;
       paint.shader = ui.Gradient.linear(
@@ -2674,15 +3359,11 @@ class _CubeTextMeshPainter extends CustomPainter {
         matrix,
         filterQuality: ui.FilterQuality.none,
       );
-      paint.colorFilter = ui.ColorFilter.mode(
-        _shadeColor(const Color(0xFFFFFFFF), brightness),
-        BlendMode.modulate,
-      );
     } else {
       final Color color = option.mode == 'image'
           ? const Color(0xFF8CB7D5)
           : (_parseColor(option.color) ?? const Color(0xFFFFFFFF));
-      paint.color = _shadeColor(color, brightness);
+      paint.color = color;
     }
     canvas.drawPath(path, paint);
 
@@ -2770,6 +3451,7 @@ class _CubeTextMeshPainter extends CustomPainter {
 class _CameraProjector {
   _CameraProjector({
     required this.bounds,
+    required Float32List positions,
     required this.size,
     required double yaw,
     required double pitch,
@@ -2780,7 +3462,12 @@ class _CameraProjector {
        _pitchSin = math.sin(pitch * math.pi / 180),
        _pitchCos = math.cos(pitch * math.pi / 180),
        _zoom = zoom.clamp(0.05, 20).toDouble(),
-       _fov = fov;
+       _fov = fov {
+    final _ProjectedFit fit = _computeFit(positions);
+    _fitScale = fit.scale;
+    _offsetDx = fit.dx;
+    _offsetDy = fit.dy;
+  }
 
   final _Bounds3 bounds;
   final ui.Size size;
@@ -2790,8 +3477,67 @@ class _CameraProjector {
   final double _pitchCos;
   final double _zoom;
   final double _fov;
+  late final double _fitScale;
+  late final double _offsetDx;
+  late final double _offsetDy;
 
   _ProjectedPoint? project(double x, double y, double z) {
+    final _RawProjectedPoint? raw = _projectRaw(x, y, z);
+    if (raw == null) {
+      return null;
+    }
+    return _ProjectedPoint(
+      offset: ui.Offset(
+        _offsetDx + raw.x * _fitScale,
+        _offsetDy + raw.y * _fitScale,
+      ),
+      depth: raw.depth,
+    );
+  }
+
+  _ProjectedFit _computeFit(Float32List positions) {
+    double minX = double.infinity;
+    double minY = double.infinity;
+    double maxX = double.negativeInfinity;
+    double maxY = double.negativeInfinity;
+    for (int index = 0; index + 2 < positions.length; index += 3) {
+      final _RawProjectedPoint? point = _projectRaw(
+        positions[index],
+        positions[index + 1],
+        positions[index + 2],
+      );
+      if (point == null) {
+        continue;
+      }
+      minX = math.min(minX, point.x);
+      minY = math.min(minY, point.y);
+      maxX = math.max(maxX, point.x);
+      maxY = math.max(maxY, point.y);
+    }
+    if (!minX.isFinite || !minY.isFinite || !maxX.isFinite || !maxY.isFinite) {
+      return _ProjectedFit(size.width / 2, size.height / 2, 1);
+    }
+
+    final double width = math.max(1.0, maxX - minX);
+    final double height = math.max(1.0, maxY - minY);
+    final double padding = math
+        .min(size.shortestSide * 0.06, 48)
+        .clamp(12, 48)
+        .toDouble();
+    final double availableWidth = math.max(1.0, size.width - padding * 2);
+    final double availableHeight = math.max(1.0, size.height - padding * 2);
+    final double scale = math.min(
+      1.0,
+      math.min(availableWidth / width, availableHeight / height),
+    );
+    return _ProjectedFit(
+      size.width / 2 - (minX + width / 2) * scale,
+      size.height / 2 - (minY + height / 2) * scale,
+      scale,
+    );
+  }
+
+  _RawProjectedPoint? _projectRaw(double x, double y, double z) {
     final double cx = x - bounds.center.x;
     final double cy = y - bounds.center.y;
     final double cz = z - bounds.center.z;
@@ -2806,11 +3552,9 @@ class _CameraProjector {
         .clamp(1, double.infinity);
     if (_fov <= 0) {
       final double scale = side / bounds.diagonal * 0.78 * _zoom;
-      return _ProjectedPoint(
-        offset: ui.Offset(
-          size.width / 2 + x1 * scale,
-          size.height / 2 - y2 * scale,
-        ),
+      return _RawProjectedPoint(
+        x: x1 * scale,
+        y: -y2 * scale,
         depth: bounds.diagonal * 3 - z2,
       );
     }
@@ -2823,14 +3567,32 @@ class _CameraProjector {
     final double focal = 1 / math.tan((_fov.clamp(1, 120)) * math.pi / 360);
     final double nx = (x1 * focal) / depth;
     final double ny = (y2 * focal) / depth;
-    return _ProjectedPoint(
-      offset: ui.Offset(
-        size.width / 2 + nx * side * 0.55,
-        size.height / 2 - ny * side * 0.55,
-      ),
+    return _RawProjectedPoint(
+      x: nx * side * 0.55,
+      y: -ny * side * 0.55,
       depth: depth,
     );
   }
+}
+
+class _RawProjectedPoint {
+  const _RawProjectedPoint({
+    required this.x,
+    required this.y,
+    required this.depth,
+  });
+
+  final double x;
+  final double y;
+  final double depth;
+}
+
+class _ProjectedFit {
+  const _ProjectedFit(this.dx, this.dy, this.scale);
+
+  final double dx;
+  final double dy;
+  final double scale;
 }
 
 class _ProjectedPoint {
@@ -2852,6 +3614,26 @@ class _ProjectedTriangle {
   final _Vec3 normal;
   final int materialIndex;
   final double depth;
+
+  ui.Rect get screenBounds {
+    final double minX = math.min(
+      points[0].offset.dx,
+      math.min(points[1].offset.dx, points[2].offset.dx),
+    );
+    final double minY = math.min(
+      points[0].offset.dy,
+      math.min(points[1].offset.dy, points[2].offset.dy),
+    );
+    final double maxX = math.max(
+      points[0].offset.dx,
+      math.max(points[1].offset.dx, points[2].offset.dx),
+    );
+    final double maxY = math.max(
+      points[0].offset.dy,
+      math.max(points[1].offset.dy, points[2].offset.dy),
+    );
+    return ui.Rect.fromLTRB(minX, minY, maxX, maxY);
+  }
 }
 
 class _Bounds3 {
@@ -2924,7 +3706,7 @@ _TextMaterials _defaultBlueMaterials() {
   );
 }
 
-String _newObjectId() => DateTime.now().microsecondsSinceEpoch.toString();
+String _newObjectId() => 'text_${_objectSerial++}';
 
 String? _emptyToNull(String? value) {
   final String trimmed = value?.trim() ?? '';
@@ -3105,27 +3887,6 @@ Color? _parseColor(String value) {
 String _colorToHex(Color color) {
   final int value = color.toARGB32() & 0xFFFFFF;
   return '#${value.toRadixString(16).padLeft(6, '0')}';
-}
-
-Color _shadeColor(Color color, double brightness) {
-  final int a = (color.toARGB32() >> 24) & 0xFF;
-  final int r = (((color.toARGB32() >> 16) & 0xFF) * brightness).round().clamp(
-    0,
-    255,
-  );
-  final int g = (((color.toARGB32() >> 8) & 0xFF) * brightness).round().clamp(
-    0,
-    255,
-  );
-  final int b = ((color.toARGB32() & 0xFF) * brightness).round().clamp(0, 255);
-  return Color.fromARGB(a, r, g, b);
-}
-
-double _brightnessForNormal(_Vec3 normal) {
-  const _Vec3 light = _Vec3(-0.35, 0.58, 0.74);
-  final double dot =
-      normal.x * light.x + normal.y * light.y + normal.z * light.z;
-  return (0.55 + math.max(0, dot) * 0.42).clamp(0.42, 1.08);
 }
 
 double _screenArea(ui.Offset a, ui.Offset b, ui.Offset c) {

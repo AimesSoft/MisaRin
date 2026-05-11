@@ -9,13 +9,6 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get webLoadingInitializingCanvas => 'Initializing canvas…';
-
-  @override
-  String get webLoadingMayTakeTime =>
-      'Loading on web may take a moment. Please wait.';
-
-  @override
   String get closeAppTitle => 'Quit App';
 
   @override
@@ -141,13 +134,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String importClipboardImageFailed(Object error) {
     return 'Failed to import clipboard image: $error';
   }
-
-  @override
-  String get webPreparingCanvasTitle => 'Preparing canvas…';
-
-  @override
-  String get webPreparingCanvasMessage =>
-      'Initializing on web may take a moment. Please wait.';
 
   @override
   String get aboutTitle => 'About Misa Rin';
@@ -1844,18 +1830,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportPaletteTitle => 'Export Palette';
 
   @override
-  String get webDownloadDesc =>
-      'Browser will save palette to default download directory.';
-
-  @override
-  String get download => 'Download';
-
-  @override
-  String paletteDownloaded(Object name) {
-    return 'Palette downloaded: $name';
-  }
-
-  @override
   String paletteExported(Object path) {
     return 'Palette exported to $path';
   }
@@ -2090,9 +2064,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get saveProjectAs => 'Save Project As';
 
   @override
-  String get webSaveDesc => 'Download the project file to your device.';
-
-  @override
   String psdExported(Object path) {
     return 'PSD exported to $path';
   }
@@ -2129,14 +2100,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String exportFileTitle(Object extension) {
     return 'Export $extension File';
-  }
-
-  @override
-  String get webExportDesc => 'Download the exported image to your device.';
-
-  @override
-  String fileDownloaded(Object extension, Object name) {
-    return '$extension file downloaded: $name';
   }
 
   @override
