@@ -238,6 +238,10 @@ pub extern "C" fn engine_set_cube_text_preview_scene(
         let json = unsafe { std::slice::from_raw_parts(materials_json, materials_json_len) };
         parse_materials_json(json)
     };
+    let image_material_count = materials
+        .iter()
+        .filter(|material| material.is_image_mode())
+        .count();
     let images = cube_text_preview_images(
         image_widths,
         image_heights,
@@ -246,6 +250,19 @@ pub extern "C" fn engine_set_cube_text_preview_scene(
         image_count,
         image_bytes,
         image_bytes_len,
+    );
+    debug::log(
+        LogLevel::Info,
+        format_args!(
+            "cube_text_preview ffi scene handle={handle} vertices={} triangles={} materials={} image_materials={} requested_images={} accepted_images={} image_bytes={}",
+            positions_len / 3,
+            indices_len / 3,
+            materials.len(),
+            image_material_count,
+            image_count,
+            images.len(),
+            image_bytes_len,
+        ),
     );
     let scene = CubeTextPreviewScene {
         positions,
@@ -344,8 +361,21 @@ fn cube_text_preview_images(
             .and_then(|value| value.checked_mul(4))
             .map(|value| value as usize);
         if expected_len != Some(length) || end > bytes.len() {
+            debug::log(
+                LogLevel::Warn,
+                format_args!(
+                    "cube_text_preview image[{index}] rejected width={width} height={height} offset={offset} length={length} expected={expected_len:?} bytes_len={}",
+                    bytes.len(),
+                ),
+            );
             continue;
         }
+        debug::log(
+            LogLevel::Info,
+            format_args!(
+                "cube_text_preview image[{index}] accepted width={width} height={height} offset={offset} length={length}"
+            ),
+        );
         images.push(CubeTextPreviewImage {
             width,
             height,

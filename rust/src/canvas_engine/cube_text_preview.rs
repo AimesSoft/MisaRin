@@ -1,27 +1,39 @@
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use bevy::asset::{AssetPlugin, Assets};
+use bevy::core_pipeline::core_3d::{AlphaMask3d, Opaque3d, Transmissive3d, Transparent3d};
 use bevy::core_pipeline::CorePipelinePlugin;
-use bevy::pbr::{PbrBundle, PbrPlugin, StandardMaterial};
+use bevy::pbr::{
+    DefaultOpaqueRendererMethod, OpaqueRendererMethod, PbrBundle, PbrPlugin,
+    RenderMaterialInstances, RenderMaterials, StandardMaterial,
+};
 use bevy::prelude::*;
 use bevy::render::camera::{
     ManualTextureView, ManualTextureViewHandle, ManualTextureViews, RenderTarget,
 };
 use bevy::render::mesh::{Indices, Mesh};
 use bevy::render::render_asset::RenderAssetUsages;
+use bevy::render::render_asset::RenderAssets;
+use bevy::render::render_phase::RenderPhase;
+use bevy::render::render_resource::PipelineCache;
 use bevy::render::render_resource::{
-    Extent3d, Face, PrimitiveTopology, TextureDimension, TextureFormat,
+    CachedPipelineState, Extent3d, Face, Pipeline, PrimitiveTopology, TextureDimension,
+    TextureFormat,
 };
 use bevy::render::renderer::{RenderAdapter, RenderAdapterInfo, RenderInstance, RenderQueue};
 use bevy::render::settings::RenderCreation;
 use bevy::render::texture::{
     Image, ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor,
 };
-use bevy::render::RenderPlugin;
+use bevy::render::view::{NoFrustumCulling, ViewTarget, VisibleEntities};
+use bevy::render::{RenderApp, RenderPlugin};
 use bevy::window::{WindowClosed, WindowCreated, WindowResized, WindowScaleFactorChanged};
+use wgpu::TextureViewDimension;
 use serde::Deserialize;
 
+use crate::gpu::debug::{self, LogLevel};
 use crate::gpu::shared_device::SharedRenderDevice;
 
 const MANUAL_VIEW_HANDLE: ManualTextureViewHandle = ManualTextureViewHandle(0xC0BE_0001);
@@ -92,9 +104,14 @@ impl Default for CubeTextPreviewCamera {
 pub(crate) struct CubeTextPreviewRenderer {
     format: wgpu::TextureFormat,
     app: App,
+    device: SharedRenderDevice,
+    queue: Arc<wgpu::Queue>,
+    checkerboard_pipeline: wgpu::RenderPipeline,
     camera: Entity,
     mesh_entities: Vec<Entity>,
     scene_key: Option<SceneKey>,
+    scene_just_rebuilt: bool,
+    render_debug_logged: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -129,6 +146,8 @@ impl CubeTextPreviewRenderer {
             RenderAdapter(Arc::clone(adapter)),
             RenderInstance(Arc::clone(instance)),
         );
+        let checkerboard_pipeline =
+            create_checkerboard_pipeline(device.as_ref(), format.add_srgb_suffix());
 
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
@@ -148,6 +167,8 @@ impl CubeTextPreviewRenderer {
             .add_plugins(PbrPlugin::default())
             .init_resource::<ManualTextureViews>();
 
+        app.world
+            .insert_resource(DefaultOpaqueRendererMethod::forward());
         app.world.insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 280.0,
@@ -192,9 +213,14 @@ impl CubeTextPreviewRenderer {
         Self {
             format,
             app,
+            device: device.clone(),
+            queue: Arc::clone(queue),
+            checkerboard_pipeline,
             camera,
             mesh_entities: Vec::new(),
             scene_key: None,
+            scene_just_rebuilt: false,
+            render_debug_logged: false,
         }
     }
 
@@ -216,13 +242,78 @@ impl CubeTextPreviewRenderer {
         self.update_target(target_texture, width, height);
         self.ensure_scene(scene);
         self.update_camera(scene, width, height, camera);
+        if camera.transparent_background {
+            self.render_checkerboard_background(target_texture, width, height);
+        }
+        if self.scene_just_rebuilt {
+            // Bevy render assets/material bind groups are extracted and prepared on update.
+            // A warm-up update prevents the first visible frame from using incomplete render state.
+            self.app.update();
+            self.scene_just_rebuilt = false;
+        }
         self.app.update();
+        self.log_render_state_once();
+    }
+
+    fn render_checkerboard_background(
+        &self,
+        target_texture: &wgpu::Texture,
+        width: u32,
+        height: u32,
+    ) {
+        if width == 0 || height == 0 {
+            return;
+        }
+        let view_format = self.format.add_srgb_suffix();
+        let target_view = target_texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("misa-rin cube text checkerboard target view"),
+            dimension: Some(TextureViewDimension::D2),
+            format: Some(view_format),
+            mip_level_count: Some(1),
+            array_layer_count: Some(1),
+            ..Default::default()
+        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("misa-rin cube text checkerboard encoder"),
+            });
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("misa-rin cube text checkerboard pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &target_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            pass.set_pipeline(&self.checkerboard_pipeline);
+            pass.draw(0..3, 0..1);
+        }
+        self.queue.submit(Some(encoder.finish()));
+        debug::log(
+            LogLevel::Verbose,
+            format_args!(
+                "cube_text_preview checkerboard prefill size={}x{} format={:?}",
+                width, height, view_format,
+            ),
+        );
     }
 
     fn update_target(&mut self, target_texture: &wgpu::Texture, width: u32, height: u32) {
         let view_format = self.format.add_srgb_suffix();
         let target_view = target_texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("misa-rin cube text bevy target view"),
+            dimension: Some(TextureViewDimension::D2),
             format: Some(view_format),
+            mip_level_count: Some(1),
+            array_layer_count: Some(1),
             ..Default::default()
         });
         let manual_view = ManualTextureView {
@@ -234,6 +325,13 @@ impl CubeTextPreviewRenderer {
             .world
             .resource_mut::<ManualTextureViews>()
             .insert(MANUAL_VIEW_HANDLE, manual_view);
+        debug::log(
+            LogLevel::Verbose,
+            format_args!(
+                "cube_text_preview target size={}x{} base_format={:?} view_format={:?}",
+                width, height, self.format, view_format,
+            ),
+        );
     }
 
     fn ensure_scene(&mut self, scene: &CubeTextPreviewScene) {
@@ -241,6 +339,16 @@ impl CubeTextPreviewRenderer {
         if self.scene_key == Some(key) {
             return;
         }
+        debug::log(
+            LogLevel::Info,
+            format_args!(
+                "cube_text_preview bevy rebuild vertices={} triangles={} chunks_pending materials={} images={}",
+                scene.positions.len() / 3,
+                scene.indices.len() / 3,
+                scene.materials.len(),
+                scene.images.len(),
+            ),
+        );
         for entity in self.mesh_entities.drain(..) {
             if let Some(entity_commands) = self.app.world.get_entity_mut(entity) {
                 entity_commands.despawn_recursive();
@@ -266,8 +374,23 @@ impl CubeTextPreviewRenderer {
 
             let spec = material_spec(scene, material_index);
             let texture = self.material_texture(spec, scene);
+            let texture_id = texture.as_ref().map(|handle| format!("{:?}", handle.id()));
             let color = material_color(spec);
             let slot = material_index % 7;
+            debug::log(
+                LogLevel::Info,
+                format_args!(
+                    "cube_text_preview material[{material_index}] mode={} image_index={} color=0x{:08X} gradient_start=0x{:08X} gradient_end=0x{:08X} texture={} texture_id={} vertices={}",
+                    spec.mode_name(),
+                    spec.image_index,
+                    spec.color,
+                    spec.gradient_start,
+                    spec.gradient_end,
+                    texture.is_some(),
+                    texture_id.as_deref().unwrap_or("none"),
+                    chunk.vertex_count,
+                ),
+            );
             let mut meshes = self.app.world.resource_mut::<Assets<Mesh>>();
             let mesh_handle = meshes.add(mesh);
             drop(meshes);
@@ -282,13 +405,22 @@ impl CubeTextPreviewRenderer {
                 perceptual_roughness: if slot == 6 { 0.92 } else { 0.68 },
                 metallic: 0.0,
                 reflectance: if slot == 6 { 0.04 } else { 0.18 },
-                unlit: slot == 6,
+                unlit: true,
+                fog_enabled: false,
                 double_sided: true,
                 cull_mode: None::<Face>,
                 alpha_mode: AlphaMode::Opaque,
+                opaque_render_method: OpaqueRendererMethod::Forward,
                 ..default()
             });
+            let material_id = material_handle.id();
             drop(materials);
+            debug::log(
+                LogLevel::Verbose,
+                format_args!(
+                    "cube_text_preview material[{material_index}] handle_id={material_id:?}"
+                ),
+            );
 
             let entity = self
                 .app
@@ -299,11 +431,14 @@ impl CubeTextPreviewRenderer {
                     transform: Transform::IDENTITY,
                     ..default()
                 })
+                .insert(NoFrustumCulling)
                 .id();
             self.mesh_entities.push(entity);
         }
 
         self.scene_key = Some(key);
+        self.scene_just_rebuilt = true;
+        self.render_debug_logged = false;
     }
 
     fn update_camera(
@@ -347,11 +482,222 @@ impl CubeTextPreviewRenderer {
         if let Some(mut camera_component) = entity.get_mut::<Camera>() {
             camera_component.clear_color =
                 ClearColorConfig::Custom(if camera.transparent_background {
-                    Color::rgba(0.0, 0.0, 0.0, 0.0)
+                    Color::NONE
                 } else {
                     Color::rgb(0.97, 0.97, 0.97)
                 });
         }
+        debug::log(
+            LogLevel::Verbose,
+            format_args!(
+                "cube_text_preview camera yaw={:.2} pitch={:.2} zoom={:.3} fov={:.2} transparent={} eye=({:.2},{:.2},{:.2}) center=({:.2},{:.2},{:.2})",
+                camera.yaw,
+                camera.pitch,
+                camera.zoom,
+                camera.fov,
+                camera.transparent_background,
+                eye.x,
+                eye.y,
+                eye.z,
+                bounds.center.x,
+                bounds.center.y,
+                bounds.center.z,
+            ),
+        );
+    }
+
+    fn log_render_state_once(&mut self) {
+        if self.render_debug_logged || debug::level() < LogLevel::Info {
+            return;
+        }
+        self.render_debug_logged = true;
+
+        let mut visible_count = 0usize;
+        let mut hidden_count = 0usize;
+        let mut default_material_count = 0usize;
+        let mut texture_material_count = 0usize;
+        let mut material_entity_count = 0usize;
+        let mut material_samples = Vec::new();
+        let main_material_asset_count;
+        let main_image_asset_count;
+        {
+            let materials = self.app.world.resource::<Assets<StandardMaterial>>();
+            main_material_asset_count = materials.iter().count();
+            let images = self.app.world.resource::<Assets<Image>>();
+            main_image_asset_count = images.iter().count();
+            for &entity in &self.mesh_entities {
+                let Some(entity_ref) = self.app.world.get_entity(entity) else {
+                    continue;
+                };
+                let visible = entity_ref
+                    .get::<ViewVisibility>()
+                    .map(|visibility| visibility.get())
+                    .unwrap_or(false);
+                if visible {
+                    visible_count += 1;
+                } else {
+                    hidden_count += 1;
+                }
+                let Some(handle) = entity_ref.get::<Handle<StandardMaterial>>() else {
+                    continue;
+                };
+                material_entity_count += 1;
+                if material_samples.len() < 4 {
+                    if let Some(material) = materials.get(handle) {
+                        material_samples.push(format!(
+                            "{entity:?}:id={:?}:color={:?}:texture={}:unlit={}:fog={}:opaque={:?}",
+                            handle.id(),
+                            material.base_color,
+                            material.base_color_texture.is_some(),
+                            material.unlit,
+                            material.fog_enabled,
+                            material.opaque_render_method,
+                        ));
+                    } else {
+                        material_samples.push(format!("{entity:?}:id={:?}:missing", handle.id()));
+                    }
+                }
+                if handle.id() == Handle::<StandardMaterial>::default().id() {
+                    default_material_count += 1;
+                }
+                if materials
+                    .get(handle)
+                    .and_then(|material| material.base_color_texture.as_ref())
+                    .is_some()
+                {
+                    texture_material_count += 1;
+                }
+            }
+        }
+
+        let mut render_material_instances = 0usize;
+        let mut render_materials = 0usize;
+        let mut render_meshes = 0usize;
+        let mut render_images = 0usize;
+        let mut render_visible_entities = 0usize;
+        let mut view_targets = 0usize;
+        let mut opaque_phase_items = 0usize;
+        let mut alpha_mask_phase_items = 0usize;
+        let mut transmissive_phase_items = 0usize;
+        let mut transparent_phase_items = 0usize;
+        let mut pipeline_ok = 0usize;
+        let mut pipeline_queued = 0usize;
+        let mut pipeline_creating = 0usize;
+        let mut pipeline_err = 0usize;
+        let mut prepared_material_samples = Vec::new();
+        if let Ok(render_app) = self.app.get_sub_app_mut(RenderApp) {
+            if let Some(instances) = render_app
+                .world
+                .get_resource::<RenderMaterialInstances<StandardMaterial>>()
+            {
+                render_material_instances = instances.len();
+            }
+            if let Some(materials) = render_app
+                .world
+                .get_resource::<RenderMaterials<StandardMaterial>>()
+            {
+                render_materials = materials.iter().count();
+                for (asset_id, material) in materials.iter().take(4) {
+                    prepared_material_samples.push(format!(
+                        "{asset_id:?}:render={:?}:alpha={:?}:bindings={}",
+                        material.properties.render_method,
+                        material.properties.alpha_mode,
+                        material.bindings.len(),
+                    ));
+                }
+            }
+            if let Some(meshes) = render_app.world.get_resource::<RenderAssets<Mesh>>() {
+                render_meshes = meshes.iter().count();
+            }
+            if let Some(images) = render_app.world.get_resource::<RenderAssets<Image>>() {
+                render_images = images.iter().count();
+            }
+            let mut query = render_app.world.query::<&VisibleEntities>();
+            for visible_entities in query.iter(&render_app.world) {
+                render_visible_entities += visible_entities.entities.len();
+            }
+            let mut view_query = render_app.world.query::<(
+                Option<&RenderPhase<Opaque3d>>,
+                Option<&RenderPhase<AlphaMask3d>>,
+                Option<&RenderPhase<Transmissive3d>>,
+                Option<&RenderPhase<Transparent3d>>,
+                Option<&ViewTarget>,
+            )>();
+            let mut pipeline_ids = Vec::new();
+            for (opaque, alpha_mask, transmissive, transparent, view_target) in
+                view_query.iter(&render_app.world)
+            {
+                if view_target.is_some() {
+                    view_targets += 1;
+                }
+                if let Some(phase) = opaque {
+                    opaque_phase_items += phase.items.len();
+                    for item in phase.items.iter().take(8) {
+                        pipeline_ids.push(item.pipeline);
+                    }
+                }
+                if let Some(phase) = alpha_mask {
+                    alpha_mask_phase_items += phase.items.len();
+                    for item in phase.items.iter().take(8) {
+                        pipeline_ids.push(item.pipeline);
+                    }
+                }
+                if let Some(phase) = transmissive {
+                    transmissive_phase_items += phase.items.len();
+                    for item in phase.items.iter().take(8) {
+                        pipeline_ids.push(item.pipeline);
+                    }
+                }
+                if let Some(phase) = transparent {
+                    transparent_phase_items += phase.items.len();
+                    for item in phase.items.iter().take(8) {
+                        pipeline_ids.push(item.pipeline);
+                    }
+                }
+            }
+            if let Some(pipeline_cache) = render_app.world.get_resource::<PipelineCache>() {
+                for pipeline_id in pipeline_ids {
+                    match pipeline_cache.get_render_pipeline_state(pipeline_id) {
+                        CachedPipelineState::Ok(Pipeline::RenderPipeline(_)) => pipeline_ok += 1,
+                        CachedPipelineState::Queued => pipeline_queued += 1,
+                        CachedPipelineState::Creating(_) => pipeline_creating += 1,
+                        CachedPipelineState::Err(_) => pipeline_err += 1,
+                        CachedPipelineState::Ok(_) => pipeline_err += 1,
+                    }
+                }
+            }
+        }
+
+        debug::log(
+            LogLevel::Info,
+            format_args!(
+                "cube_text_preview render state entities={} main_material_assets={} main_image_assets={} material_entities={} visible={} hidden={} default_material_handles={} textured_main_materials={} render_instances={} render_materials={} render_meshes={} render_images={} render_visible_entities={} view_targets={} phase_opaque={} phase_alpha={} phase_transmissive={} phase_transparent={} pipeline_ok={} pipeline_queued={} pipeline_creating={} pipeline_err={} material_samples=[{}] prepared_material_samples=[{}]",
+                self.mesh_entities.len(),
+                main_material_asset_count,
+                main_image_asset_count,
+                material_entity_count,
+                visible_count,
+                hidden_count,
+                default_material_count,
+                texture_material_count,
+                render_material_instances,
+                render_materials,
+                render_meshes,
+                render_images,
+                render_visible_entities,
+                view_targets,
+                opaque_phase_items,
+                alpha_mask_phase_items,
+                transmissive_phase_items,
+                transparent_phase_items,
+                pipeline_ok,
+                pipeline_queued,
+                pipeline_creating,
+                pipeline_err,
+                material_samples.join("; "),
+                prepared_material_samples.join("; "),
+            ),
+        );
     }
 }
 
@@ -485,12 +831,29 @@ impl CubeTextPreviewRenderer {
             )),
             CubeTextPreviewMaterialMode::Image => {
                 if material.image_index < 0 {
+                    debug::log(
+                        LogLevel::Warn,
+                        format_args!(
+                            "cube_text_preview image material missing image_index={}",
+                            material.image_index,
+                        ),
+                    );
                     None
                 } else {
-                    scene
-                        .images
-                        .get(material.image_index as usize)
-                        .and_then(image_from_preview_image)
+                    match scene.images.get(material.image_index as usize) {
+                        Some(source) => image_from_preview_image(source),
+                        None => {
+                            debug::log(
+                                LogLevel::Warn,
+                                format_args!(
+                                    "cube_text_preview image_index={} out of range images={}",
+                                    material.image_index,
+                                    scene.images.len(),
+                                ),
+                            );
+                            None
+                        }
+                    }
                 }
             }
             CubeTextPreviewMaterialMode::Color => None,
@@ -541,8 +904,26 @@ fn gradient_image(start: u32, end: u32) -> Image {
 fn image_from_preview_image(source: &CubeTextPreviewImage) -> Option<Image> {
     let expected_len = source.width.checked_mul(source.height)?.checked_mul(4)? as usize;
     if source.width == 0 || source.height == 0 || source.rgba.len() != expected_len {
+        debug::log(
+            LogLevel::Warn,
+            format_args!(
+                "cube_text_preview image invalid width={} height={} len={} expected={expected_len}",
+                source.width,
+                source.height,
+                source.rgba.len(),
+            ),
+        );
         return None;
     }
+    debug::log(
+        LogLevel::Info,
+        format_args!(
+            "cube_text_preview create image texture width={} height={} len={}",
+            source.width,
+            source.height,
+            source.rgba.len(),
+        ),
+    );
     Some(Image {
         data: source.rgba.clone(),
         texture_descriptor: wgpu::TextureDescriptor {
@@ -587,6 +968,82 @@ fn lerp_rgba(start: u32, end: u32, t: f32) -> u32 {
     let b = (sb + (eb - sb) * t).round().clamp(0.0, 255.0) as u32;
     let a = (sa + (ea - sa) * t).round().clamp(0.0, 255.0) as u32;
     (r << 24) | (g << 16) | (b << 8) | a
+}
+
+fn create_checkerboard_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("misa-rin cube text checkerboard shader"),
+        source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(
+            r#"
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
+    var positions = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -3.0),
+        vec2<f32>(-1.0, 1.0),
+        vec2<f32>(3.0, 1.0)
+    );
+    var out: VertexOut;
+    let position = positions[vertex_index];
+    out.position = vec4<f32>(position, 0.0, 1.0);
+    out.uv = position * 0.5 + vec2<f32>(0.5, 0.5);
+    return out;
+}
+
+@fragment
+fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
+    let cell = floor(in.position.xy / vec2<f32>(14.0, 14.0));
+    let odd = (u32(cell.x) + u32(cell.y)) & 1u;
+    let light = vec3<f32>(0.88, 0.91, 0.95);
+    let dark = vec3<f32>(0.72, 0.77, 0.84);
+    let color = select(light, dark, odd == 1u);
+    return vec4<f32>(color, 1.0);
+}
+"#,
+        )),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("misa-rin cube text checkerboard pipeline layout"),
+        bind_group_layouts: &[],
+        push_constant_ranges: &[],
+    });
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("misa-rin cube text checkerboard pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[],
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            unclipped_depth: false,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            conservative: false,
+        },
+        depth_stencil: None,
+        multisample: wgpu::MultisampleState::default(),
+        multiview: None,
+    })
 }
 
 impl Bounds3 {
@@ -726,6 +1183,20 @@ impl Default for CubeTextPreviewMaterial {
             repeat_y: 1.0,
             offset_x: 0.0,
             offset_y: 0.0,
+        }
+    }
+}
+
+impl CubeTextPreviewMaterial {
+    pub(crate) fn is_image_mode(&self) -> bool {
+        self.mode == CubeTextPreviewMaterialMode::Image
+    }
+
+    fn mode_name(&self) -> &'static str {
+        match self.mode {
+            CubeTextPreviewMaterialMode::Color => "color",
+            CubeTextPreviewMaterialMode::Gradient => "gradient",
+            CubeTextPreviewMaterialMode::Image => "image",
         }
     }
 }

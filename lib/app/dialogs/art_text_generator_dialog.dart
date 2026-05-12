@@ -1008,7 +1008,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                   behavior: HitTestBehavior.opaque,
                   onPanUpdate: (DragUpdateDetails details) {
                     setState(() {
-                      _yaw += details.delta.dx * 0.35;
+                      _yaw -= details.delta.dx * 0.35;
                       _pitch = (_pitch + details.delta.dy * 0.28).clamp(
                         -85,
                         85,
@@ -2538,6 +2538,7 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
     'misarin/rust_canvas_texture',
   );
   static int _nextSurfaceId = 1;
+  static const Duration _kPreviewSyncInterval = Duration(milliseconds: 16);
 
   late final String _surfaceId;
   int? _textureId;
@@ -2545,6 +2546,11 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
   int _textureWidth = 0;
   int _textureHeight = 0;
   int _syncSerial = 0;
+  DateTime _lastSyncAt = DateTime.fromMillisecondsSinceEpoch(0);
+  Timer? _syncTimer;
+  bool _syncInFlight = false;
+  bool _syncPending = false;
+  bool _pendingUploadScene = false;
   cube_text.CubeTextScene? _uploadedScene;
   String? _uploadedMaterialKey;
   Object? _error;
@@ -2553,7 +2559,7 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
   void initState() {
     super.initState();
     _surfaceId = 'cube_text_bevy_preview_${_nextSurfaceId++}';
-    unawaited(_sync(uploadScene: true));
+    _requestSync(uploadScene: true);
   }
 
   @override
@@ -2566,11 +2572,12 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
       _uploadedScene = null;
       _uploadedMaterialKey = null;
     }
-    unawaited(_sync(uploadScene: sceneChanged || sizeChanged));
+    _requestSync(uploadScene: sceneChanged || sizeChanged);
   }
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     unawaited(_disposeSurface());
     super.dispose();
   }
@@ -2583,9 +2590,43 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
     } catch (_) {}
   }
 
+  void _requestSync({required bool uploadScene}) {
+    if (uploadScene) {
+      _pendingUploadScene = true;
+    }
+    _syncPending = true;
+    _kickSync();
+  }
+
+  void _kickSync() {
+    if (!mounted || _syncInFlight || !_syncPending) {
+      return;
+    }
+    final Duration elapsed = DateTime.now().difference(_lastSyncAt);
+    if (elapsed < _kPreviewSyncInterval) {
+      _syncTimer ??= Timer(_kPreviewSyncInterval - elapsed, () {
+        _syncTimer = null;
+        _kickSync();
+      });
+      return;
+    }
+    _syncPending = false;
+    final bool uploadScene = _pendingUploadScene;
+    _pendingUploadScene = false;
+    _syncInFlight = true;
+    _lastSyncAt = DateTime.now();
+    unawaited(
+      _sync(uploadScene: uploadScene).whenComplete(() {
+        _syncInFlight = false;
+        _kickSync();
+      }),
+    );
+  }
+
   Future<void> _sync({required bool uploadScene}) async {
     final int serial = ++_syncSerial;
     try {
+      canvas_engine_ffi.CanvasEngineFfi.instance.setLogLevel(2);
       await _ensureTexture(serial);
       if (!mounted || serial != _syncSerial) {
         return;
@@ -2606,6 +2647,11 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
               widget.scene,
               widget.materialImages,
             );
+        debugPrint(
+          '[cube_text_preview][dart] upload scene vertices=${widget.scene.positions.length ~/ 3} '
+          'triangles=${widget.scene.indices.length ~/ 3} materials=${widget.scene.materials.length} '
+          'images=${materialUpload.imageWidths.length} imageBytes=${materialUpload.imageBytes.length}',
+        );
         if (!mounted || serial != _syncSerial) {
           return;
         }
@@ -2642,6 +2688,14 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
       if (!rendered) {
         throw StateError('engine_render_cube_text_preview failed');
       }
+      debugPrint(
+        '[cube_text_preview][dart] render request handle=$handle '
+        'yaw=${widget.yaw.toStringAsFixed(2)} pitch=${widget.pitch.toStringAsFixed(2)} '
+        'zoom=${widget.zoom.toStringAsFixed(3)} fov=${widget.fov.toStringAsFixed(2)} '
+        'transparent=${widget.transparentBackground}',
+      );
+      _drainCubeTextPreviewLogs();
+      _scheduleCubeTextPreviewLogDrain(serial);
       if (mounted && _error != null) {
         setState(() {
           _error = null;
@@ -2654,6 +2708,29 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
       setState(() {
         _error = error;
       });
+    }
+  }
+
+  void _scheduleCubeTextPreviewLogDrain(int serial) {
+    for (final int delayMs in const <int>[80, 250, 600]) {
+      unawaited(
+        Future<void>.delayed(Duration(milliseconds: delayMs), () {
+          if (!mounted || serial != _syncSerial) {
+            return;
+          }
+          _drainCubeTextPreviewLogs();
+        }),
+      );
+    }
+  }
+
+  void _drainCubeTextPreviewLogs() {
+    final List<String> lines = canvas_engine_ffi.CanvasEngineFfi.instance
+        .drainLogs(maxLines: 80);
+    for (final String line in lines) {
+      if (line.contains('cube_text_preview')) {
+        debugPrint(line);
+      }
     }
   }
 
@@ -2776,15 +2853,28 @@ Future<_CubeTextPreviewMaterialUpload> _cubeTextPreviewMaterialUpload(
     final String mode = option.mode == 'image' && imageIndex < 0
         ? 'color'
         : option.mode;
+    final int color = _rgbaInt(
+      _parseColor(option.color) ?? const Color(0xFFFFFFFF),
+    );
+    final int gradientStart = _rgbaInt(
+      _parseColor(option.colorGradualStart) ?? const Color(0xFFFFFFFF),
+    );
+    final int gradientEnd = _rgbaInt(
+      _parseColor(option.colorGradualEnd) ?? const Color(0xFFFFFFFF),
+    );
+    debugPrint(
+      '[cube_text_preview][dart] material ${material.name}/${material.slot} '
+      'optionMode=${option.mode} uploadMode=$mode imageIndex=$imageIndex '
+      'color=0x${color.toRadixString(16).padLeft(8, '0')} '
+      'gradientStart=0x${gradientStart.toRadixString(16).padLeft(8, '0')} '
+      'gradientEnd=0x${gradientEnd.toRadixString(16).padLeft(8, '0')} '
+      'hasImage=${materialImages.containsKey(option.image)} imageUriLength=${option.image.length}',
+    );
     materials.add(<String, Object?>{
       'mode': mode,
-      'color': _rgbaInt(_parseColor(option.color) ?? const Color(0xFFFFFFFF)),
-      'gradientStart': _rgbaInt(
-        _parseColor(option.colorGradualStart) ?? const Color(0xFFFFFFFF),
-      ),
-      'gradientEnd': _rgbaInt(
-        _parseColor(option.colorGradualEnd) ?? const Color(0xFFFFFFFF),
-      ),
+      'color': color,
+      'gradientStart': gradientStart,
+      'gradientEnd': gradientEnd,
       'repeat': option.repeat,
       'offset': option.offset,
       'imageIndex': imageIndex,
