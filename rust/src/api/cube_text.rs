@@ -1,8 +1,8 @@
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 use clipper2_rust::{
-    area as clipper_area, boolean_op_tree_64, inflate_paths_64, trim_collinear_64, ClipType,
-    EndType, FillRule, JoinType, Path64, Paths64, Point64, PolyTree64,
+    area as clipper_area, boolean_op_tree_64, inflate_paths_64, simplify_path, trim_collinear_64,
+    ClipType, EndType, FillRule, JoinType, Path64, Paths64, Point64, PolyTree64,
 };
 use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -925,21 +925,26 @@ fn create_outline_shapes(shapes: &[Shape2D], outline_width: f64) -> Vec<Shape2D>
         return Vec::new();
     }
 
+    let simplify_epsilon = (outline_width * CLIPPER_SCALE * 0.04).clamp(1.0, 4.0);
     let mut all_offset_paths: Paths64 = Vec::new();
     for shape in shapes {
         if let Some(paths) = shape_to_paths64(shape) {
             let inflated = inflate_paths_64(
                 &paths,
                 outline_width * CLIPPER_SCALE,
-                JoinType::Miter,
+                JoinType::Square,
                 EndType::Polygon,
                 2.0,
                 0.0,
             );
             for path in inflated {
                 let trimmed = trim_collinear_64(&path, false);
-                if trimmed.len() >= 3 && clipper_area(&trimmed).abs() > 0.0 {
-                    all_offset_paths.push(trimmed);
+                if trimmed.len() < 3 || clipper_area(&trimmed).abs() <= 0.0 {
+                    continue;
+                }
+                let simplified = simplify_path(&trimmed, simplify_epsilon, true);
+                if simplified.len() >= 3 && clipper_area(&simplified).abs() > 0.0 {
+                    all_offset_paths.push(simplified);
                 }
             }
         }

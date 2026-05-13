@@ -449,11 +449,7 @@ impl CubeTextPreviewRenderer {
                 .world_mut()
                 .resource_mut::<Assets<StandardMaterial>>();
             let is_outline_slot = slot == 6;
-            let alpha_mode = if is_outline_slot {
-                AlphaMode::Blend
-            } else {
-                AlphaMode::Opaque
-            };
+            let alpha_mode = AlphaMode::Opaque;
             let material_handle = materials.add(StandardMaterial {
                 base_color: if texture.is_some() {
                     Color::WHITE
@@ -475,8 +471,9 @@ impl CubeTextPreviewRenderer {
                 } else {
                     None
                 },
-                // Outline uses transparent pass so it won't write depth and fight with main mesh.
-                depth_bias: 0.0,
+                // Keep outline in opaque pass and apply depth bias to reduce shimmering
+                // when camera rotates near coplanar regions.
+                depth_bias: if is_outline_slot { 2.0 } else { 0.0 },
                 alpha_mode,
                 opaque_render_method: OpaqueRendererMethod::Forward,
                 ..default()
