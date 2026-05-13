@@ -4,14 +4,17 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use bevy::asset::{AssetPlugin, Assets, RenderAssetUsages};
+use bevy::camera::CameraPlugin;
 use bevy::camera::visibility::{NoFrustumCulling, ViewVisibility, VisibleEntities};
 use bevy::camera::{ManualTextureViewHandle, RenderTarget};
 use bevy::core_pipeline::CorePipelinePlugin;
+use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::image::{
     Image, ImageAddressMode, ImageFilterMode, ImagePlugin, ImageSampler, ImageSamplerDescriptor,
 };
+use bevy::light::LightPlugin;
 use bevy::light::{DirectionalLight, GlobalAmbientLight, PointLight};
-use bevy::mesh::{Indices, Mesh, Mesh3d};
+use bevy::mesh::{Indices, Mesh, Mesh3d, MeshPlugin};
 use bevy::pbr::{
     DefaultOpaqueRendererMethod, MeshMaterial3d, OpaqueRendererMethod, PbrPlugin, PreparedMaterial,
     RenderMaterialInstances, StandardMaterial,
@@ -30,6 +33,10 @@ use bevy::render::settings::RenderCreation;
 use bevy::render::texture::{GpuImage, ManualTextureView, ManualTextureViews};
 use bevy::render::view::ViewTarget;
 use bevy::render::{RenderApp, RenderPlugin};
+use bevy::window::{
+    WindowBackendScaleFactorChanged, WindowCloseRequested, WindowClosing, WindowDestroyed,
+    WindowEvent, WindowFocused, WindowMoved, WindowOccluded, WindowPlugin, WindowThemeChanged,
+};
 use bevy::window::{WindowClosed, WindowCreated, WindowResized, WindowScaleFactorChanged};
 use serde::Deserialize;
 use wgpu::TextureViewDimension;
@@ -153,11 +160,31 @@ impl CubeTextPreviewRenderer {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
             .add_plugins(bevy::transform::TransformPlugin)
+            // Bevy 0.18 render extract systems require these window messages to exist
+            // even when we render into a manual texture view (no OS window entity).
+            .add_plugins(WindowPlugin {
+                primary_window: None,
+                exit_condition: bevy::window::ExitCondition::DontExit,
+                close_when_requested: false,
+                ..Default::default()
+            })
             .add_message::<WindowResized>()
             .add_message::<WindowCreated>()
             .add_message::<WindowScaleFactorChanged>()
+            .add_message::<WindowBackendScaleFactorChanged>()
             .add_message::<WindowClosed>()
+            .add_message::<WindowClosing>()
+            .add_message::<WindowCloseRequested>()
+            .add_message::<WindowDestroyed>()
+            .add_message::<WindowMoved>()
+            .add_message::<WindowFocused>()
+            .add_message::<WindowOccluded>()
+            .add_message::<WindowThemeChanged>()
+            .add_message::<WindowEvent>()
             .add_plugins(AssetPlugin::default())
+            .add_plugins(MeshPlugin)
+            .add_plugins(CameraPlugin)
+            .add_plugins(LightPlugin)
             .add_plugins(RenderPlugin {
                 render_creation,
                 synchronous_pipeline_compilation: true,
@@ -180,6 +207,7 @@ impl CubeTextPreviewRenderer {
             .spawn((
                 Camera3d::default(),
                 Msaa::Sample4,
+                Tonemapping::None,
                 Camera {
                     clear_color: ClearColorConfig::Custom(Color::srgb(0.97, 0.97, 0.97)),
                     ..default()
@@ -398,6 +426,7 @@ impl CubeTextPreviewRenderer {
                 .app
                 .world_mut()
                 .resource_mut::<Assets<StandardMaterial>>();
+            let is_outline_slot = slot == 6;
             let material_handle = materials.add(StandardMaterial {
                 base_color: if texture.is_some() {
                     Color::WHITE
@@ -410,8 +439,14 @@ impl CubeTextPreviewRenderer {
                 reflectance: if slot == 6 { 0.04 } else { 0.18 },
                 unlit: true,
                 fog_enabled: false,
-                double_sided: true,
-                cull_mode: None::<Face>,
+                double_sided: false,
+                // Match reference renderer:
+                // regular faces use front-side rendering; outline uses back-side rendering.
+                cull_mode: Some(if is_outline_slot {
+                    Face::Front
+                } else {
+                    Face::Back
+                }),
                 alpha_mode: AlphaMode::Opaque,
                 opaque_render_method: OpaqueRendererMethod::Forward,
                 ..default()
