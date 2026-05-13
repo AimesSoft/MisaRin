@@ -1,8 +1,11 @@
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
-use clipper2_rust::{inflate_paths_64, union_subjects_64, EndType, FillRule, JoinType, Path64, Paths64, Point64};
+use clipper2_rust::{
+    area as clipper_area, boolean_op_tree_64, inflate_paths_64, trim_collinear_64, ClipType,
+    EndType, FillRule, JoinType, Path64, Paths64, Point64, PolyTree64,
+};
 use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use ttf_parser::{name_id, Face, GlyphId, OutlineBuilder};
 
 const PLACEHOLDER_WIDTH_RATIO: f64 = 0.6;
@@ -633,7 +636,52 @@ fn layout_text_shapes(
 
 fn shapes_from_glyph_outline(outline: &str, scale: f64, offset_x: f64) -> Vec<Shape2D> {
     let contours = parse_glyph_contours(outline, scale, offset_x);
-    contours_to_shapes(contours)
+    let normalized = contours_to_shapes_with_clipper(&contours);
+    if normalized.is_empty() {
+        contours_to_shapes(contours)
+    } else {
+        normalized
+    }
+}
+
+fn contours_to_shapes_with_clipper(contours: &[Vec<P2>]) -> Vec<Shape2D> {
+    let mut subject_paths: Paths64 = Vec::new();
+    for contour in contours {
+        let cleaned = clean_loop(contour);
+        if cleaned.len() < 3 || polygon_area(&cleaned).abs() <= EPSILON {
+            continue;
+        }
+        let path = trim_collinear_64(&loop_to_path64(&cleaned), false);
+        if path.len() >= 3 && clipper_area(&path).abs() > 0.0 {
+            subject_paths.push(path);
+        }
+    }
+    if subject_paths.is_empty() {
+        return Vec::new();
+    }
+
+    let mut tree = PolyTree64::new();
+    boolean_op_tree_64(
+        ClipType::Union,
+        FillRule::NonZero,
+        &subject_paths,
+        &Paths64::new(),
+        &mut tree,
+    );
+    let nonzero_shapes = polytree_to_shapes(&tree);
+    if !nonzero_shapes.is_empty() {
+        return nonzero_shapes;
+    }
+
+    // Fallback for fonts with mixed contour winding.
+    boolean_op_tree_64(
+        ClipType::Union,
+        FillRule::EvenOdd,
+        &subject_paths,
+        &Paths64::new(),
+        &mut tree,
+    );
+    polytree_to_shapes(&tree)
 }
 
 fn parse_glyph_contours(outline: &str, scale: f64, offset_x: f64) -> Vec<Vec<P2>> {
@@ -879,16 +927,21 @@ fn create_outline_shapes(shapes: &[Shape2D], outline_width: f64) -> Vec<Shape2D>
 
     let mut all_offset_paths: Paths64 = Vec::new();
     for shape in shapes {
-        if let Some(path) = shape_outer_to_path64(shape) {
+        if let Some(paths) = shape_to_paths64(shape) {
             let inflated = inflate_paths_64(
-                &vec![path],
+                &paths,
                 outline_width * CLIPPER_SCALE,
                 JoinType::Miter,
                 EndType::Polygon,
                 2.0,
                 0.0,
             );
-            all_offset_paths.extend(inflated);
+            for path in inflated {
+                let trimmed = trim_collinear_64(&path, false);
+                if trimmed.len() >= 3 && clipper_area(&trimmed).abs() > 0.0 {
+                    all_offset_paths.push(trimmed);
+                }
+            }
         }
     }
 
@@ -896,47 +949,82 @@ fn create_outline_shapes(shapes: &[Shape2D], outline_width: f64) -> Vec<Shape2D>
         return Vec::new();
     }
 
-    let merged = union_subjects_64(&all_offset_paths, FillRule::NonZero);
+    let mut tree = PolyTree64::new();
+    boolean_op_tree_64(
+        ClipType::Union,
+        FillRule::NonZero,
+        &all_offset_paths,
+        &Paths64::new(),
+        &mut tree,
+    );
+
+    polytree_to_shapes(&tree)
+}
+
+fn polytree_to_shapes(tree: &PolyTree64) -> Vec<Shape2D> {
     let mut result = Vec::new();
-    for path in merged {
-        let mut outer = path64_to_shape_loop(&path);
-        outer = clean_loop(&outer);
-        if outer.len() < 3 {
-            continue;
-        }
-        ensure_orientation(&mut outer, true);
-        if polygon_area(&outer).abs() <= EPSILON {
-            continue;
-        }
-        result.push(Shape2D {
-            outer,
-            holes: Vec::new(),
-        });
+    for &outer_idx in tree.root().children() {
+        collect_polytree_shapes(tree, outer_idx, &mut result);
     }
     result
 }
 
-fn shape_outer_to_path64(shape: &Shape2D) -> Option<Path64> {
-    if shape.outer.len() < 3 {
-        return None;
-    }
-    let mut outer = clean_loop(&shape.outer);
-    if outer.len() < 3 {
-        return None;
+fn collect_polytree_shapes(tree: &PolyTree64, outer_idx: usize, out: &mut Vec<Shape2D>) {
+    let outer_node = &tree.nodes[outer_idx];
+    let mut outer = clean_loop(&path64_to_shape_loop(outer_node.polygon()));
+    if outer.len() < 3 || polygon_area(&outer).abs() <= EPSILON {
+        return;
     }
     ensure_orientation(&mut outer, true);
-    if polygon_area(&outer).abs() <= EPSILON {
+
+    let mut holes = Vec::new();
+    for &hole_idx in outer_node.children() {
+        let hole_node = &tree.nodes[hole_idx];
+        let mut hole = clean_loop(&path64_to_shape_loop(hole_node.polygon()));
+        if hole.len() >= 3 && polygon_area(&hole).abs() > EPSILON {
+            ensure_orientation(&mut hole, false);
+            holes.push(hole);
+        }
+    }
+
+    out.push(Shape2D { outer, holes });
+
+    for &hole_idx in outer_node.children() {
+        for &nested_outer_idx in tree.nodes[hole_idx].children() {
+            collect_polytree_shapes(tree, nested_outer_idx, out);
+        }
+    }
+}
+
+fn shape_to_paths64(shape: &Shape2D) -> Option<Paths64> {
+    if shape.outer.len() < 3 && shape.holes.is_empty() {
         return None;
     }
-    Some(
-        outer
-            .into_iter()
-            .map(|p| Point64 {
-                x: (p.x * CLIPPER_SCALE).round() as i64,
-                y: (p.y * CLIPPER_SCALE).round() as i64,
-            })
-            .collect(),
-    )
+
+    let mut result: Paths64 = Vec::new();
+
+    let mut outer = clean_loop(&shape.outer);
+    if outer.len() < 3 {
+        return Some(result);
+    }
+    ensure_orientation(&mut outer, true);
+    if polygon_area(&outer).abs() > EPSILON {
+        result.push(loop_to_path64(&outer));
+    }
+
+    for hole in &shape.holes {
+        let mut hole_loop = clean_loop(hole);
+        if hole_loop.len() < 3 {
+            continue;
+        }
+        ensure_orientation(&mut hole_loop, false);
+        if polygon_area(&hole_loop).abs() <= EPSILON {
+            continue;
+        }
+        result.push(loop_to_path64(&hole_loop));
+    }
+
+    Some(result)
 }
 
 fn path64_to_shape_loop(path: &Path64) -> Vec<P2> {
@@ -944,6 +1032,16 @@ fn path64_to_shape_loop(path: &Path64) -> Vec<P2> {
         .map(|p| P2 {
             x: p.x as f64 / CLIPPER_SCALE,
             y: p.y as f64 / CLIPPER_SCALE,
+        })
+        .collect()
+}
+
+fn loop_to_path64(points: &[P2]) -> Path64 {
+    points
+        .iter()
+        .map(|p| Point64 {
+            x: (p.x * CLIPPER_SCALE).round() as i64,
+            y: (p.y * CLIPPER_SCALE).round() as i64,
         })
         .collect()
 }
@@ -1077,25 +1175,28 @@ fn triangulate_shape(shape: &Shape2D) -> Vec<[P2; 3]> {
     }
 
     let triangulation = match ConstrainedDelaunayTriangulation::<Point2<f64>>::try_bulk_load_cdt(
-        vertices,
-        edges,
-        |_| {},
+        vertices, edges, |_| {},
     ) {
         Ok(value) => value,
         Err(_) => return triangulate_simple_polygon(&shape.outer),
     };
 
+    let inside_faces = classify_cdt_inside_faces(&triangulation);
     let mut result = Vec::new();
     for face in triangulation.inner_faces() {
+        if !inside_faces
+            .get(face.fix().index())
+            .copied()
+            .unwrap_or(false)
+        {
+            continue;
+        }
         let verts = face.vertices();
         let tri = [
             p2_from_point(verts[0].position()),
             p2_from_point(verts[1].position()),
             p2_from_point(verts[2].position()),
         ];
-        if !triangle_in_shape(tri, shape) {
-            continue;
-        }
         if polygon_area(&tri) < 0.0 {
             result.push([tri[0], tri[2], tri[1]]);
         } else {
@@ -1103,6 +1204,72 @@ fn triangulate_shape(shape: &Shape2D) -> Vec<[P2; 3]> {
         }
     }
     result
+}
+
+fn classify_cdt_inside_faces(
+    triangulation: &ConstrainedDelaunayTriangulation<Point2<f64>>,
+) -> Vec<bool> {
+    let mut parity_by_face: Vec<Option<u8>> = vec![None; triangulation.num_all_faces()];
+    let mut queue: VecDeque<_> = VecDeque::new();
+
+    // Seed from convex hull. Crossing a constraint edge toggles in/out parity.
+    for edge in triangulation.undirected_edges() {
+        if !edge.is_part_of_convex_hull() {
+            continue;
+        }
+        let directed = edge.as_directed();
+        let left = directed.face();
+        let right = directed.rev().face();
+        let inner = match (left.as_inner(), right.as_inner()) {
+            (Some(face), None) => Some(face),
+            (None, Some(face)) => Some(face),
+            _ => None,
+        };
+        let Some(inner_face) = inner else {
+            continue;
+        };
+        let fixed_inner = inner_face.fix();
+        let idx = fixed_inner.index();
+        let seed = if edge.is_constraint_edge() { 1 } else { 0 };
+        if parity_by_face[idx].is_none() {
+            parity_by_face[idx] = Some(seed);
+            queue.push_back(fixed_inner);
+        }
+    }
+
+    while let Some(face_handle) = queue.pop_front() {
+        let face_idx = face_handle.index();
+        let Some(face_parity) = parity_by_face[face_idx] else {
+            continue;
+        };
+        let inner_face = triangulation.face(face_handle);
+        for edge in inner_face.adjacent_edges() {
+            let neighbor = edge.rev().face();
+            let Some(neighbor_inner) = neighbor.as_inner() else {
+                continue;
+            };
+            let fixed_neighbor = neighbor_inner.fix();
+            let neighbor_idx = fixed_neighbor.index();
+            let next_parity = if edge.as_undirected().is_constraint_edge() {
+                face_parity ^ 1
+            } else {
+                face_parity
+            };
+            match parity_by_face[neighbor_idx] {
+                None => {
+                    parity_by_face[neighbor_idx] = Some(next_parity);
+                    queue.push_back(fixed_neighbor);
+                }
+                Some(existing) if existing == next_parity => {}
+                Some(_) => {}
+            }
+        }
+    }
+
+    parity_by_face
+        .into_iter()
+        .map(|value| matches!(value, Some(1)))
+        .collect()
 }
 
 fn append_loop_for_triangulation(
