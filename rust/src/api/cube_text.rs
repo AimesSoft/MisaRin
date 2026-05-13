@@ -1,7 +1,8 @@
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 use clipper2_rust::{
-    area as clipper_area, boolean_op_tree_64, inflate_paths_64, simplify_path, trim_collinear_64,
+    area as clipper_area, boolean_op_64, boolean_op_tree_64, inflate_paths_64, simplify_path,
+    trim_collinear_64,
     ClipType, EndType, FillRule, JoinType, Path64, Paths64, Point64, PolyTree64,
 };
 use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
@@ -925,45 +926,76 @@ fn create_outline_shapes(shapes: &[Shape2D], outline_width: f64) -> Vec<Shape2D>
         return Vec::new();
     }
 
-    let simplify_epsilon = (outline_width * CLIPPER_SCALE * 0.04).clamp(1.0, 4.0);
-    let mut all_offset_paths: Paths64 = Vec::new();
+    // Keep this path as close as possible to the reference renderer:
+    // per-shape offset -> keep outers -> union -> keep outers.
+    let delta = outline_width * CLIPPER_SCALE;
+    let mut result = Vec::new();
     for shape in shapes {
         if let Some(paths) = shape_to_paths64(shape) {
             let inflated = inflate_paths_64(
                 &paths,
-                outline_width * CLIPPER_SCALE,
-                JoinType::Square,
+                delta,
+                JoinType::Miter,
                 EndType::Polygon,
                 2.0,
                 0.0,
             );
+            if inflated.is_empty() {
+                continue;
+            }
+
+            let orientation_sign = inflated
+                .iter()
+                .map(clipper_area)
+                .max_by(|a, b| a.abs().total_cmp(&b.abs()))
+                .map(|area| if area >= 0.0 { 1.0 } else { -1.0 })
+                .unwrap_or(1.0);
+
+            let mut offset_outers = Paths64::new();
+            let mut all_cleaned = Paths64::new();
             for path in inflated {
                 let trimmed = trim_collinear_64(&path, false);
-                if trimmed.len() < 3 || clipper_area(&trimmed).abs() <= 0.0 {
+                if trimmed.len() < 3 {
                     continue;
                 }
-                let simplified = simplify_path(&trimmed, simplify_epsilon, true);
-                if simplified.len() >= 3 && clipper_area(&simplified).abs() > 0.0 {
-                    all_offset_paths.push(simplified);
+                let area = clipper_area(&trimmed);
+                if area.abs() <= 0.0 {
+                    continue;
                 }
+                if area * orientation_sign > 0.0 {
+                    offset_outers.push(trimmed.clone());
+                }
+                all_cleaned.push(trimmed);
+            }
+
+            let subjects = if offset_outers.is_empty() {
+                &all_cleaned
+            } else {
+                &offset_outers
+            };
+            if subjects.is_empty() {
+                continue;
+            }
+
+            let union_paths = boolean_op_64(ClipType::Union, FillRule::NonZero, subjects, &Paths64::new());
+            for union_path in union_paths {
+                let mut outer = clean_loop(&path64_to_shape_loop(&union_path));
+                if outer.len() < 3 || polygon_area(&outer).abs() <= EPSILON {
+                    continue;
+                }
+                let area = polygon_area(&outer);
+                if area * orientation_sign <= 0.0 {
+                    continue;
+                }
+                ensure_orientation(&mut outer, true);
+                result.push(Shape2D {
+                    outer,
+                    holes: Vec::new(),
+                });
             }
         }
     }
-
-    if all_offset_paths.is_empty() {
-        return Vec::new();
-    }
-
-    let mut tree = PolyTree64::new();
-    boolean_op_tree_64(
-        ClipType::Union,
-        FillRule::NonZero,
-        &all_offset_paths,
-        &Paths64::new(),
-        &mut tree,
-    );
-
-    polytree_to_shapes(&tree)
+    result
 }
 
 fn polytree_to_shapes(tree: &PolyTree64) -> Vec<Shape2D> {
