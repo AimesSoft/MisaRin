@@ -7,6 +7,7 @@ use bevy::asset::{AssetPlugin, Assets, RenderAssetUsages};
 use bevy::camera::CameraPlugin;
 use bevy::camera::visibility::{NoFrustumCulling, ViewVisibility, VisibleEntities};
 use bevy::camera::{ManualTextureViewHandle, RenderTarget};
+use bevy::camera::visibility::RenderLayers;
 use bevy::core_pipeline::CorePipelinePlugin;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::image::{
@@ -47,6 +48,8 @@ use crate::gpu::shared_device::SharedRenderDevice;
 const MANUAL_VIEW_HANDLE: ManualTextureViewHandle = ManualTextureViewHandle(0xC0BE_0001);
 const GRADIENT_TEXTURE_HEIGHT: u32 = 256;
 const GRADIENT_TEXTURE_WIDTH: u32 = 4;
+const MAIN_LAYER: usize = 0;
+const OUTLINE_LAYER: usize = 1;
 
 #[derive(Clone)]
 pub(crate) struct CubeTextPreviewScene {
@@ -115,7 +118,8 @@ pub(crate) struct CubeTextPreviewRenderer {
     device: SharedRenderDevice,
     queue: Arc<wgpu::Queue>,
     checkerboard_pipeline: wgpu::RenderPipeline,
-    camera: Entity,
+    main_camera: Entity,
+    outline_camera: Entity,
     mesh_entities: Vec<Entity>,
     scene_key: Option<SceneKey>,
     scene_just_rebuilt: bool,
@@ -202,7 +206,7 @@ impl CubeTextPreviewRenderer {
             brightness: 280.0,
             affects_lightmapped_meshes: true,
         });
-        let camera = app
+        let outline_camera = app
             .world_mut()
             .spawn((
                 Camera3d::default(),
@@ -210,9 +214,26 @@ impl CubeTextPreviewRenderer {
                 Tonemapping::None,
                 Camera {
                     clear_color: ClearColorConfig::Custom(Color::srgb(0.97, 0.97, 0.97)),
+                    order: 0,
                     ..default()
                 },
                 RenderTarget::TextureView(MANUAL_VIEW_HANDLE),
+                RenderLayers::layer(OUTLINE_LAYER),
+            ))
+            .id();
+        let main_camera = app
+            .world_mut()
+            .spawn((
+                Camera3d::default(),
+                Msaa::Sample4,
+                Tonemapping::None,
+                Camera {
+                    clear_color: ClearColorConfig::None,
+                    order: 1,
+                    ..default()
+                },
+                RenderTarget::TextureView(MANUAL_VIEW_HANDLE),
+                RenderLayers::layer(MAIN_LAYER),
             ))
             .id();
 
@@ -243,7 +264,8 @@ impl CubeTextPreviewRenderer {
             device: device.clone(),
             queue: Arc::clone(queue),
             checkerboard_pipeline,
-            camera,
+            main_camera,
+            outline_camera,
             mesh_entities: Vec::new(),
             scene_key: None,
             scene_just_rebuilt: false,
@@ -475,6 +497,11 @@ impl CubeTextPreviewRenderer {
                     Mesh3d(mesh_handle),
                     MeshMaterial3d(material_handle),
                     Transform::IDENTITY,
+                    RenderLayers::layer(if is_outline_slot {
+                        OUTLINE_LAYER
+                    } else {
+                        MAIN_LAYER
+                    }),
                 ))
                 .insert(NoFrustumCulling)
                 .id();
@@ -493,9 +520,6 @@ impl CubeTextPreviewRenderer {
         height: u32,
         camera: CubeTextPreviewCamera,
     ) {
-        let Ok(mut entity) = self.app.world_mut().get_entity_mut(self.camera) else {
-            return;
-        };
         let bounds = Bounds3::from_positions(&scene.positions);
         let fov = camera.fov.clamp(10.0, 80.0).to_radians();
         let zoom = camera.zoom.clamp(0.1, 12.0);
@@ -513,27 +537,41 @@ impl CubeTextPreviewRenderer {
         let eye = bounds.center + dir * distance.max(0.1);
         let transform = Transform::from_translation(eye).looking_at(bounds.center, Vec3::Y);
 
-        if let Some(mut transform_component) = entity.get_mut::<Transform>() {
-            *transform_component = transform;
-        }
-        if let Some(mut projection) = entity.get_mut::<Projection>() {
-            let near = (bounds.diagonal * 0.0005).max(0.01);
-            let far = (distance + bounds.diagonal * 4.0).max(near + 1.0);
-            *projection = Projection::Perspective(PerspectiveProjection {
-                fov,
-                aspect_ratio: aspect,
-                near,
-                far,
-                ..default()
-            });
-        }
-        if let Some(mut camera_component) = entity.get_mut::<Camera>() {
-            camera_component.clear_color =
+        let near = (bounds.diagonal * 0.0005).max(0.01);
+        let far = (distance + bounds.diagonal * 4.0).max(near + 1.0);
+        let projection_value = Projection::Perspective(PerspectiveProjection {
+            fov,
+            aspect_ratio: aspect,
+            near,
+            far,
+            ..default()
+        });
+
+        for (camera_entity, clear_color, order) in [
+            (
+                self.outline_camera,
                 ClearColorConfig::Custom(if camera.transparent_background {
                     Color::NONE
                 } else {
                     Color::srgb(0.97, 0.97, 0.97)
-                });
+                }),
+                0,
+            ),
+            (self.main_camera, ClearColorConfig::None, 1),
+        ] {
+            let Ok(mut entity) = self.app.world_mut().get_entity_mut(camera_entity) else {
+                continue;
+            };
+            if let Some(mut transform_component) = entity.get_mut::<Transform>() {
+                *transform_component = transform;
+            }
+            if let Some(mut projection) = entity.get_mut::<Projection>() {
+                *projection = projection_value.clone();
+            }
+            if let Some(mut camera_component) = entity.get_mut::<Camera>() {
+                camera_component.clear_color = clear_color;
+                camera_component.order = order;
+            }
         }
         debug::log(
             LogLevel::Verbose,
