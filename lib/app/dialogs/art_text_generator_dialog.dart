@@ -2647,11 +2647,6 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
               widget.scene,
               widget.materialImages,
             );
-        debugPrint(
-          '[cube_text_preview][dart] upload scene vertices=${widget.scene.positions.length ~/ 3} '
-          'triangles=${widget.scene.indices.length ~/ 3} materials=${widget.scene.materials.length} '
-          'images=${materialUpload.imageWidths.length} imageBytes=${materialUpload.imageBytes.length}',
-        );
         if (!mounted || serial != _syncSerial) {
           return;
         }
@@ -2688,12 +2683,6 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
       if (!rendered) {
         throw StateError('engine_render_cube_text_preview failed');
       }
-      debugPrint(
-        '[cube_text_preview][dart] render request handle=$handle '
-        'yaw=${widget.yaw.toStringAsFixed(2)} pitch=${widget.pitch.toStringAsFixed(2)} '
-        'zoom=${widget.zoom.toStringAsFixed(3)} fov=${widget.fov.toStringAsFixed(2)} '
-        'transparent=${widget.transparentBackground}',
-      );
       _drainCubeTextPreviewLogs();
       _scheduleCubeTextPreviewLogDrain(serial);
       if (mounted && _error != null) {
@@ -2861,14 +2850,6 @@ Future<_CubeTextPreviewMaterialUpload> _cubeTextPreviewMaterialUpload(
     );
     final int gradientEnd = _rgbaInt(
       _parseColor(option.colorGradualEnd) ?? const Color(0xFFFFFFFF),
-    );
-    debugPrint(
-      '[cube_text_preview][dart] material ${material.name}/${material.slot} '
-      'optionMode=${option.mode} uploadMode=$mode imageIndex=$imageIndex '
-      'color=0x${color.toRadixString(16).padLeft(8, '0')} '
-      'gradientStart=0x${gradientStart.toRadixString(16).padLeft(8, '0')} '
-      'gradientEnd=0x${gradientEnd.toRadixString(16).padLeft(8, '0')} '
-      'hasImage=${materialImages.containsKey(option.image)} imageUriLength=${option.image.length}',
     );
     materials.add(<String, Object?>{
       'mode': mode,
