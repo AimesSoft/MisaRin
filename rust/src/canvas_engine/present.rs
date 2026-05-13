@@ -423,17 +423,20 @@ impl PresentRenderer {
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("misa-rin present renderer pipeline"),
+        cache: None,
+        label: Some("misa-rin present renderer pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[],
+            module: &shader,
+            entry_point: Some("vs_main"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            buffers: &[],
             },
             fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
+            module: &shader,
+            entry_point: Some("fs_main"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
@@ -508,6 +511,7 @@ impl PresentRenderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("misa-rin present renderer pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    depth_slice: None,
                     view: target.render_view(),
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -543,6 +547,7 @@ impl PresentRenderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("misa-rin present renderer pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    depth_slice: None,
                     view: present_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -573,13 +578,13 @@ pub(crate) fn copy_render_to_shared(
         return;
     }
     encoder.copy_texture_to_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: target.render_texture(),
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: shared_texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
@@ -844,7 +849,7 @@ pub(crate) fn create_dxgi_shared_present_target(
 
     let (resource, shared_handle) = unsafe {
         device
-            .as_hal::<Dx12, _, _>(|hal_device| {
+            .as_hal::<Dx12>().map(|hal_device| {
                 let Some(hal_device) = hal_device else {
                     return Err("wgpu: dx12 backend unavailable".to_string());
                 };

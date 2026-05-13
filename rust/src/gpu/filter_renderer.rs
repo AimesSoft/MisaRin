@@ -115,36 +115,46 @@ impl FilterRenderer {
         });
 
         let pipeline_color = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             label: Some("FilterRenderer color pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "color_filter",
+            entry_point: Some("color_filter"),
         });
         let pipeline_blur = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             label: Some("FilterRenderer blur pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "blur_pass",
+            entry_point: Some("blur_pass"),
         });
         let pipeline_morph = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             label: Some("FilterRenderer morph pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "morphology_pass",
+            entry_point: Some("morphology_pass"),
         });
         let pipeline_antialias_alpha =
             device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FilterRenderer antialias alpha pipeline"),
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            label: Some("FilterRenderer antialias alpha pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader,
-                entry_point: "antialias_alpha",
+                entry_point: Some("antialias_alpha"),
             });
         let pipeline_antialias_edge =
             device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FilterRenderer antialias edge pipeline"),
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            label: Some("FilterRenderer antialias edge pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader,
-                entry_point: "antialias_edge",
+                entry_point: Some("antialias_edge"),
             });
 
         let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -586,13 +596,13 @@ fn copy_texture(
         label: Some("FilterRenderer copy encoder"),
     });
     encoder.copy_texture_to_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: src,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: dst,
             mip_level: 0,
             origin: wgpu::Origin3d {

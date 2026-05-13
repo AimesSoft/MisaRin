@@ -491,7 +491,7 @@ fn create_wgpu_device() -> Result<(wgpu::Device, wgpu::Queue), String> {
     } else {
         wgpu::InstanceFlags::default()
     };
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends,
         flags: instance_flags,
         ..Default::default()
@@ -506,7 +506,7 @@ fn create_wgpu_device() -> Result<(wgpu::Device, wgpu::Queue), String> {
             compatible_surface: None,
             force_fallback_adapter: false,
         }))
-        .ok_or_else(|| "wgpu: no compatible GPU adapter found".to_string())?
+        .map_err(|_| "wgpu: no compatible GPU adapter found".to_string())?
     };
 
     if debug::level() >= LogLevel::Info {
@@ -542,8 +542,10 @@ fn create_wgpu_device() -> Result<(wgpu::Device, wgpu::Queue), String> {
             label: Some("misa-rin GpuBrush device"),
             required_features,
             required_limits,
+            experimental_features: unsafe { wgpu::ExperimentalFeatures::enabled() },
+            memory_hints: wgpu::MemoryHints::Performance,
+            trace: wgpu::Trace::Off,
         },
-        None,
     ))
     .map_err(|e| format!("wgpu: request_device failed: {e:?}"))
 }

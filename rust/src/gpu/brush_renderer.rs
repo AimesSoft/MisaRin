@@ -236,10 +236,12 @@ impl BrushRenderer {
         });
 
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             label: Some("BrushRenderer compute pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "draw_brush_stroke",
+            entry_point: Some("draw_brush_stroke"),
         });
 
         let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -416,7 +418,7 @@ impl BrushRenderer {
                         })
                 });
                 enc.copy_texture_to_texture(
-                    wgpu::ImageCopyTexture {
+                    wgpu::TexelCopyTextureInfo {
                         texture: layer_texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d {
@@ -426,7 +428,7 @@ impl BrushRenderer {
                         },
                         aspect: wgpu::TextureAspect::All,
                     },
-                    wgpu::ImageCopyTexture {
+                    wgpu::TexelCopyTextureInfo {
                         texture: &self.stroke_base,
                         mip_level: 0,
                         origin: wgpu::Origin3d {
@@ -504,7 +506,7 @@ impl BrushRenderer {
                 label: Some("BrushRenderer prepare layer read"),
             });
         encoder.copy_texture_to_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: layer_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
@@ -514,7 +516,7 @@ impl BrushRenderer {
                 },
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: layer_read,
                 mip_level: 0,
                 origin: wgpu::Origin3d {

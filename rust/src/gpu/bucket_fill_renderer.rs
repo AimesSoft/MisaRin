@@ -291,10 +291,12 @@ impl BucketFillRenderer {
         });
 
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             label: Some("BucketFillRenderer compute pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "bucket_fill_main",
+            entry_point: Some("bucket_fill_main"),
         });
 
         let config_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -1169,7 +1171,7 @@ impl BucketFillRenderer {
         slice.map_async(wgpu::MapMode::Read, move |res| {
             let _ = tx.send(res);
         });
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device.poll(wgpu::PollType::wait_indefinitely());
         match rx.recv() {
             Ok(Ok(())) => {}
             Ok(Err(err)) => return Err(format!("wgpu map_async failed: {err:?}")),

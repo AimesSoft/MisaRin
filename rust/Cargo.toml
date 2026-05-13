@@ -7,12 +7,12 @@ edition = "2021"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-flutter_rust_bridge = "=2.11.1"
+flutter_rust_bridge = "2.12.0"
 psd = { path = "../third_party/psd" }
-wgpu = "0.19"
-pollster = "0.3"
+wgpu = "27.0.1"
+pollster = "0.4.0"
 bytemuck = { version = "1.14", features = ["derive"] }
-bevy = { version = "=0.13.2", default-features = false, features = ["bevy_asset", "bevy_render", "bevy_core_pipeline", "bevy_pbr", "png"] }
+bevy = { version = "0.18.1", default-features = false, features = ["bevy_asset", "bevy_render", "bevy_core_pipeline", "bevy_pbr", "png", "tonemapping_luts", "zstd_rust"] }
 log = "0.4"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
@@ -23,17 +23,17 @@ ttf-parser = "0.25.1"
 rayon = "1.10"
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
-wgpu-hal = { version = "0.19.5", features = ["metal"] }
-metal = "0.27.0"
+wgpu-hal = { version = "27.0.4", features = ["metal"] }
+metal = "0.32.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-wgpu-hal = { version = "0.19.5", features = ["dx12"] }
-d3d12 = { version = "0.19.0", features = ["libloading"] }
+wgpu-hal = { version = "27.0.4", features = ["dx12"] }
+d3d12 = { version = "0.20.0", features = ["libloading"] }
 winapi = { version = "0.3", features = ["d3d12", "dxgiformat", "dxgitype", "handleapi", "winnt"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
-jni-sys = "0.3"
-ndk-sys = "0.5"
+jni-sys = "0.4.1"
+ndk-sys = "0.6.0+11769913"
 raw-window-handle = "0.6"
 
 [lints.rust]

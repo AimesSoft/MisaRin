@@ -127,13 +127,13 @@ impl LayerTextures {
             label: Some("misa-rin layer array resize encoder"),
         });
         encoder.copy_texture_to_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &self.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: &new_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,

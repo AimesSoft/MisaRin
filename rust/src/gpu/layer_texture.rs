@@ -168,15 +168,15 @@ impl LayerTextureManager {
             });
 
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &readback,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row_padded),
                     rows_per_image: Some(self.height),
@@ -197,7 +197,7 @@ impl LayerTextureManager {
             let _ = tx.send(res);
         });
 
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device.poll(wgpu::PollType::wait_indefinitely());
 
         let map_status: Result<(), String> = match rx.recv() {
             Ok(Ok(())) => Ok(()),
@@ -303,7 +303,7 @@ impl LayerTextureManager {
             });
 
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
@@ -313,9 +313,9 @@ impl LayerTextureManager {
                 },
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &readback,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row_padded),
                     rows_per_image: Some(height),
@@ -336,7 +336,7 @@ impl LayerTextureManager {
             let _ = tx.send(res);
         });
 
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device.poll(wgpu::PollType::wait_indefinitely());
 
         let map_status: Result<(), String> = match rx.recv() {
             Ok(Ok(())) => Ok(()),

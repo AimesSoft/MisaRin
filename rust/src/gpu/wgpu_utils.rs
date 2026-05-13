@@ -45,7 +45,7 @@ pub fn write_buffer(
         encoder.copy_buffer_to_buffer(&staging, 0, buffer, offset, data.len() as u64);
         queue.submit(Some(encoder.finish()));
         // Synchronize on Android to avoid driver crashes with async staging uploads.
-        device.poll(wgpu::Maintain::Wait);
+        device.poll(wgpu::PollType::wait_indefinitely());
         return;
     }
 
@@ -80,14 +80,14 @@ pub fn write_texture(
                 ),
             );
             queue.write_texture(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture,
                     mip_level: 0,
                     origin,
                     aspect: wgpu::TextureAspect::All,
                 },
                 data,
-                wgpu::ImageDataLayout {
+                wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row),
                     rows_per_image: Some(rows_per_image),
@@ -113,15 +113,15 @@ pub fn write_texture(
             label: Some("misa-rin staging texture encoder"),
         });
         encoder.copy_buffer_to_texture(
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &staging,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row),
                     rows_per_image: Some(rows_per_image),
                 },
             },
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture,
                 mip_level: 0,
                 origin,
@@ -131,21 +131,21 @@ pub fn write_texture(
         );
         queue.submit(Some(encoder.finish()));
         // Synchronize on Android to avoid driver crashes with async staging uploads.
-        device.poll(wgpu::Maintain::Wait);
+        device.poll(wgpu::PollType::wait_indefinitely());
         return;
     }
 
     #[cfg(not(target_os = "android"))]
     {
         queue.write_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture,
                 mip_level: 0,
                 origin,
                 aspect: wgpu::TextureAspect::All,
             },
             data,
-            wgpu::ImageDataLayout {
+            wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(bytes_per_row),
                 rows_per_image: Some(rows_per_image),

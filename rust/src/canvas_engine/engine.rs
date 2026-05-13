@@ -377,7 +377,7 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
         } else {
             wgpu::InstanceFlags::default()
         };
-        let instance = Arc::new(wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = Arc::new(wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends,
             flags: instance_flags,
             ..Default::default()
@@ -392,7 +392,7 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
                 compatible_surface: None,
                 force_fallback_adapter: false,
             }))
-            .ok_or_else(|| "wgpu: no compatible adapter found".to_string())?
+            .map_err(|_| "wgpu: no compatible adapter found".to_string())?
         };
         let adapter = Arc::new(adapter);
 
@@ -410,12 +410,14 @@ fn device_context() -> Result<&'static EngineDeviceContext, String> {
                 label: Some("misa-rin CanvasEngine device"),
                 required_features,
                 required_limits: adapter_limits,
+                experimental_features: unsafe { wgpu::ExperimentalFeatures::enabled() },
+                memory_hints: wgpu::MemoryHints::Performance,
+                trace: wgpu::Trace::Off,
             },
-            None,
         ))
         .map_err(|e| format!("wgpu: request_device failed: {e:?}"))?;
 
-        device.on_uncaptured_error(Box::new(|err| {
+        device.on_uncaptured_error(Arc::new(|err| {
             eprintln!("[misa-rin][wgpu] {err}");
         }));
 
@@ -515,7 +517,7 @@ fn read_layer_pixel_u32(
         label: Some("misa-rin layer sample encoder"),
     });
     encoder.copy_texture_to_buffer(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: layer_texture,
             mip_level: 0,
             origin: wgpu::Origin3d {
@@ -525,9 +527,9 @@ fn read_layer_pixel_u32(
             },
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::ImageCopyBuffer {
+        wgpu::TexelCopyBufferInfo {
             buffer: &buffer,
-            layout: wgpu::ImageDataLayout {
+            layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(bytes_per_row),
                 rows_per_image: Some(1),
@@ -545,7 +547,7 @@ fn read_layer_pixel_u32(
     slice.map_async(wgpu::MapMode::Read, move |res| {
         let _ = tx.send(res);
     });
-    device.poll(wgpu::Maintain::Wait);
+    device.poll(wgpu::PollType::wait_indefinitely());
     match rx.recv() {
         Ok(Ok(())) => {}
         _ => {
@@ -2534,7 +2536,7 @@ fn render_thread_main(
             }
         }
 
-        device.poll(wgpu::Maintain::Poll);
+        device.poll(wgpu::PollType::Poll);
     }
 }
 
@@ -5945,7 +5947,7 @@ fn reorder_layer_textures(
                       dst_texture: &wgpu::Texture,
                       dst_layer: u32| {
         encoder.copy_texture_to_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: src_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
@@ -5955,7 +5957,7 @@ fn reorder_layer_textures(
                 },
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture: dst_texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
@@ -6156,7 +6158,7 @@ fn read_r32uint_layer(
         label: Some("misa-rin canvas layer readback encoder"),
     });
     encoder.copy_texture_to_buffer(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture,
             mip_level: 0,
             origin: wgpu::Origin3d {
@@ -6166,9 +6168,9 @@ fn read_r32uint_layer(
             },
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::ImageCopyBuffer {
+        wgpu::TexelCopyBufferInfo {
             buffer: &readback,
-            layout: wgpu::ImageDataLayout {
+            layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(bytes_per_row_padded),
                 rows_per_image: Some(height),
@@ -6187,7 +6189,7 @@ fn read_r32uint_layer(
     buffer_slice.map_async(wgpu::MapMode::Read, move |res| {
         let _ = tx.send(res);
     });
-    device.poll(wgpu::Maintain::Wait);
+    device.poll(wgpu::PollType::wait_indefinitely());
 
     let map_status: Result<(), String> = match rx.recv() {
         Ok(Ok(())) => Ok(()),
@@ -6248,15 +6250,15 @@ fn read_bgra_texture(
         label: Some("misa-rin canvas present readback encoder"),
     });
     encoder.copy_texture_to_buffer(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::ImageCopyBuffer {
+        wgpu::TexelCopyBufferInfo {
             buffer: &readback,
-            layout: wgpu::ImageDataLayout {
+            layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(bytes_per_row_padded),
                 rows_per_image: Some(height),
@@ -6275,7 +6277,7 @@ fn read_bgra_texture(
     buffer_slice.map_async(wgpu::MapMode::Read, move |res| {
         let _ = tx.send(res);
     });
-    device.poll(wgpu::Maintain::Wait);
+    device.poll(wgpu::PollType::wait_indefinitely());
 
     let map_status: Result<(), String> = match rx.recv() {
         Ok(Ok(())) => Ok(()),
@@ -6337,15 +6339,15 @@ fn read_bgra_texture_pixel(
         label: Some("misa-rin canvas present pixel readback encoder"),
     });
     encoder.copy_texture_to_buffer(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture,
             mip_level: 0,
             origin: wgpu::Origin3d { x, y, z: 0 },
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::ImageCopyBuffer {
+        wgpu::TexelCopyBufferInfo {
             buffer: &readback,
-            layout: wgpu::ImageDataLayout {
+            layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(bytes_per_row_padded),
                 rows_per_image: Some(1),
@@ -6364,7 +6366,7 @@ fn read_bgra_texture_pixel(
     slice.map_async(wgpu::MapMode::Read, move |res| {
         let _ = tx.send(res);
     });
-    device.poll(wgpu::Maintain::Wait);
+    device.poll(wgpu::PollType::wait_indefinitely());
 
     match rx.recv() {
         Ok(Ok(())) => {}
@@ -7151,14 +7153,12 @@ fn mul255(channel: u32, alpha: u32) -> u32 {
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 fn mtl_device_ptr(device: &wgpu::Device) -> *mut c_void {
     let result = unsafe {
-        device.as_hal::<Metal, _, _>(|hal_device| {
-            hal_device.map(|hal_device| {
-                let raw_device = hal_device.raw_device().lock();
-                raw_device.as_ptr() as *mut c_void
-            })
+        device.as_hal::<Metal>().map(|hal_device| {
+            let raw_device = hal_device.raw_device().lock();
+            raw_device.as_ptr() as *mut c_void
         })
     };
-    result.flatten().unwrap_or(std::ptr::null_mut())
+    result.unwrap_or(std::ptr::null_mut())
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]

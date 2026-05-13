@@ -203,7 +203,7 @@ impl UndoManager {
                     })
                 });
                 enc.copy_texture_to_texture(
-                    wgpu::ImageCopyTexture {
+                    wgpu::TexelCopyTextureInfo {
                         texture: layer_texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d {
@@ -213,7 +213,7 @@ impl UndoManager {
                         },
                         aspect: wgpu::TextureAspect::All,
                     },
-                    wgpu::ImageCopyTexture {
+                    wgpu::TexelCopyTextureInfo {
                         texture: &before_tex,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
@@ -277,7 +277,7 @@ impl UndoManager {
             });
 
             encoder.copy_texture_to_texture(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: layer_texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d {
@@ -287,7 +287,7 @@ impl UndoManager {
                     },
                     aspect: wgpu::TextureAspect::All,
                 },
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &after_tex,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
@@ -338,13 +338,13 @@ impl UndoManager {
         });
         for tile in active.tiles.values() {
             encoder.copy_texture_to_texture(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &tile.before,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: layer_texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d {
@@ -388,13 +388,13 @@ impl UndoManager {
         });
         for tile in &record.tiles {
             encoder.copy_texture_to_texture(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &tile.before,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: layer_texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d {
@@ -439,13 +439,13 @@ impl UndoManager {
         });
         for tile in &record.tiles {
             encoder.copy_texture_to_texture(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &tile.after,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: layer_texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d {
