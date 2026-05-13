@@ -427,6 +427,11 @@ impl CubeTextPreviewRenderer {
                 .world_mut()
                 .resource_mut::<Assets<StandardMaterial>>();
             let is_outline_slot = slot == 6;
+            let alpha_mode = if is_outline_slot {
+                AlphaMode::Blend
+            } else {
+                AlphaMode::Opaque
+            };
             let material_handle = materials.add(StandardMaterial {
                 base_color: if texture.is_some() {
                     Color::WHITE
@@ -439,15 +444,18 @@ impl CubeTextPreviewRenderer {
                 reflectance: if slot == 6 { 0.04 } else { 0.18 },
                 unlit: true,
                 fog_enabled: false,
-                double_sided: false,
-                // Match reference renderer:
-                // regular faces use front-side rendering; outline uses back-side rendering.
-                cull_mode: Some(if is_outline_slot {
-                    Face::Front
+                // Main glyph triangles can have mixed winding for complex contours.
+                // Keep them double-sided to avoid random missing blocks.
+                double_sided: !is_outline_slot,
+                // Outline should render as back-side shell (like reference renderer).
+                cull_mode: if is_outline_slot {
+                    Some(Face::Front)
                 } else {
-                    Face::Back
-                }),
-                alpha_mode: AlphaMode::Opaque,
+                    None
+                },
+                // Outline uses transparent pass so it won't write depth and fight with main mesh.
+                depth_bias: 0.0,
+                alpha_mode,
                 opaque_render_method: OpaqueRendererMethod::Forward,
                 ..default()
             });
@@ -510,12 +518,13 @@ impl CubeTextPreviewRenderer {
         }
         if let Some(mut projection) = entity.get_mut::<Projection>() {
             let near = (bounds.diagonal * 0.0005).max(0.01);
+            let far = (distance + bounds.diagonal * 4.0).max(near + 1.0);
             *projection = Projection::Perspective(PerspectiveProjection {
                 fov,
                 aspect_ratio: aspect,
                 near,
-                far: (distance + bounds.diagonal * 4.0).max(100.0),
-                near_clip_plane: Vec4::new(0.0, 0.0, -1.0, -near),
+                far,
+                ..default()
             });
         }
         if let Some(mut camera_component) = entity.get_mut::<Camera>() {
@@ -721,18 +730,49 @@ fn split_scene_by_material(scene: &CubeTextPreviewScene) -> BTreeMap<u32, MeshCh
             vertex_count: 0,
         });
         let material = material_spec(scene, material_index);
-        for &index in tri {
-            let vertex_index = index as usize;
-            if let Some(position) = read_vec3(&scene.positions, vertex_index) {
-                chunk.positions.push(position);
-                chunk
-                    .normals
-                    .push(read_vec3(&scene.normals, vertex_index).unwrap_or([0.0, 0.0, 1.0]));
-                let uv = read_vec2(&scene.uvs, vertex_index).unwrap_or([0.0, 0.0]);
-                chunk.uvs.push(transform_uv(material, uv));
-                chunk.vertex_count += 1;
-            }
+        let vertex_indices = [tri[0] as usize, tri[1] as usize, tri[2] as usize];
+        let Some(p0) = read_vec3(&scene.positions, vertex_indices[0]) else {
+            continue;
+        };
+        let Some(p1) = read_vec3(&scene.positions, vertex_indices[1]) else {
+            continue;
+        };
+        let Some(p2) = read_vec3(&scene.positions, vertex_indices[2]) else {
+            continue;
+        };
+        let points = [p0, p1, p2];
+        if !points.iter().all(|p| p.iter().all(|v| v.is_finite())) {
+            continue;
         }
+        // Skip degenerate triangles to avoid unstable raster artifacts.
+        let a = Vec3::from_array(p0);
+        let b = Vec3::from_array(p1);
+        let c = Vec3::from_array(p2);
+        if (b - a).cross(c - a).length_squared() <= 1e-12 {
+            continue;
+        }
+
+        for (slot, &vertex_index) in vertex_indices.iter().enumerate() {
+            let position = points[slot];
+            chunk.positions.push(position);
+
+            let normal = read_vec3(&scene.normals, vertex_index).unwrap_or([0.0, 0.0, 1.0]);
+            let normal = if normal.iter().all(|v| v.is_finite()) {
+                normal
+            } else {
+                [0.0, 0.0, 1.0]
+            };
+            chunk.normals.push(normal);
+
+            let uv = read_vec2(&scene.uvs, vertex_index).unwrap_or([0.0, 0.0]);
+            let uv = if uv.iter().all(|v| v.is_finite()) {
+                uv
+            } else {
+                [0.0, 0.0]
+            };
+            chunk.uvs.push(transform_uv(material, uv));
+        }
+        chunk.vertex_count += 3;
     }
     chunks
 }

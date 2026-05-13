@@ -62,7 +62,7 @@ pub fn log(required: LogLevel, args: std::fmt::Arguments) {
         }
         guard.push_back(msg.clone());
     }
-    eprintln!("{msg}");
+    // Keep logs in the ring buffer only; avoid noisy stderr in release runs.
 }
 
 pub fn pop_log_line() -> Option<String> {

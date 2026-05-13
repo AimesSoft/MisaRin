@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
+use clipper2_rust::{inflate_paths_64, union_subjects_64, EndType, FillRule, JoinType, Path64, Paths64, Point64};
 use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use ttf_parser::{name_id, Face, GlyphId, OutlineBuilder};
@@ -8,6 +9,7 @@ const PLACEHOLDER_WIDTH_RATIO: f64 = 0.6;
 const PLACEHOLDER_HEIGHT_RATIO: f64 = 0.8;
 const CURVE_SEGMENTS: usize = 12;
 const EPSILON: f64 = 1e-7;
+const CLIPPER_SCALE: f64 = 1000.0;
 
 #[flutter_rust_bridge::frb]
 #[derive(Clone, Debug, Default)]
@@ -871,19 +873,79 @@ fn placeholder_shapes(offset_x: f64, size: f64) -> Vec<Shape2D> {
 }
 
 fn create_outline_shapes(shapes: &[Shape2D], outline_width: f64) -> Vec<Shape2D> {
-    let mut result = Vec::new();
+    if outline_width <= EPSILON {
+        return Vec::new();
+    }
+
+    let mut all_offset_paths: Paths64 = Vec::new();
     for shape in shapes {
-        let mut outer = shape.outer.clone();
-        ensure_orientation(&mut outer, true);
-        let expanded = offset_polygon_miter(&outer, outline_width);
-        if expanded.len() >= 3 && polygon_area(&expanded).abs() > EPSILON {
-            result.push(Shape2D {
-                outer: expanded,
-                holes: Vec::new(),
-            });
+        if let Some(path) = shape_outer_to_path64(shape) {
+            let inflated = inflate_paths_64(
+                &vec![path],
+                outline_width * CLIPPER_SCALE,
+                JoinType::Miter,
+                EndType::Polygon,
+                2.0,
+                0.0,
+            );
+            all_offset_paths.extend(inflated);
         }
     }
+
+    if all_offset_paths.is_empty() {
+        return Vec::new();
+    }
+
+    let merged = union_subjects_64(&all_offset_paths, FillRule::NonZero);
+    let mut result = Vec::new();
+    for path in merged {
+        let mut outer = path64_to_shape_loop(&path);
+        outer = clean_loop(&outer);
+        if outer.len() < 3 {
+            continue;
+        }
+        ensure_orientation(&mut outer, true);
+        if polygon_area(&outer).abs() <= EPSILON {
+            continue;
+        }
+        result.push(Shape2D {
+            outer,
+            holes: Vec::new(),
+        });
+    }
     result
+}
+
+fn shape_outer_to_path64(shape: &Shape2D) -> Option<Path64> {
+    if shape.outer.len() < 3 {
+        return None;
+    }
+    let mut outer = clean_loop(&shape.outer);
+    if outer.len() < 3 {
+        return None;
+    }
+    ensure_orientation(&mut outer, true);
+    if polygon_area(&outer).abs() <= EPSILON {
+        return None;
+    }
+    Some(
+        outer
+            .into_iter()
+            .map(|p| Point64 {
+                x: (p.x * CLIPPER_SCALE).round() as i64,
+                y: (p.y * CLIPPER_SCALE).round() as i64,
+            })
+            .collect(),
+    )
+}
+
+fn path64_to_shape_loop(path: &Path64) -> Vec<P2> {
+    path.iter()
+        .map(|p| P2 {
+            x: p.x as f64 / CLIPPER_SCALE,
+            y: p.y as f64 / CLIPPER_SCALE,
+        })
+        .collect()
 }
 
 fn offset_polygon_miter(points: &[P2], distance: f64) -> Vec<P2> {
