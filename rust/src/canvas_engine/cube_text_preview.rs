@@ -1,13 +1,17 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{mpsc, Arc, Mutex};
 
 use bevy::asset::{AssetPlugin, Assets};
-use bevy::core_pipeline::core_3d::{AlphaMask3d, Opaque3d, Transmissive3d, Transparent3d};
+use bevy::core_pipeline::core_3d::{
+    graph::{Core3d, Node3d},
+    AlphaMask3d, Opaque3d, Transmissive3d, Transparent3d,
+};
 use bevy::core_pipeline::CorePipelinePlugin;
 use bevy::pbr::{
-    DefaultOpaqueRendererMethod, OpaqueRendererMethod, PbrBundle, PbrPlugin,
-    RenderMaterialInstances, RenderMaterials, StandardMaterial,
+    queue_material_meshes, DefaultOpaqueRendererMethod, MaterialPipeline, OpaqueRendererMethod,
+    PbrBundle, PbrPlugin, RenderMaterialInstances, RenderMaterials, RenderMeshInstances,
+    StandardMaterial, MESH_SHADER_HANDLE, PBR_SHADER_HANDLE,
 };
 use bevy::prelude::*;
 use bevy::render::camera::{
@@ -16,22 +20,27 @@ use bevy::render::camera::{
 use bevy::render::mesh::{Indices, Mesh};
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_asset::RenderAssets;
-use bevy::render::render_phase::RenderPhase;
+use bevy::render::render_graph::{
+    Node, NodeRunError, RenderGraphApp, RenderGraphContext, RenderLabel,
+};
+use bevy::render::render_phase::{PhaseItem, RenderPhase};
 use bevy::render::render_resource::PipelineCache;
 use bevy::render::render_resource::{
-    CachedPipelineState, Extent3d, Face, Pipeline, PrimitiveTopology, TextureDimension,
-    TextureFormat,
+    Buffer, CachedPipelineState, Extent3d, Face, OwnedBindingResource, Pipeline, PrimitiveTopology,
+    TextureDimension, TextureFormat,
 };
-use bevy::render::renderer::{RenderAdapter, RenderAdapterInfo, RenderInstance, RenderQueue};
+use bevy::render::renderer::{
+    RenderAdapter, RenderAdapterInfo, RenderContext, RenderDevice, RenderInstance, RenderQueue,
+};
 use bevy::render::settings::RenderCreation;
 use bevy::render::texture::{
-    Image, ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor,
+    FallbackImage, Image, ImageAddressMode, ImageFilterMode, ImageSampler, ImageSamplerDescriptor,
 };
 use bevy::render::view::{NoFrustumCulling, ViewTarget, VisibleEntities};
-use bevy::render::{RenderApp, RenderPlugin};
+use bevy::render::{Render, RenderApp, RenderPlugin, RenderSet};
 use bevy::window::{WindowClosed, WindowCreated, WindowResized, WindowScaleFactorChanged};
-use wgpu::TextureViewDimension;
 use serde::Deserialize;
+use wgpu::TextureViewDimension;
 
 use crate::gpu::debug::{self, LogLevel};
 use crate::gpu::shared_device::SharedRenderDevice;
@@ -39,6 +48,18 @@ use crate::gpu::shared_device::SharedRenderDevice;
 const MANUAL_VIEW_HANDLE: ManualTextureViewHandle = ManualTextureViewHandle(0xC0BE_0001);
 const GRADIENT_TEXTURE_HEIGHT: u32 = 256;
 const GRADIENT_TEXTURE_WIDTH: u32 = 4;
+const TARGET_GRID_SAMPLE_COLUMNS: u32 = 9;
+const TARGET_GRID_SAMPLE_ROWS: u32 = 9;
+const READBACK_BYTES_PER_PIXEL: u32 = 4;
+const READBACK_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
+const TARGET_NON_TRANSPARENT_DETAIL_LIMIT: usize = 24;
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
+enum CubeTextPreviewGraphNode {
+    BeforeOpaqueProbe,
+    AfterMainPassProbe,
+    AfterUpscalingProbe,
+}
 
 #[derive(Clone)]
 pub(crate) struct CubeTextPreviewScene {
@@ -112,6 +133,36 @@ pub(crate) struct CubeTextPreviewRenderer {
     scene_key: Option<SceneKey>,
     scene_just_rebuilt: bool,
     render_debug_logged: bool,
+    target_sample_log_remaining: u8,
+    view_target_sample_log_remaining: u8,
+}
+
+#[derive(Resource, Default)]
+struct CubeTextPreviewQueueDiagnostics {
+    remaining_frames: u8,
+}
+
+#[derive(Resource, Default)]
+struct CubeTextPreviewGraphReadbacks {
+    inner: Mutex<CubeTextPreviewGraphReadbackState>,
+}
+
+#[derive(Default)]
+struct CubeTextPreviewGraphReadbackState {
+    remaining_captures: u8,
+    pending: Vec<CubeTextPreviewGraphReadbackRequest>,
+}
+
+struct CubeTextPreviewGraphReadbackRequest {
+    stage: String,
+    texture_label: String,
+    view_entity: Entity,
+    width: u32,
+    height: u32,
+    format: TextureFormat,
+    points: Vec<TargetSamplePoint>,
+    buffer: Buffer,
+    buffer_size: u64,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -210,6 +261,61 @@ impl CubeTextPreviewRenderer {
         app.finish();
         app.cleanup();
 
+        if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
+            render_app
+                .init_resource::<CubeTextPreviewQueueDiagnostics>()
+                .init_resource::<CubeTextPreviewGraphReadbacks>()
+                .add_systems(
+                    Render,
+                    log_cube_text_preview_queue_state
+                        .in_set(RenderSet::QueueMeshes)
+                        .after(queue_material_meshes::<StandardMaterial>),
+                )
+                .add_systems(
+                    Render,
+                    drain_cube_text_preview_graph_readbacks
+                        .in_set(RenderSet::Cleanup)
+                        .before(World::clear_entities),
+                )
+                .add_render_graph_node::<CubeTextPreviewBeforeOpaqueProbeNode>(
+                    Core3d,
+                    CubeTextPreviewGraphNode::BeforeOpaqueProbe,
+                )
+                .add_render_graph_node::<CubeTextPreviewAfterMainPassProbeNode>(
+                    Core3d,
+                    CubeTextPreviewGraphNode::AfterMainPassProbe,
+                )
+                .add_render_graph_node::<CubeTextPreviewAfterUpscalingProbeNode>(
+                    Core3d,
+                    CubeTextPreviewGraphNode::AfterUpscalingProbe,
+                )
+                .add_render_graph_edge(
+                    Core3d,
+                    Node3d::StartMainPass,
+                    CubeTextPreviewGraphNode::BeforeOpaqueProbe,
+                )
+                .add_render_graph_edge(
+                    Core3d,
+                    CubeTextPreviewGraphNode::BeforeOpaqueProbe,
+                    Node3d::MainOpaquePass,
+                )
+                .add_render_graph_edge(
+                    Core3d,
+                    Node3d::EndMainPass,
+                    CubeTextPreviewGraphNode::AfterMainPassProbe,
+                )
+                .add_render_graph_edge(
+                    Core3d,
+                    CubeTextPreviewGraphNode::AfterMainPassProbe,
+                    Node3d::Tonemapping,
+                )
+                .add_render_graph_edge(
+                    Core3d,
+                    Node3d::Upscaling,
+                    CubeTextPreviewGraphNode::AfterUpscalingProbe,
+                );
+        }
+
         Self {
             format,
             app,
@@ -221,6 +327,8 @@ impl CubeTextPreviewRenderer {
             scene_key: None,
             scene_just_rebuilt: false,
             render_debug_logged: false,
+            target_sample_log_remaining: 0,
+            view_target_sample_log_remaining: 0,
         }
     }
 
@@ -253,6 +361,8 @@ impl CubeTextPreviewRenderer {
         }
         self.app.update();
         self.log_render_state_once();
+        self.log_bevy_view_target_samples();
+        self.log_target_texture_samples(target_texture, width, height);
     }
 
     fn render_checkerboard_background(
@@ -367,6 +477,7 @@ impl CubeTextPreviewRenderer {
             );
             mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, chunk.positions);
             mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, chunk.normals);
+            let uv_stats = UvStats::from_uvs(&chunk.uvs);
             mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, chunk.uvs);
             mesh.insert_indices(Indices::U32(
                 (0..chunk.vertex_count as u32).collect::<Vec<u32>>(),
@@ -377,10 +488,11 @@ impl CubeTextPreviewRenderer {
             let texture_id = texture.as_ref().map(|handle| format!("{:?}", handle.id()));
             let color = material_color(spec);
             let slot = material_index % 7;
+            let texture_samples = material_texture_samples(spec, scene);
             debug::log(
                 LogLevel::Info,
                 format_args!(
-                    "cube_text_preview material[{material_index}] mode={} image_index={} color=0x{:08X} gradient_start=0x{:08X} gradient_end=0x{:08X} texture={} texture_id={} vertices={}",
+                    "cube_text_preview material[{material_index}] mode={} image_index={} color=0x{:08X} gradient_start=0x{:08X} gradient_end=0x{:08X} texture={} texture_id={} vertices={} texture_samples=[{}]",
                     spec.mode_name(),
                     spec.image_index,
                     spec.color,
@@ -389,6 +501,23 @@ impl CubeTextPreviewRenderer {
                     texture.is_some(),
                     texture_id.as_deref().unwrap_or("none"),
                     chunk.vertex_count,
+                    texture_samples,
+                ),
+            );
+            debug::log(
+                LogLevel::Info,
+                format_args!(
+                    "cube_text_preview material[{material_index}] uv_stats min=({:.3},{:.3}) max=({:.3},{:.3}) first=({:.3},{:.3}) mid=({:.3},{:.3}) last=({:.3},{:.3})",
+                    uv_stats.min[0],
+                    uv_stats.min[1],
+                    uv_stats.max[0],
+                    uv_stats.max[1],
+                    uv_stats.first[0],
+                    uv_stats.first[1],
+                    uv_stats.mid[0],
+                    uv_stats.mid[1],
+                    uv_stats.last[0],
+                    uv_stats.last[1],
                 ),
             );
             let mut meshes = self.app.world.resource_mut::<Assets<Mesh>>();
@@ -439,6 +568,19 @@ impl CubeTextPreviewRenderer {
         self.scene_key = Some(key);
         self.scene_just_rebuilt = true;
         self.render_debug_logged = false;
+        self.target_sample_log_remaining = 3;
+        self.view_target_sample_log_remaining = 3;
+        if let Ok(render_app) = self.app.get_sub_app_mut(RenderApp) {
+            render_app
+                .world
+                .resource_mut::<CubeTextPreviewQueueDiagnostics>()
+                .remaining_frames = 2;
+            let readbacks = render_app.world.resource::<CubeTextPreviewGraphReadbacks>();
+            if let Ok(mut state) = readbacks.inner.lock() {
+                state.remaining_captures = 2;
+                state.pending.clear();
+            };
+        }
     }
 
     fn update_camera(
@@ -699,6 +841,1292 @@ impl CubeTextPreviewRenderer {
             ),
         );
     }
+
+    fn log_target_texture_samples(
+        &mut self,
+        target_texture: &wgpu::Texture,
+        width: u32,
+        height: u32,
+    ) {
+        if self.target_sample_log_remaining == 0 || debug::level() < LogLevel::Info {
+            return;
+        }
+        self.target_sample_log_remaining -= 1;
+        if width == 0 || height == 0 {
+            return;
+        }
+        let points = target_sample_points(width, height);
+        let mut samples = Vec::new();
+        let mut stats = TargetSampleStats::default();
+        for point in points {
+            match read_bgra_texture_pixel(
+                self.device.as_ref(),
+                self.queue.as_ref(),
+                target_texture,
+                width,
+                height,
+                self.format,
+                point.x,
+                point.y,
+            ) {
+                Ok(pixel) => {
+                    stats.push(pixel, &point.label, point.x, point.y, self.format);
+                    if point.log_label {
+                        samples.push(format!(
+                            "{}@{},{}=ARGB#{pixel:08X}/{}({},{},{},{})",
+                            point.label,
+                            point.x,
+                            point.y,
+                            format_pixel_channels(self.format),
+                            (pixel >> 16) & 0xFF,
+                            (pixel >> 8) & 0xFF,
+                            pixel & 0xFF,
+                            (pixel >> 24) & 0xFF,
+                        ));
+                    }
+                }
+                Err(err) => samples.push(format!(
+                    "{}@{},{}=ERR({err})",
+                    point.label, point.x, point.y
+                )),
+            }
+        }
+        debug::log(
+            LogLevel::Info,
+            format_args!(
+                "cube_text_preview target samples frame_remaining={} size={}x{} format={:?} stats={} samples=[{}]",
+                self.target_sample_log_remaining,
+                width,
+                height,
+                self.format,
+                stats.summary(),
+                samples.join("; "),
+            ),
+        );
+    }
+
+    fn log_bevy_view_target_samples(&mut self) {
+        if self.view_target_sample_log_remaining == 0 || debug::level() < LogLevel::Info {
+            return;
+        }
+        self.view_target_sample_log_remaining -= 1;
+        let Ok(render_app) = self.app.get_sub_app_mut(RenderApp) else {
+            return;
+        };
+        let mut query = render_app.world.query::<(Entity, &ViewTarget)>();
+        let Some((view_entity, view_target)) = query.iter(&render_app.world).next() else {
+            debug::log(
+                LogLevel::Warn,
+                format_args!("cube_text_preview bevy view target samples missing view_target"),
+            );
+            return;
+        };
+        let Some(texture) = view_target.sampled_main_texture() else {
+            debug::log(
+                LogLevel::Warn,
+                format_args!(
+                    "cube_text_preview bevy view target samples view={view_entity:?} missing sampled_main_texture main_format={:?} out_format={:?}",
+                    view_target.main_texture_format(),
+                    view_target.out_texture_format(),
+                ),
+            );
+            return;
+        };
+        let width = texture.width();
+        let height = texture.height();
+        if width == 0 || height == 0 {
+            return;
+        }
+        let points = target_sample_points(width, height);
+        let mut samples = Vec::new();
+        let mut stats = TargetSampleStats::default();
+        for point in points {
+            match read_bgra_texture_pixel(
+                self.device.as_ref(),
+                self.queue.as_ref(),
+                texture,
+                width,
+                height,
+                view_target.main_texture_format(),
+                point.x,
+                point.y,
+            ) {
+                Ok(pixel) => {
+                    stats.push(
+                        pixel,
+                        &point.label,
+                        point.x,
+                        point.y,
+                        view_target.main_texture_format(),
+                    );
+                    if point.log_label {
+                        samples.push(format!(
+                            "{}@{},{}=ARGB#{pixel:08X}/{}({},{},{},{})",
+                            point.label,
+                            point.x,
+                            point.y,
+                            format_pixel_channels(view_target.main_texture_format()),
+                            (pixel >> 16) & 0xFF,
+                            (pixel >> 8) & 0xFF,
+                            pixel & 0xFF,
+                            (pixel >> 24) & 0xFF,
+                        ));
+                    }
+                }
+                Err(err) => samples.push(format!(
+                    "{}@{},{}=ERR({err})",
+                    point.label, point.x, point.y
+                )),
+            }
+        }
+        debug::log(
+            LogLevel::Info,
+            format_args!(
+                "cube_text_preview bevy view target samples frame_remaining={} view={view_entity:?} size={}x{} main_format={:?} out_format={:?} sampled_tex={:?} sampled_view={:?} stats={} samples=[{}]",
+                self.view_target_sample_log_remaining,
+                width,
+                height,
+                view_target.main_texture_format(),
+                view_target.out_texture_format(),
+                texture.id(),
+                view_target
+                    .sampled_main_texture_view()
+                    .map(|texture_view| texture_view.id()),
+                stats.summary(),
+                samples.join("; "),
+            ),
+        );
+    }
+}
+
+fn log_cube_text_preview_queue_state(
+    mut diagnostics: ResMut<CubeTextPreviewQueueDiagnostics>,
+    material_pipeline: Res<MaterialPipeline<StandardMaterial>>,
+    render_material_instances: Res<RenderMaterialInstances<StandardMaterial>>,
+    render_materials: Res<RenderMaterials<StandardMaterial>>,
+    render_mesh_instances: Res<RenderMeshInstances>,
+    render_images: Res<RenderAssets<Image>>,
+    fallback_image: Res<FallbackImage>,
+    views: Query<(
+        Entity,
+        &VisibleEntities,
+        Option<&RenderPhase<Opaque3d>>,
+        Option<&RenderPhase<AlphaMask3d>>,
+        Option<&RenderPhase<Transmissive3d>>,
+        Option<&RenderPhase<Transparent3d>>,
+        Option<&ViewTarget>,
+    )>,
+) {
+    if diagnostics.remaining_frames == 0 || debug::level() < LogLevel::Info {
+        return;
+    }
+    diagnostics.remaining_frames -= 1;
+
+    let pbr_shader_id = PBR_SHADER_HANDLE.id();
+    let mesh_shader_id = MESH_SHADER_HANDLE.id();
+    let material_fragment_shader = material_pipeline
+        .fragment_shader
+        .as_ref()
+        .map(|handle| format!("{:?}", handle.id()))
+        .unwrap_or_else(|| "none".to_string());
+
+    debug::log(
+        LogLevel::Info,
+        format_args!(
+            "cube_text_preview queue pipeline material_fragment_shader={} expected_pbr={:?} mesh_shader={:?} render_material_instances={} render_materials={} render_mesh_instances={}",
+            material_fragment_shader,
+            pbr_shader_id,
+            mesh_shader_id,
+            render_material_instances.len(),
+            render_materials.iter().count(),
+            render_mesh_instances.len(),
+        ),
+    );
+    log_cube_text_preview_fallback_image(&fallback_image);
+
+    let default_material_id = Handle::<StandardMaterial>::default().id();
+    let mut view_count = 0usize;
+    for (
+        view_entity,
+        visible_entities,
+        opaque,
+        alpha_mask,
+        transmissive,
+        transparent,
+        view_target,
+    ) in &views
+    {
+        view_count += 1;
+        debug::log(
+            LogLevel::Info,
+            format_args!(
+                "cube_text_preview queue view={view_entity:?} visible={} view_target={} phase_opaque={} phase_alpha={} phase_transmissive={} phase_transparent={}",
+                visible_entities.len(),
+                view_target.is_some(),
+                opaque.map(|phase| phase.items.len()).unwrap_or(0),
+                alpha_mask.map(|phase| phase.items.len()).unwrap_or(0),
+                transmissive.map(|phase| phase.items.len()).unwrap_or(0),
+                transparent.map(|phase| phase.items.len()).unwrap_or(0),
+            ),
+        );
+
+        log_cube_text_preview_phase_items(
+            "opaque",
+            opaque.map(|phase| phase.items.as_slice()).unwrap_or(&[]),
+            &render_material_instances,
+            &render_materials,
+            &render_mesh_instances,
+            &render_images,
+            &fallback_image,
+            default_material_id,
+        );
+        log_cube_text_preview_phase_items(
+            "alpha",
+            alpha_mask
+                .map(|phase| phase.items.as_slice())
+                .unwrap_or(&[]),
+            &render_material_instances,
+            &render_materials,
+            &render_mesh_instances,
+            &render_images,
+            &fallback_image,
+            default_material_id,
+        );
+        log_cube_text_preview_phase_items(
+            "transmissive",
+            transmissive
+                .map(|phase| phase.items.as_slice())
+                .unwrap_or(&[]),
+            &render_material_instances,
+            &render_materials,
+            &render_mesh_instances,
+            &render_images,
+            &fallback_image,
+            default_material_id,
+        );
+        log_cube_text_preview_phase_items(
+            "transparent",
+            transparent
+                .map(|phase| phase.items.as_slice())
+                .unwrap_or(&[]),
+            &render_material_instances,
+            &render_materials,
+            &render_mesh_instances,
+            &render_images,
+            &fallback_image,
+            default_material_id,
+        );
+    }
+
+    if view_count == 0 {
+        debug::log(
+            LogLevel::Warn,
+            format_args!("cube_text_preview queue view_count=0"),
+        );
+    }
+}
+
+fn log_cube_text_preview_phase_items<I: PhaseItem + CubeTextPreviewPhaseItemDebug>(
+    phase_name: &str,
+    items: &[I],
+    render_material_instances: &RenderMaterialInstances<StandardMaterial>,
+    render_materials: &RenderMaterials<StandardMaterial>,
+    render_mesh_instances: &RenderMeshInstances,
+    render_images: &RenderAssets<Image>,
+    fallback_image: &FallbackImage,
+    default_material_id: bevy::asset::AssetId<StandardMaterial>,
+) {
+    for item in items.iter().take(16) {
+        let entity = item.entity();
+        let material_asset_id = render_material_instances.get(&entity).copied();
+        let prepared_material =
+            material_asset_id.and_then(|asset_id| render_materials.get(&asset_id));
+        let mesh_instance = render_mesh_instances.get(&entity);
+        let material_status = match material_asset_id {
+            Some(asset_id) => {
+                let prepared = prepared_material.is_some();
+                let is_default = asset_id == default_material_id;
+                let bindings = prepared_material
+                    .map(|material| material.bindings.len())
+                    .unwrap_or(0);
+                let alpha = prepared_material
+                    .map(|material| format!("{:?}", material.properties.alpha_mode))
+                    .unwrap_or_else(|| "missing".to_string());
+                let render_method = prepared_material
+                    .map(|material| format!("{:?}", material.properties.render_method))
+                    .unwrap_or_else(|| "missing".to_string());
+                let bind_group_id = prepared_material
+                    .map(|material| format!("{:?}", material.bind_group.id()))
+                    .unwrap_or_else(|| "none".to_string());
+                let material_flags = prepared_material
+                    .map(|material| material_debug_flags(material, render_images, fallback_image))
+                    .unwrap_or_else(|| "missing".to_string());
+                let binding_summary = prepared_material
+                    .map(|material| {
+                        prepared_material_binding_summary(material, render_images, fallback_image)
+                    })
+                    .unwrap_or_else(|| "none".to_string());
+                format!(
+                    "material_id={asset_id:?}:prepared={prepared}:default={is_default}:bindings={bindings}:alpha={alpha}:render={render_method}:bind_group={bind_group_id}:flags=[{material_flags}]:binding_summary=[{binding_summary}]"
+                )
+            }
+            None => "material_id=missing".to_string(),
+        };
+        let mesh_bind_group_id = mesh_instance
+            .map(|mesh| {
+                if mesh.material_bind_group_id.is_some() {
+                    "present".to_string()
+                } else {
+                    "none".to_string()
+                }
+            })
+            .unwrap_or_else(|| "missing".to_string());
+
+        debug::log(
+            LogLevel::Info,
+            format_args!(
+                "cube_text_preview queue item phase={} entity={entity:?} pipeline_id={} draw_function={:?} mesh_material_bind_group={} {}",
+                phase_name,
+                item.pipeline_id().id(),
+                item.draw_function(),
+                mesh_bind_group_id,
+                material_status,
+            ),
+        );
+    }
+}
+
+fn prepared_material_binding_summary(
+    material: &bevy::pbr::PreparedMaterial<StandardMaterial>,
+    render_images: &RenderAssets<Image>,
+    fallback_image: &FallbackImage,
+) -> String {
+    let mut parts = Vec::new();
+    let fallback_d2_view = fallback_image.d2.texture_view.id();
+    let fallback_d2_sampler = fallback_image.d2.sampler.id();
+    for (binding, resource) in &material.bindings {
+        let detail = match resource {
+            OwnedBindingResource::Buffer(buffer) => format!("buffer:{:?}", buffer.id()),
+            OwnedBindingResource::TextureView(view) => {
+                let view_id = view.id();
+                let source = render_images
+                    .iter()
+                    .find(|(_, image)| image.texture_view.id() == view_id)
+                    .map(|(asset_id, image)| {
+                        format!(
+                            "image:{asset_id:?}:tex={:?}:fmt={:?}:size={:.0}x{:.0}:mips={}:sampler={:?}",
+                            image.texture.id(),
+                            image.texture_format,
+                            image.size.x,
+                            image.size.y,
+                            image.mip_level_count,
+                            image.sampler.id(),
+                        )
+                    })
+                    .unwrap_or_else(|| {
+                        if view_id == fallback_d2_view {
+                            "fallback_d2".to_string()
+                        } else {
+                            "unknown".to_string()
+                        }
+                    });
+                format!("texture_view:{view_id:?}:{source}")
+            }
+            OwnedBindingResource::Sampler(sampler) => {
+                let sampler_id = sampler.id();
+                let source = render_images
+                    .iter()
+                    .find(|(_, image)| image.sampler.id() == sampler_id)
+                    .map(|(asset_id, _)| format!("image:{asset_id:?}"))
+                    .unwrap_or_else(|| {
+                        if sampler_id == fallback_d2_sampler {
+                            "fallback_d2".to_string()
+                        } else {
+                            "unknown".to_string()
+                        }
+                    });
+                format!("sampler:{sampler_id:?}:{source}")
+            }
+        };
+        parts.push(format!("{binding}={detail}"));
+    }
+    parts.join(",")
+}
+
+fn material_debug_flags(
+    material: &bevy::pbr::PreparedMaterial<StandardMaterial>,
+    render_images: &RenderAssets<Image>,
+    fallback_image: &FallbackImage,
+) -> String {
+    let fallback_d2_view = fallback_image.d2.texture_view.id();
+    let has_texture_binding = material.bindings.iter().any(|(binding, resource)| {
+        *binding == 1
+            && matches!(
+                resource,
+                OwnedBindingResource::TextureView(view)
+                    if view.id() != fallback_d2_view
+                        && render_images
+                            .iter()
+                            .any(|(_, image)| image.texture_view.id() == view.id())
+            )
+    });
+    let bits = ((has_texture_binding as u32) << 0) | (1 << 4) | (1 << 5);
+    format!(
+        "expected_bits=0x{bits:08X}:base_color_texture={has_texture_binding}:double_sided=true:unlit=true:alpha=opaque"
+    )
+}
+
+fn log_cube_text_preview_fallback_image(fallback_image: &FallbackImage) {
+    debug::log(
+        LogLevel::Info,
+        format_args!(
+            "cube_text_preview fallback_image d2 tex={:?} view={:?} sampler={:?} format={:?} size={:.0}x{:.0} mips={}",
+            fallback_image.d2.texture.id(),
+            fallback_image.d2.texture_view.id(),
+            fallback_image.d2.sampler.id(),
+            fallback_image.d2.texture_format,
+            fallback_image.d2.size.x,
+            fallback_image.d2.size.y,
+            fallback_image.d2.mip_level_count,
+        ),
+    );
+}
+
+trait CubeTextPreviewPhaseItemDebug {
+    fn pipeline_id(&self) -> bevy::render::render_resource::CachedRenderPipelineId;
+}
+
+impl CubeTextPreviewPhaseItemDebug for Opaque3d {
+    fn pipeline_id(&self) -> bevy::render::render_resource::CachedRenderPipelineId {
+        self.pipeline
+    }
+}
+
+impl CubeTextPreviewPhaseItemDebug for AlphaMask3d {
+    fn pipeline_id(&self) -> bevy::render::render_resource::CachedRenderPipelineId {
+        self.pipeline
+    }
+}
+
+impl CubeTextPreviewPhaseItemDebug for Transmissive3d {
+    fn pipeline_id(&self) -> bevy::render::render_resource::CachedRenderPipelineId {
+        self.pipeline
+    }
+}
+
+impl CubeTextPreviewPhaseItemDebug for Transparent3d {
+    fn pipeline_id(&self) -> bevy::render::render_resource::CachedRenderPipelineId {
+        self.pipeline
+    }
+}
+
+struct CubeTextPreviewBeforeOpaqueProbeNode;
+
+impl FromWorld for CubeTextPreviewBeforeOpaqueProbeNode {
+    fn from_world(_world: &mut World) -> Self {
+        Self
+    }
+}
+
+impl Node for CubeTextPreviewBeforeOpaqueProbeNode {
+    fn run<'w>(
+        &self,
+        graph: &mut RenderGraphContext,
+        _render_context: &mut RenderContext<'w>,
+        world: &'w World,
+    ) -> Result<(), NodeRunError> {
+        if debug::level() < LogLevel::Info {
+            return Ok(());
+        }
+        let Some(view_entity) = graph.get_view_entity() else {
+            debug::log(
+                LogLevel::Warn,
+                format_args!("cube_text_preview graph before_opaque missing view_entity"),
+            );
+            return Ok(());
+        };
+        log_cube_text_preview_graph_probe("before_opaque", view_entity, world);
+        Ok(())
+    }
+}
+
+struct CubeTextPreviewAfterMainPassProbeNode;
+
+impl FromWorld for CubeTextPreviewAfterMainPassProbeNode {
+    fn from_world(_world: &mut World) -> Self {
+        Self
+    }
+}
+
+impl Node for CubeTextPreviewAfterMainPassProbeNode {
+    fn run<'w>(
+        &self,
+        graph: &mut RenderGraphContext,
+        render_context: &mut RenderContext<'w>,
+        world: &'w World,
+    ) -> Result<(), NodeRunError> {
+        if debug::level() < LogLevel::Info {
+            return Ok(());
+        }
+        let Some(view_entity) = graph.get_view_entity() else {
+            debug::log(
+                LogLevel::Warn,
+                format_args!("cube_text_preview graph after_main_pass missing view_entity"),
+            );
+            return Ok(());
+        };
+        log_cube_text_preview_graph_probe("after_main_pass", view_entity, world);
+        capture_cube_text_preview_graph_targets(
+            "after_main_pass",
+            view_entity,
+            render_context,
+            world,
+        );
+        Ok(())
+    }
+}
+
+struct CubeTextPreviewAfterUpscalingProbeNode;
+
+impl FromWorld for CubeTextPreviewAfterUpscalingProbeNode {
+    fn from_world(_world: &mut World) -> Self {
+        Self
+    }
+}
+
+impl Node for CubeTextPreviewAfterUpscalingProbeNode {
+    fn run<'w>(
+        &self,
+        graph: &mut RenderGraphContext,
+        render_context: &mut RenderContext<'w>,
+        world: &'w World,
+    ) -> Result<(), NodeRunError> {
+        if debug::level() < LogLevel::Info {
+            return Ok(());
+        }
+        let Some(view_entity) = graph.get_view_entity() else {
+            debug::log(
+                LogLevel::Warn,
+                format_args!("cube_text_preview graph after_upscaling missing view_entity"),
+            );
+            return Ok(());
+        };
+        log_cube_text_preview_graph_probe("after_upscaling", view_entity, world);
+        capture_cube_text_preview_graph_targets(
+            "after_upscaling",
+            view_entity,
+            render_context,
+            world,
+        );
+        Ok(())
+    }
+}
+
+fn log_cube_text_preview_graph_probe(stage: &str, view_entity: Entity, world: &World) {
+    let Some(entity_ref) = world.get_entity(view_entity) else {
+        debug::log(
+            LogLevel::Warn,
+            format_args!("cube_text_preview graph {stage} view={view_entity:?} missing entity"),
+        );
+        return;
+    };
+    let view_target = entity_ref.get::<ViewTarget>();
+    let opaque = entity_ref.get::<RenderPhase<Opaque3d>>();
+    let alpha_mask = entity_ref.get::<RenderPhase<AlphaMask3d>>();
+    let transmissive = entity_ref.get::<RenderPhase<Transmissive3d>>();
+    let transparent = entity_ref.get::<RenderPhase<Transparent3d>>();
+    let visible = entity_ref.get::<VisibleEntities>().map(|items| items.len());
+
+    debug::log(
+        LogLevel::Info,
+        format_args!(
+            "cube_text_preview graph {stage} view={view_entity:?} view_target={} visible={:?} main_format={:?} out_format={:?} sampled_main={} phase_opaque={} phase_alpha={} phase_transmissive={} phase_transparent={}",
+            view_target.is_some(),
+            visible,
+            view_target.map(|target| target.main_texture_format()),
+            view_target.map(|target| target.out_texture_format()),
+            view_target.and_then(|target| target.sampled_main_texture()).is_some(),
+            opaque.map(|phase| phase.items.len()).unwrap_or(0),
+            alpha_mask.map(|phase| phase.items.len()).unwrap_or(0),
+            transmissive.map(|phase| phase.items.len()).unwrap_or(0),
+            transparent.map(|phase| phase.items.len()).unwrap_or(0),
+        ),
+    );
+    if let Some(target) = view_target {
+        debug::log(
+            LogLevel::Info,
+            format_args!(
+                "cube_text_preview graph {stage} target_ids main_tex={:?} main_view={:?} sampled_tex={:?} sampled_view={:?} out_view={:?}",
+                target.main_texture().id(),
+                target.main_texture_view().id(),
+                target.sampled_main_texture().map(|texture| texture.id()),
+                target
+                    .sampled_main_texture_view()
+                    .map(|texture_view| texture_view.id()),
+                target.out_texture().id(),
+            ),
+        );
+    }
+
+    if let Some(phase) = opaque {
+        for item in phase.items.iter().take(8) {
+            log_cube_text_preview_graph_pipeline(stage, item.entity(), item.pipeline_id(), world);
+        }
+    }
+}
+
+fn capture_cube_text_preview_graph_targets(
+    stage: &str,
+    view_entity: Entity,
+    render_context: &mut RenderContext<'_>,
+    world: &World,
+) {
+    let Some(readbacks) = world.get_resource::<CubeTextPreviewGraphReadbacks>() else {
+        return;
+    };
+    let mut state = match readbacks.inner.lock() {
+        Ok(state) => state,
+        Err(_) => {
+            debug::log(
+                LogLevel::Warn,
+                format_args!("cube_text_preview graph {stage} readback lock poisoned"),
+            );
+            return;
+        }
+    };
+    if state.remaining_captures == 0 {
+        return;
+    }
+    let Some(entity_ref) = world.get_entity(view_entity) else {
+        return;
+    };
+    let Some(view_target) = entity_ref.get::<ViewTarget>() else {
+        return;
+    };
+
+    let main_format = view_target.main_texture_format();
+    enqueue_cube_text_preview_graph_readback(
+        &mut state,
+        stage,
+        "main",
+        view_entity,
+        view_target.main_texture(),
+        main_format,
+        render_context,
+    );
+    if let Some(sampled_main) = view_target.sampled_main_texture() {
+        debug::log(
+            LogLevel::Info,
+            format_args!(
+                "cube_text_preview graph {stage} readback skip sampled_main view={view_entity:?} tex={:?} reason=msaa_texture_not_copyable",
+                sampled_main.id(),
+            ),
+        );
+    }
+    if stage == "after_upscaling" {
+        state.remaining_captures = state.remaining_captures.saturating_sub(1);
+    }
+}
+
+fn enqueue_cube_text_preview_graph_readback(
+    state: &mut CubeTextPreviewGraphReadbackState,
+    stage: &str,
+    texture_label: &str,
+    view_entity: Entity,
+    texture: &bevy::render::render_resource::Texture,
+    format: TextureFormat,
+    render_context: &mut RenderContext<'_>,
+) {
+    let width = texture.width();
+    let height = texture.height();
+    if width == 0 || height == 0 {
+        return;
+    }
+    if unsupported_readback_format(format) {
+        debug::log(
+            LogLevel::Warn,
+            format_args!(
+                "cube_text_preview graph {stage} readback {texture_label} unsupported format={format:?}"
+            ),
+        );
+        return;
+    }
+
+    let bytes_per_row = graph_readback_bytes_per_row(width);
+    let buffer_size = bytes_per_row as u64 * height as u64;
+    let buffer = render_context
+        .render_device()
+        .create_buffer(&wgpu::BufferDescriptor {
+            label: Some("misa-rin cube text graph readback"),
+            size: buffer_size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+    render_context.command_encoder().copy_texture_to_buffer(
+        wgpu::ImageCopyTexture {
+            texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::ImageCopyBuffer {
+            buffer: &buffer,
+            layout: wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(bytes_per_row),
+                rows_per_image: Some(height),
+            },
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+    state.pending.push(CubeTextPreviewGraphReadbackRequest {
+        stage: stage.to_string(),
+        texture_label: texture_label.to_string(),
+        view_entity,
+        width,
+        height,
+        format,
+        points: target_sample_points(width, height),
+        buffer,
+        buffer_size,
+    });
+    debug::log(
+        LogLevel::Info,
+        format_args!(
+            "cube_text_preview graph {stage} readback queued texture={texture_label} view={view_entity:?} tex={:?} size={}x{} format={format:?} bytes_per_row={bytes_per_row}",
+            texture.id(),
+            width,
+            height,
+        ),
+    );
+}
+
+fn drain_cube_text_preview_graph_readbacks(
+    readbacks: Res<CubeTextPreviewGraphReadbacks>,
+    render_device: Res<RenderDevice>,
+) {
+    if debug::level() < LogLevel::Info {
+        return;
+    }
+    let pending = {
+        let mut state = match readbacks.inner.lock() {
+            Ok(state) => state,
+            Err(_) => {
+                debug::log(
+                    LogLevel::Warn,
+                    format_args!("cube_text_preview graph readback drain lock poisoned"),
+                );
+                return;
+            }
+        };
+        if state.pending.is_empty() {
+            return;
+        }
+        state.pending.drain(..).collect::<Vec<_>>()
+    };
+
+    render_device.poll(wgpu::Maintain::Wait);
+    for request in pending {
+        log_cube_text_preview_graph_readback(request, &render_device);
+    }
+}
+
+fn log_cube_text_preview_graph_readback(
+    request: CubeTextPreviewGraphReadbackRequest,
+    render_device: &RenderDevice,
+) {
+    let slice = request.buffer.slice(0..request.buffer_size);
+    let (tx, rx) = mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |res| {
+        let _ = tx.send(res);
+    });
+    render_device.poll(wgpu::Maintain::Wait);
+
+    match rx.recv() {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => {
+            debug::log(
+                LogLevel::Warn,
+                format_args!(
+                    "cube_text_preview graph {} readback texture={} view={:?} map_async failed: {err:?}",
+                    request.stage, request.texture_label, request.view_entity,
+                ),
+            );
+            return;
+        }
+        Err(err) => {
+            debug::log(
+                LogLevel::Warn,
+                format_args!(
+                    "cube_text_preview graph {} readback texture={} view={:?} map channel failed: {err}",
+                    request.stage, request.texture_label, request.view_entity,
+                ),
+            );
+            return;
+        }
+    }
+
+    let bytes_per_row = graph_readback_bytes_per_row(request.width);
+    let mapped = slice.get_mapped_range();
+    let mut samples = Vec::new();
+    let mut stats = TargetSampleStats::default();
+    for point in &request.points {
+        let offset = point.y as usize * bytes_per_row as usize
+            + point.x as usize * READBACK_BYTES_PER_PIXEL as usize;
+        match decode_texture_pixel(&mapped, offset, request.format) {
+            Some(pixel) => {
+                stats.push(pixel, &point.label, point.x, point.y, request.format);
+                if point.log_label {
+                    samples.push(format!(
+                        "{}@{},{}=ARGB#{pixel:08X}/{}({},{},{},{})",
+                        point.label,
+                        point.x,
+                        point.y,
+                        format_pixel_channels(request.format),
+                        (pixel >> 16) & 0xFF,
+                        (pixel >> 8) & 0xFF,
+                        pixel & 0xFF,
+                        (pixel >> 24) & 0xFF,
+                    ));
+                }
+            }
+            None => samples.push(format!("{}@{},{}=ERR", point.label, point.x, point.y)),
+        }
+    }
+    drop(mapped);
+    request.buffer.unmap();
+
+    debug::log(
+        LogLevel::Info,
+        format_args!(
+            "cube_text_preview graph {} readback texture={} view={:?} size={}x{} format={:?} stats={} samples=[{}]",
+            request.stage,
+            request.texture_label,
+            request.view_entity,
+            request.width,
+            request.height,
+            request.format,
+            stats.summary(),
+            samples.join("; "),
+        ),
+    );
+}
+
+fn log_cube_text_preview_graph_pipeline(
+    stage: &str,
+    entity: Entity,
+    pipeline_id: bevy::render::render_resource::CachedRenderPipelineId,
+    world: &World,
+) {
+    let Some(pipeline_cache) = world.get_resource::<PipelineCache>() else {
+        debug::log(
+            LogLevel::Warn,
+            format_args!(
+                "cube_text_preview graph {stage} entity={entity:?} pipeline_id={} missing PipelineCache",
+                pipeline_id.id(),
+            ),
+        );
+        return;
+    };
+    let Some(material_instances) =
+        world.get_resource::<RenderMaterialInstances<StandardMaterial>>()
+    else {
+        debug::log(
+            LogLevel::Warn,
+            format_args!(
+                "cube_text_preview graph {stage} entity={entity:?} pipeline_id={} missing RenderMaterialInstances",
+                pipeline_id.id(),
+            ),
+        );
+        return;
+    };
+    let material_asset_id = material_instances.get(&entity).copied();
+    let pipeline_state = pipeline_cache.get_render_pipeline_state(pipeline_id);
+    let pipeline_ready = pipeline_cache.get_render_pipeline(pipeline_id).is_some();
+    let descriptor = pipeline_cache.get_render_pipeline_descriptor(pipeline_id);
+    let fragment_shader_id = descriptor
+        .fragment
+        .as_ref()
+        .map(|fragment| fragment.shader.id());
+    let target_formats = descriptor
+        .fragment
+        .as_ref()
+        .map(|fragment| {
+            fragment
+                .targets
+                .iter()
+                .map(|target| {
+                    target
+                        .as_ref()
+                        .map(|state| format!("{:?}", state.format))
+                        .unwrap_or_else(|| "none".to_string())
+                })
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+        .unwrap_or_else(|| "none".to_string());
+    let vertex_defs = descriptor
+        .vertex
+        .shader_defs
+        .iter()
+        .map(|def| format!("{def:?}"))
+        .collect::<Vec<_>>()
+        .join("|");
+    let fragment_defs = descriptor
+        .fragment
+        .as_ref()
+        .map(|fragment| {
+            fragment
+                .shader_defs
+                .iter()
+                .map(|def| format!("{def:?}"))
+                .collect::<Vec<_>>()
+                .join("|")
+        })
+        .unwrap_or_default();
+    let vertex_layouts = descriptor
+        .vertex
+        .buffers
+        .iter()
+        .map(|layout| {
+            let attributes = layout
+                .attributes
+                .iter()
+                .map(|attribute| {
+                    format!(
+                        "loc{}:{:?}@{}",
+                        attribute.shader_location, attribute.format, attribute.offset
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("+");
+            format!(
+                "stride{}:{:?}:{}",
+                layout.array_stride, layout.step_mode, attributes
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("|");
+    let layout_ids = descriptor
+        .layout
+        .iter()
+        .enumerate()
+        .map(|(index, layout)| format!("{index}:{:?}", layout.id()))
+        .collect::<Vec<_>>()
+        .join(",");
+    let depth = descriptor
+        .depth_stencil
+        .as_ref()
+        .map(|depth| {
+            format!(
+                "{:?}:write={}:cmp={:?}",
+                depth.format, depth.depth_write_enabled, depth.depth_compare
+            )
+        })
+        .unwrap_or_else(|| "none".to_string());
+    let shader_kind = match fragment_shader_id {
+        Some(shader_id) if shader_id == PBR_SHADER_HANDLE.id() => "pbr",
+        Some(shader_id) if shader_id == MESH_SHADER_HANDLE.id() => "mesh",
+        Some(_) => "other",
+        None => "none",
+    };
+
+    debug::log(
+        LogLevel::Info,
+        format_args!(
+            "cube_text_preview graph {stage} pipeline entity={entity:?} pipeline_id={} ready={} state={} shader_kind={} fragment_shader={:?} targets=[{}] material_id={:?} layout_ids=[{}] vertex_entry={} fragment_entry={} depth={} msaa={} vertex_defs=[{}] fragment_defs=[{}] vertex_layouts=[{}]",
+            pipeline_id.id(),
+            pipeline_ready,
+            pipeline_state_summary(pipeline_state),
+            shader_kind,
+            fragment_shader_id,
+            target_formats,
+            material_asset_id,
+            layout_ids,
+            descriptor.vertex.entry_point,
+            descriptor
+                .fragment
+                .as_ref()
+                .map(|fragment| fragment.entry_point.as_ref())
+                .unwrap_or("none"),
+            depth,
+            descriptor.multisample.count,
+            vertex_defs,
+            fragment_defs,
+            vertex_layouts,
+        ),
+    );
+}
+
+fn pipeline_state_summary(state: &CachedPipelineState) -> String {
+    match state {
+        CachedPipelineState::Queued => "Queued".to_string(),
+        CachedPipelineState::Creating(_) => "Creating".to_string(),
+        CachedPipelineState::Ok(Pipeline::RenderPipeline(_)) => "Ok(RenderPipeline)".to_string(),
+        CachedPipelineState::Ok(Pipeline::ComputePipeline(_)) => "Ok(ComputePipeline)".to_string(),
+        CachedPipelineState::Err(err) => format!("Err({err})"),
+    }
+}
+
+struct TargetSamplePoint {
+    label: String,
+    x: u32,
+    y: u32,
+    log_label: bool,
+}
+
+#[derive(Default)]
+struct TargetSampleStats {
+    total: u32,
+    non_transparent: u32,
+    purple_like: u32,
+    magenta_like: u32,
+    transparent: u32,
+    buckets: BTreeMap<u32, u32>,
+    non_transparent_samples: Vec<String>,
+}
+
+impl TargetSampleStats {
+    fn push(&mut self, argb: u32, label: &str, x: u32, y: u32, format: TextureFormat) {
+        self.total += 1;
+        let a = (argb >> 24) & 0xFF;
+        let r = (argb >> 16) & 0xFF;
+        let g = (argb >> 8) & 0xFF;
+        let b = argb & 0xFF;
+        if a <= 8 {
+            self.transparent += 1;
+        } else {
+            self.non_transparent += 1;
+            if self.non_transparent_samples.len() < TARGET_NON_TRANSPARENT_DETAIL_LIMIT {
+                self.non_transparent_samples.push(format!(
+                    "{label}@{x},{y}=ARGB#{argb:08X}/{}({r},{g},{b},{a})",
+                    format_pixel_channels(format),
+                ));
+            }
+        }
+        if a > 8 && r > 160 && b > 160 && g < 96 {
+            self.purple_like += 1;
+        }
+        if a > 8 && r > 220 && b > 180 && g < 64 {
+            self.magenta_like += 1;
+        }
+        let bucket = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+        *self.buckets.entry(bucket).or_insert(0) += 1;
+    }
+
+    fn summary(&self) -> String {
+        let dominant = self
+            .buckets
+            .iter()
+            .max_by_key(|(_, count)| *count)
+            .map(|(bucket, count)| {
+                let r = (bucket >> 8) & 0xF;
+                let g = (bucket >> 4) & 0xF;
+                let b = bucket & 0xF;
+                format!("#{r:X}{g:X}{b:X}x count={count}")
+            })
+            .unwrap_or_else(|| "none".to_string());
+        let purple_ratio = percent(self.purple_like, self.total);
+        let magenta_ratio = percent(self.magenta_like, self.total);
+        let transparent_ratio = percent(self.transparent, self.total);
+        let non_transparent_detail = if self.non_transparent_samples.is_empty() {
+            "none".to_string()
+        } else {
+            self.non_transparent_samples.join("; ")
+        };
+        format!(
+            "total={} non_transparent={} transparent={}({transparent_ratio:.1}%) purple_like={}({purple_ratio:.1}%) magenta_like={}({magenta_ratio:.1}%) dominant_bucket={dominant} non_transparent_samples=[{}]",
+            self.total,
+            self.non_transparent,
+            self.transparent,
+            self.purple_like,
+            self.magenta_like,
+            non_transparent_detail,
+        )
+    }
+}
+
+fn target_sample_points(width: u32, height: u32) -> Vec<TargetSamplePoint> {
+    let mut points = Vec::new();
+    for row in 0..TARGET_GRID_SAMPLE_ROWS {
+        for col in 0..TARGET_GRID_SAMPLE_COLUMNS {
+            let x = grid_coord(width, col, TARGET_GRID_SAMPLE_COLUMNS);
+            let y = grid_coord(height, row, TARGET_GRID_SAMPLE_ROWS);
+            let log_label = (row == TARGET_GRID_SAMPLE_ROWS / 2
+                && col == TARGET_GRID_SAMPLE_COLUMNS / 2)
+                || (row == 1 && col == 1)
+                || (row == 1 && col + 2 == TARGET_GRID_SAMPLE_COLUMNS)
+                || (row + 2 == TARGET_GRID_SAMPLE_ROWS && col == 1)
+                || (row + 2 == TARGET_GRID_SAMPLE_ROWS && col + 2 == TARGET_GRID_SAMPLE_COLUMNS);
+            points.push(TargetSamplePoint {
+                label: format!("g{col}x{row}"),
+                x,
+                y,
+                log_label,
+            });
+        }
+    }
+    points
+}
+
+fn grid_coord(size: u32, index: u32, count: u32) -> u32 {
+    if size <= 1 || count <= 1 {
+        return 0;
+    }
+    let max = size - 1;
+    ((index as u64 * max as u64) / (count - 1) as u64) as u32
+}
+
+fn percent(count: u32, total: u32) -> f32 {
+    if total == 0 {
+        0.0
+    } else {
+        (count as f32 / total as f32) * 100.0
+    }
+}
+
+fn graph_readback_bytes_per_row(width: u32) -> u32 {
+    align_up_u32(
+        width.saturating_mul(READBACK_BYTES_PER_PIXEL),
+        READBACK_BYTES_PER_ROW_ALIGNMENT,
+    )
+}
+
+fn unsupported_readback_format(format: TextureFormat) -> bool {
+    !matches!(
+        format.remove_srgb_suffix(),
+        TextureFormat::Bgra8Unorm | TextureFormat::Rgba8Unorm
+    )
+}
+
+fn decode_texture_pixel(mapped: &[u8], offset: usize, format: TextureFormat) -> Option<u32> {
+    if mapped.len() < offset + READBACK_BYTES_PER_PIXEL as usize {
+        return None;
+    }
+    let (r, g, b, a) = match format.remove_srgb_suffix() {
+        TextureFormat::Bgra8Unorm => (
+            mapped[offset + 2] as u32,
+            mapped[offset + 1] as u32,
+            mapped[offset] as u32,
+            mapped[offset + 3] as u32,
+        ),
+        TextureFormat::Rgba8Unorm => (
+            mapped[offset] as u32,
+            mapped[offset + 1] as u32,
+            mapped[offset + 2] as u32,
+            mapped[offset + 3] as u32,
+        ),
+        _ => return None,
+    };
+    Some((a << 24) | (r << 16) | (g << 8) | b)
+}
+
+fn read_bgra_texture_pixel(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+    format: wgpu::TextureFormat,
+    x: u32,
+    y: u32,
+) -> Result<u32, String> {
+    if width == 0 || height == 0 {
+        return Err("empty texture".to_string());
+    }
+    if x >= width || y >= height {
+        return Err(format!(
+            "out of bounds x={x} y={y} width={width} height={height}"
+        ));
+    }
+
+    let bytes_per_row_padded =
+        align_up_u32(READBACK_BYTES_PER_PIXEL, READBACK_BYTES_PER_ROW_ALIGNMENT);
+    if bytes_per_row_padded == 0 {
+        return Err("bytes_per_row_padded == 0".to_string());
+    }
+    let readback_size = bytes_per_row_padded as u64;
+    let readback = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("misa-rin cube text target pixel readback"),
+        size: readback_size,
+        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("misa-rin cube text target pixel readback encoder"),
+    });
+    encoder.copy_texture_to_buffer(
+        wgpu::ImageCopyTexture {
+            texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d { x, y, z: 0 },
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::ImageCopyBuffer {
+            buffer: &readback,
+            layout: wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(bytes_per_row_padded),
+                rows_per_image: Some(1),
+            },
+        },
+        wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+        },
+    );
+    queue.submit(Some(encoder.finish()));
+
+    let slice = readback.slice(0..readback_size);
+    let (tx, rx) = mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |res| {
+        let _ = tx.send(res);
+    });
+    device.poll(wgpu::Maintain::Wait);
+
+    match rx.recv() {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => return Err(format!("map_async failed: {err:?}")),
+        Err(err) => return Err(format!("map_async channel failed: {err}")),
+    }
+
+    let mapped = slice.get_mapped_range();
+    let Some(pixel) = decode_texture_pixel(&mapped, 0, format) else {
+        drop(mapped);
+        readback.unmap();
+        return if unsupported_readback_format(format) {
+            Err(format!(
+                "unsupported readback format {:?}",
+                format.remove_srgb_suffix()
+            ))
+        } else {
+            Err("mapped buffer too small".to_string())
+        };
+    };
+    drop(mapped);
+    readback.unmap();
+
+    Ok(pixel)
+}
+
+fn format_pixel_channels(format: wgpu::TextureFormat) -> &'static str {
+    match format.remove_srgb_suffix() {
+        wgpu::TextureFormat::Bgra8Unorm => "BGRA",
+        wgpu::TextureFormat::Rgba8Unorm => "RGBA",
+        _ => "unknown",
+    }
+}
+
+fn align_up_u32(value: u32, alignment: u32) -> u32 {
+    if alignment == 0 {
+        return value;
+    }
+    ((value + alignment - 1) / alignment) * alignment
 }
 
 impl SceneKey {
@@ -720,6 +2148,43 @@ struct MeshChunk {
     normals: Vec<[f32; 3]>,
     uvs: Vec<[f32; 2]>,
     vertex_count: usize,
+}
+
+struct UvStats {
+    min: [f32; 2],
+    max: [f32; 2],
+    first: [f32; 2],
+    mid: [f32; 2],
+    last: [f32; 2],
+}
+
+impl UvStats {
+    fn from_uvs(uvs: &[[f32; 2]]) -> Self {
+        if uvs.is_empty() {
+            return Self {
+                min: [0.0, 0.0],
+                max: [0.0, 0.0],
+                first: [0.0, 0.0],
+                mid: [0.0, 0.0],
+                last: [0.0, 0.0],
+            };
+        }
+        let mut min = [f32::INFINITY, f32::INFINITY];
+        let mut max = [f32::NEG_INFINITY, f32::NEG_INFINITY];
+        for uv in uvs {
+            min[0] = min[0].min(uv[0]);
+            min[1] = min[1].min(uv[1]);
+            max[0] = max[0].max(uv[0]);
+            max[1] = max[1].max(uv[1]);
+        }
+        Self {
+            min,
+            max,
+            first: uvs[0],
+            mid: uvs[uvs.len() / 2],
+            last: uvs[uvs.len() - 1],
+        }
+    }
 }
 
 fn split_scene_by_material(scene: &CubeTextPreviewScene) -> BTreeMap<u32, MeshChunk> {
@@ -816,6 +2281,82 @@ fn material_color(material: &CubeTextPreviewMaterial) -> Color {
     let b = ((rgba >> 8) & 0xFF) as f32 / 255.0;
     let a = (rgba & 0xFF) as f32 / 255.0;
     Color::rgba(r, g, b, a)
+}
+
+fn material_texture_samples(
+    material: &CubeTextPreviewMaterial,
+    scene: &CubeTextPreviewScene,
+) -> String {
+    match material.mode {
+        CubeTextPreviewMaterialMode::Gradient => format!(
+            "gradient top=0x{:08X} mid=0x{:08X} bottom=0x{:08X}",
+            material.gradient_start,
+            lerp_rgba(material.gradient_start, material.gradient_end, 0.5),
+            material.gradient_end,
+        ),
+        CubeTextPreviewMaterialMode::Image => {
+            if material.image_index < 0 {
+                return format!("image missing index={}", material.image_index);
+            }
+            match scene.images.get(material.image_index as usize) {
+                Some(image) => image_sample_summary(image),
+                None => format!(
+                    "image index={} out_of_range images={}",
+                    material.image_index,
+                    scene.images.len(),
+                ),
+            }
+        }
+        CubeTextPreviewMaterialMode::Color => format!("solid=0x{:08X}", material.color),
+    }
+}
+
+fn image_sample_summary(image: &CubeTextPreviewImage) -> String {
+    if image.width == 0 || image.height == 0 || image.rgba.len() < 4 {
+        return format!(
+            "image invalid size={}x{} len={}",
+            image.width,
+            image.height,
+            image.rgba.len(),
+        );
+    }
+    let points = [
+        ("top_left", 0, 0),
+        ("center", image.width / 2, image.height / 2),
+        (
+            "bottom_right",
+            image.width.saturating_sub(1),
+            image.height.saturating_sub(1),
+        ),
+    ];
+    let mut samples = Vec::new();
+    for (label, x, y) in points {
+        samples.push(format!(
+            "{label}@{x},{y}=0x{}",
+            sample_rgba_bytes(image, x, y)
+                .map(|pixel| format!("{pixel:08X}"))
+                .unwrap_or_else(|| "ERR".to_string())
+        ));
+    }
+    format!(
+        "image size={}x{} len={} {}",
+        image.width,
+        image.height,
+        image.rgba.len(),
+        samples.join("; "),
+    )
+}
+
+fn sample_rgba_bytes(image: &CubeTextPreviewImage, x: u32, y: u32) -> Option<u32> {
+    if x >= image.width || y >= image.height {
+        return None;
+    }
+    let offset = y.checked_mul(image.width)?.checked_add(x)?.checked_mul(4)? as usize;
+    let r = *image.rgba.get(offset)? as u32;
+    let g = *image.rgba.get(offset + 1)? as u32;
+    let b = *image.rgba.get(offset + 2)? as u32;
+    let a = *image.rgba.get(offset + 3)? as u32;
+    Some((r << 24) | (g << 16) | (b << 8) | a)
 }
 
 impl CubeTextPreviewRenderer {

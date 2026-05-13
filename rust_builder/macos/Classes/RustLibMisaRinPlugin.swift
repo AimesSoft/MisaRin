@@ -204,6 +204,7 @@ public final class RustLibMisaRinPlugin: NSObject, FlutterPlugin {
   private var presentMainExecCount: UInt64 = 0
   private var presentMainDelaySumMs: UInt64 = 0
   private var presentMainDelayMaxMs: UInt64 = 0
+  private var pixelSampleLogCount: UInt32 = 0
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     if didRegister {
@@ -778,6 +779,133 @@ public final class RustLibMisaRinPlugin: NSObject, FlutterPlugin {
     }
   }
 
+  private func logPixelBufferSamplesIfNeeded(_ pixelBuffer: CVPixelBuffer, reason: String) {
+    guard presentLogEnabled, pixelSampleLogCount < 6 else {
+      return
+    }
+    pixelSampleLogCount &+= 1
+    CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
+    defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
+    guard let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) else {
+      presentLog("pixelBuffer samples reason=\(reason) baseAddress=null")
+      return
+    }
+    let width = CVPixelBufferGetWidth(pixelBuffer)
+    let height = CVPixelBufferGetHeight(pixelBuffer)
+    let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
+    guard width > 0, height > 0, bytesPerRow >= width * 4 else {
+      presentLog("pixelBuffer samples reason=\(reason) invalid size=\(width)x\(height) bpr=\(bytesPerRow)")
+      return
+    }
+
+    var stats = PixelSampleStats()
+    var samples: [String] = []
+    for point in pixelSamplePoints(width: width, height: height) {
+      let offset = point.y * bytesPerRow + point.x * 4
+      let ptr = baseAddress.advanced(by: offset).assumingMemoryBound(to: UInt8.self)
+      let b = UInt32(ptr[0])
+      let g = UInt32(ptr[1])
+      let r = UInt32(ptr[2])
+      let a = UInt32(ptr[3])
+      let argb = (a << 24) | (r << 16) | (g << 8) | b
+      stats.push(argb)
+      if point.logLabel {
+        samples.append(
+          "\(point.label)@\(point.x),\(point.y)=ARGB#\(hex8(argb))/BGRA(\(b),\(g),\(r),\(a))"
+        )
+      }
+    }
+    let sampleSummary = samples.joined(separator: "; ")
+    presentLog(
+      "pixelBuffer samples reason=\(reason) count=\(pixelSampleLogCount) size=\(width)x\(height) bpr=\(bytesPerRow) stats=\(stats.summary()) samples=[\(sampleSummary)]"
+    )
+  }
+
+  private struct PixelSamplePoint {
+    let label: String
+    let x: Int
+    let y: Int
+    let logLabel: Bool
+  }
+
+  private struct PixelSampleStats {
+    var total: UInt32 = 0
+    var nonTransparent: UInt32 = 0
+    var transparent: UInt32 = 0
+    var purpleLike: UInt32 = 0
+    var magentaLike: UInt32 = 0
+    var buckets: [UInt32: UInt32] = [:]
+
+    mutating func push(_ argb: UInt32) {
+      total &+= 1
+      let a = (argb >> 24) & 0xFF
+      let r = (argb >> 16) & 0xFF
+      let g = (argb >> 8) & 0xFF
+      let b = argb & 0xFF
+      if a <= 8 {
+        transparent &+= 1
+      } else {
+        nonTransparent &+= 1
+      }
+      if a > 8, r > 160, b > 160, g < 96 {
+        purpleLike &+= 1
+      }
+      if a > 8, r > 220, b > 180, g < 64 {
+        magentaLike &+= 1
+      }
+      let bucket = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
+      buckets[bucket, default: 0] &+= 1
+    }
+
+    func summary() -> String {
+      let dominant = buckets.max { lhs, rhs in lhs.value < rhs.value }.map { entry -> String in
+        let r = (entry.key >> 8) & 0xF
+        let g = (entry.key >> 4) & 0xF
+        let b = entry.key & 0xF
+        return "#\(String(r, radix: 16, uppercase: true))\(String(g, radix: 16, uppercase: true))\(String(b, radix: 16, uppercase: true))x count=\(entry.value)"
+      } ?? "none"
+      return "total=\(total) non_transparent=\(nonTransparent) transparent=\(transparent)(\(percent(transparent, total))%) purple_like=\(purpleLike)(\(percent(purpleLike, total))%) magenta_like=\(magentaLike)(\(percent(magentaLike, total))%) dominant_bucket=\(dominant)"
+    }
+
+    private func percent(_ count: UInt32, _ total: UInt32) -> String {
+      guard total > 0 else {
+        return "0.0"
+      }
+      let value = (Double(count) / Double(total)) * 100.0
+      return String(format: "%.1f", value)
+    }
+  }
+
+  private func pixelSamplePoints(width: Int, height: Int) -> [PixelSamplePoint] {
+    let columns = 9
+    let rows = 9
+    var points: [PixelSamplePoint] = []
+    for row in 0..<rows {
+      for col in 0..<columns {
+        let x = gridCoord(size: width, index: col, count: columns)
+        let y = gridCoord(size: height, index: row, count: rows)
+        let logLabel = (row == rows / 2 && col == columns / 2)
+          || (row == 1 && col == 1)
+          || (row == 1 && col + 2 == columns)
+          || (row + 2 == rows && col == 1)
+          || (row + 2 == rows && col + 2 == columns)
+        points.append(PixelSamplePoint(label: "g\(col)x\(row)", x: x, y: y, logLabel: logLabel))
+      }
+    }
+    return points
+  }
+
+  private func gridCoord(size: Int, index: Int, count: Int) -> Int {
+    guard size > 1, count > 1 else {
+      return 0
+    }
+    return (index * (size - 1)) / (count - 1)
+  }
+
+  private func hex8(_ value: UInt32) -> String {
+    String(format: "%08X", value)
+  }
+
   private func startDisplayLink() {
     var link: CVDisplayLink?
     let status = CVDisplayLinkCreateWithActiveCGDisplays(&link)
@@ -795,16 +923,16 @@ public final class RustLibMisaRinPlugin: NSObject, FlutterPlugin {
   }
 
   fileprivate func onDisplayLinkTick() {
-    var entries: [(UInt64, Int64)] = []
+    var entries: [(UInt64, Int64, CVPixelBuffer)] = []
     engineStateLock.lock()
     for entry in surfaces.values {
       if entry.engineHandle != 0, let textureId = entry.textureId {
-        entries.append((entry.engineHandle, textureId))
+        entries.append((entry.engineHandle, textureId, entry.texture.pixelBuffer))
       }
     }
     engineStateLock.unlock()
     var readyCount = 0
-    for (handle, textureId) in entries {
+    for (handle, textureId, pixelBuffer) in entries {
       let ready = engine_poll_frame_ready(handle)
       if presentLogEnabled {
         presentPollCount &+= 1
@@ -814,6 +942,7 @@ public final class RustLibMisaRinPlugin: NSObject, FlutterPlugin {
       }
       if ready {
         readyCount += 1
+        logPixelBufferSamplesIfNeeded(pixelBuffer, reason: "frame_ready")
         if Thread.isMainThread {
           presentMainDirectCount &+= 1
           textureRegistry.textureFrameAvailable(textureId)
