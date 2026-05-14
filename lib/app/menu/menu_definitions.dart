@@ -483,9 +483,12 @@ class MenuDefinitionBuilder {
     _addSection(entries, <MenuEntry>[
       if (handler.generateArtText != null)
         MenuSubmenuEntry(
-          label: '文本',
+          label: l10n.menuToolText,
           entries: <MenuEntry>[
-            MenuActionEntry(label: '艺术字生成器…', action: handler.generateArtText),
+            MenuActionEntry(
+              label: l10n.menuToolArtTextGeneratorEllipsis,
+              action: handler.generateArtText,
+            ),
           ],
         ),
     ]);

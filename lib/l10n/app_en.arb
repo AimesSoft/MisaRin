@@ -1080,5 +1080,228 @@
     "placeholders": {
       "error": {}
     }
-  }
+  },
+  "menuToolText": "Text",
+  "menuToolArtTextGeneratorEllipsis": "Art Text Generator…",
+  "artTextGeneratorTitle": "Art Text Generator",
+  "artTextExportPng": "Export PNG",
+  "artTextInsertToCanvas": "Insert to Canvas",
+  "artTextBuildingMesh": "Building real 3D mesh...",
+  "artTextMeshWarning": "Mesh Warning",
+  "artTextResetCamera": "Reset View",
+  "artTextOrthographic": "Orthographic",
+  "artTextSectionSceneFontOutput": "Scene / Font / Output",
+  "artTextGlobalFont": "Global Font",
+  "artTextImportFont": "Import Font",
+  "artTextFontPicker": "Font Picker",
+  "artTextImportWorkspace": "Import Workspace",
+  "artTextExportWorkspace": "Export Workspace",
+  "artTextPngWidth": "PNG Width",
+  "artTextPngHeight": "PNG Height",
+  "artTextTransparentBackgroundPng": "Transparent PNG Background",
+  "artTextExportModel": "Export Model",
+  "artTextContent": "Content",
+  "artTextCurrentFont": "Current Font",
+  "artTextSectionTransformGeometry": "Transform & Geometry",
+  "artTextDepth": "Depth",
+  "artTextOutline": "Outline",
+  "artTextLetterSpacing": "Letter Spacing",
+  "artTextSpaceWidth": "Space Width",
+  "artTextSectionMaterialTextureOverlay": "Material / Texture / Overlay",
+  "artTextMaterialPreset": "Material Preset",
+  "artTextChoosePreset": "Select a preset to apply",
+  "artTextOverlayHighlight": "Overlay Highlight",
+  "artTextImportMaterial": "Import Material",
+  "artTextExportMaterial": "Export Material",
+  "artTextMode": "Mode",
+  "artTextModeColor": "Color",
+  "artTextModeGradient": "Gradient",
+  "artTextModeImage": "Texture",
+  "artTextColor": "Color",
+  "artTextStartColor": "Start Color",
+  "artTextEndColor": "End Color",
+  "artTextRepeat": "Repeat",
+  "artTextOffset": "Offset",
+  "artTextTextureNotSelected": "No texture selected",
+  "artTextTextureEmbedded": "Embedded Data URI texture",
+  "artTextUpload": "Upload",
+  "artTextRepeatX": "Repeat X",
+  "artTextRepeatY": "Repeat Y",
+  "artTextOffsetX": "Offset X",
+  "artTextOffsetY": "Offset Y",
+  "artTextPreviewUnavailable": "Unable to generate art text preview.",
+  "artTextPreviewDataEmpty": "Preview data is empty",
+  "artTextMaterialJsonInvalid": "Invalid material JSON.",
+  "artTextMaterialFieldMissing": "Missing material field.",
+  "artTextMeshNotReady": "Mesh has not been generated yet.",
+  "artTextPngEncodeFailed": "PNG encoding failed.",
+  "artTextNoObjects": "No art text objects.",
+  "artTextCustomFont": "Custom Font",
+  "artTextCanvasNotReady": "Canvas is not ready, cannot generate art text.",
+  "artTextLayerInserted": "Art text layer inserted.",
+  "artTextLayerInsertFailed": "Failed to insert art text layer.",
+  "artTextDefaultPrimary": "你好世界",
+  "artTextDefaultSecondary": "开始吧",
+  "artTextNewText": "New Text",
+  "artTextOverlayNone": "None",
+  "artTextOverlayHighlightTop": "Top Highlight",
+  "artTextOverlayHighlightBottom": "Bottom Highlight",
+  "artTextOverlayHighlightTopBottom": "Top & Bottom Highlight",
+  "artTextOverlayHighlightInnerStroke": "Inner Stroke",
+  "artTextOverlayHighlightInnerHighlight": "Inner Highlight",
+  "artTextOverlayHighlightShine": "Diagonal Shine",
+  "artTextOverlayHighlightGlass": "Glass Highlight",
+  "artTextFaceFront": "Front",
+  "artTextFaceBack": "Back",
+  "artTextFaceUp": "Top",
+  "artTextFaceDown": "Bottom",
+  "artTextFaceLeft": "Left",
+  "artTextFaceRight": "Right",
+  "artTextFaceOutline": "Outline",
+  "artTextImportedFont": "{text} (Imported)",
+  "@artTextImportedFont": {
+    "placeholders": {
+      "text": {}
+    }
+  },
+  "artTextAssetLoadFailed": "Failed to load art text assets: {error}",
+  "@artTextAssetLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextMeshBuildFailed": "Mesh generation failed: {error}",
+  "@artTextMeshBuildFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextFontImported": "Imported font: {fontId}",
+  "@artTextFontImported": {
+    "placeholders": {
+      "fontId": {}
+    }
+  },
+  "artTextFontImportFailed": "Failed to import font: {error}",
+  "@artTextFontImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextFontFileNotFound": "Font file not found: {family}",
+  "@artTextFontFileNotFound": {
+    "placeholders": {
+      "family": {}
+    }
+  },
+  "artTextSystemFontApplied": "Applied system font: {family}",
+  "@artTextSystemFontApplied": {
+    "placeholders": {
+      "family": {}
+    }
+  },
+  "artTextSystemFontApplyFailed": "Failed to apply system font: {error}",
+  "@artTextSystemFontApplyFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextWorkspaceImportFailed": "Workspace import failed: {error}",
+  "@artTextWorkspaceImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextExportModelTitle": "Export {format} Model",
+  "@artTextExportModelTitle": {
+    "placeholders": {
+      "format": {}
+    }
+  },
+  "artTextModelExportFailed": "Model export failed: {error}",
+  "@artTextModelExportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextPngExportFailed": "PNG export failed: {error}",
+  "@artTextPngExportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextGeneratePngFailed": "Failed to generate PNG: {error}",
+  "@artTextGeneratePngFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextCannotReadFile": "Cannot read file: {name}",
+  "@artTextCannotReadFile": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "artTextPickFaceColorTitle": "Pick color for {face}",
+  "@artTextPickFaceColorTitle": {
+    "placeholders": {
+      "face": {}
+    }
+  },
+  "artTextPerspectiveAngle": "Perspective {degrees}°",
+  "@artTextPerspectiveAngle": {
+    "placeholders": {
+      "degrees": {}
+    }
+  },
+  "artTextZoomLabel": "Zoom {zoom}x",
+  "@artTextZoomLabel": {
+    "placeholders": {
+      "zoom": {}
+    }
+  },
+  "artTextTriangleCount": "Triangles: {count}",
+  "@artTextTriangleCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "artTextObjectTitle": "Text {index}",
+  "@artTextObjectTitle": {
+    "placeholders": {
+      "index": {}
+    }
+  },
+  "artTextUseGlobalFont": "Use global font ({fontId})",
+  "@artTextUseGlobalFont": {
+    "placeholders": {
+      "fontId": {}
+    }
+  },
+  "artTextMaterialImportFailed": "Material import failed: {error}",
+  "@artTextMaterialImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextTextureImportFailed": "Texture import failed: {error}",
+  "@artTextTextureImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextBevyPreviewInitFailed": "Bevy 3D preview initialization failed\n{error}",
+  "@artTextBevyPreviewInitFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextExportWorkspaceTitle": "Export 3D Text Workspace",
+  "artTextExportMaterialTitle": "Export Material",
+  "artTextExportTransparentPngTitle": "Export Transparent PNG",
+  "artTextWorkspaceImported": "Workspace imported.",
+  "artTextMaterialImported": "Material imported to current text.",
+  "artTextRotateUpDown": "Rotate Up/Down",
+  "artTextRotateLeftRight": "Rotate Left/Right",
+  "artTextRotatePlane": "Plane Rotation"
 }

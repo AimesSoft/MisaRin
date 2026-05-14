@@ -1046,5 +1046,228 @@
       "limit": {}
     }
   },
-  "autoSaveCleanupDialogClean": "クリーンアップ"
+  "autoSaveCleanupDialogClean": "クリーンアップ",
+  "menuToolText": "テキスト",
+  "menuToolArtTextGeneratorEllipsis": "アート文字ジェネレーター…",
+  "artTextGeneratorTitle": "アート文字ジェネレーター",
+  "artTextExportPng": "PNG を書き出し",
+  "artTextInsertToCanvas": "キャンバスに挿入",
+  "artTextBuildingMesh": "実際の 3D メッシュを生成中...",
+  "artTextMeshWarning": "メッシュ警告",
+  "artTextResetCamera": "視点をリセット",
+  "artTextOrthographic": "平行投影",
+  "artTextSectionSceneFontOutput": "シーン / フォント / 出力",
+  "artTextGlobalFont": "全体フォント",
+  "artTextImportFont": "フォントをインポート",
+  "artTextFontPicker": "フォント選択",
+  "artTextImportWorkspace": "ワークスペースをインポート",
+  "artTextExportWorkspace": "ワークスペースを書き出し",
+  "artTextPngWidth": "PNG 幅",
+  "artTextPngHeight": "PNG 高さ",
+  "artTextTransparentBackgroundPng": "透過背景 PNG",
+  "artTextExportModel": "モデルを書き出し",
+  "artTextContent": "内容",
+  "artTextCurrentFont": "このテキストのフォント",
+  "artTextSectionTransformGeometry": "変形とジオメトリ",
+  "artTextDepth": "厚み",
+  "artTextOutline": "輪郭",
+  "artTextLetterSpacing": "字間隔",
+  "artTextSpaceWidth": "スペース幅",
+  "artTextSectionMaterialTextureOverlay": "マテリアル / テクスチャ / ハイライト",
+  "artTextMaterialPreset": "マテリアルプリセット",
+  "artTextChoosePreset": "プリセットを選択して適用",
+  "artTextOverlayHighlight": "オーバーレイハイライト",
+  "artTextImportMaterial": "マテリアルをインポート",
+  "artTextExportMaterial": "マテリアルを書き出し",
+  "artTextMode": "モード",
+  "artTextModeColor": "単色",
+  "artTextModeGradient": "グラデーション",
+  "artTextModeImage": "テクスチャ",
+  "artTextColor": "色",
+  "artTextStartColor": "開始色",
+  "artTextEndColor": "終了色",
+  "artTextRepeat": "繰り返し",
+  "artTextOffset": "オフセット",
+  "artTextTextureNotSelected": "テクスチャ未選択",
+  "artTextTextureEmbedded": "Data URI テクスチャを埋め込み済み",
+  "artTextUpload": "アップロード",
+  "artTextRepeatX": "繰り返し X",
+  "artTextRepeatY": "繰り返し Y",
+  "artTextOffsetX": "オフセット X",
+  "artTextOffsetY": "オフセット Y",
+  "artTextPreviewUnavailable": "アート文字プレビューを生成できません。",
+  "artTextPreviewDataEmpty": "プレビュー用データが空です",
+  "artTextMaterialJsonInvalid": "有効なマテリアル JSON ではありません。",
+  "artTextMaterialFieldMissing": "material フィールドが見つかりません。",
+  "artTextMeshNotReady": "メッシュはまだ生成されていません。",
+  "artTextPngEncodeFailed": "PNG のエンコードに失敗しました。",
+  "artTextNoObjects": "アート文字オブジェクトがありません。",
+  "artTextCustomFont": "カスタムフォント",
+  "artTextCanvasNotReady": "キャンバスの準備ができていないため、アート文字を生成できません。",
+  "artTextLayerInserted": "アート文字レイヤーを挿入しました。",
+  "artTextLayerInsertFailed": "アート文字レイヤーの挿入に失敗しました。",
+  "artTextDefaultPrimary": "你好世界",
+  "artTextDefaultSecondary": "开始吧",
+  "artTextNewText": "新しい文字",
+  "artTextOverlayNone": "なし",
+  "artTextOverlayHighlightTop": "上部ハイライト",
+  "artTextOverlayHighlightBottom": "下部ハイライト",
+  "artTextOverlayHighlightTopBottom": "上下ハイライト",
+  "artTextOverlayHighlightInnerStroke": "内側ストローク",
+  "artTextOverlayHighlightInnerHighlight": "内側ハイライト",
+  "artTextOverlayHighlightShine": "斜めグレア",
+  "artTextOverlayHighlightGlass": "ガラスハイライト",
+  "artTextFaceFront": "前面",
+  "artTextFaceBack": "背面",
+  "artTextFaceUp": "上面",
+  "artTextFaceDown": "下面",
+  "artTextFaceLeft": "左側",
+  "artTextFaceRight": "右側",
+  "artTextFaceOutline": "輪郭",
+  "artTextImportedFont": "{text}（インポート）",
+  "@artTextImportedFont": {
+    "placeholders": {
+      "text": {}
+    }
+  },
+  "artTextAssetLoadFailed": "アート文字リソースの読み込みに失敗しました: {error}",
+  "@artTextAssetLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextMeshBuildFailed": "メッシュ生成に失敗しました: {error}",
+  "@artTextMeshBuildFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextFontImported": "フォントをインポートしました: {fontId}",
+  "@artTextFontImported": {
+    "placeholders": {
+      "fontId": {}
+    }
+  },
+  "artTextFontImportFailed": "フォントのインポートに失敗しました: {error}",
+  "@artTextFontImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextFontFileNotFound": "フォントファイルが見つかりません: {family}",
+  "@artTextFontFileNotFound": {
+    "placeholders": {
+      "family": {}
+    }
+  },
+  "artTextSystemFontApplied": "システムフォントを適用しました: {family}",
+  "@artTextSystemFontApplied": {
+    "placeholders": {
+      "family": {}
+    }
+  },
+  "artTextSystemFontApplyFailed": "システムフォントの適用に失敗しました: {error}",
+  "@artTextSystemFontApplyFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextWorkspaceImportFailed": "ワークスペースのインポートに失敗しました: {error}",
+  "@artTextWorkspaceImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextExportModelTitle": "{format} モデルを書き出し",
+  "@artTextExportModelTitle": {
+    "placeholders": {
+      "format": {}
+    }
+  },
+  "artTextModelExportFailed": "モデルの書き出しに失敗しました: {error}",
+  "@artTextModelExportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextPngExportFailed": "PNG 書き出しに失敗しました: {error}",
+  "@artTextPngExportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextGeneratePngFailed": "PNG 生成に失敗しました: {error}",
+  "@artTextGeneratePngFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextCannotReadFile": "ファイルを読み取れません: {name}",
+  "@artTextCannotReadFile": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "artTextPickFaceColorTitle": "{face}の色を選択",
+  "@artTextPickFaceColorTitle": {
+    "placeholders": {
+      "face": {}
+    }
+  },
+  "artTextPerspectiveAngle": "視野角 {degrees}°",
+  "@artTextPerspectiveAngle": {
+    "placeholders": {
+      "degrees": {}
+    }
+  },
+  "artTextZoomLabel": "ズーム {zoom}x",
+  "@artTextZoomLabel": {
+    "placeholders": {
+      "zoom": {}
+    }
+  },
+  "artTextTriangleCount": "三角面: {count}",
+  "@artTextTriangleCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "artTextObjectTitle": "文字 {index}",
+  "@artTextObjectTitle": {
+    "placeholders": {
+      "index": {}
+    }
+  },
+  "artTextUseGlobalFont": "全体フォントを使用（{fontId}）",
+  "@artTextUseGlobalFont": {
+    "placeholders": {
+      "fontId": {}
+    }
+  },
+  "artTextMaterialImportFailed": "マテリアルのインポートに失敗しました: {error}",
+  "@artTextMaterialImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextTextureImportFailed": "テクスチャのインポートに失敗しました: {error}",
+  "@artTextTextureImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextBevyPreviewInitFailed": "Bevy 3D プレビューの初期化に失敗しました\n{error}",
+  "@artTextBevyPreviewInitFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextExportWorkspaceTitle": "3D テキストワークスペースを書き出し",
+  "artTextExportMaterialTitle": "マテリアルを書き出し",
+  "artTextExportTransparentPngTitle": "透過 PNG を書き出し",
+  "artTextWorkspaceImported": "ワークスペースをインポートしました。",
+  "artTextMaterialImported": "現在の文字にマテリアルをインポートしました。",
+  "artTextRotateUpDown": "上下回転",
+  "artTextRotateLeftRight": "左右回転",
+  "artTextRotatePlane": "平面回転"
 }

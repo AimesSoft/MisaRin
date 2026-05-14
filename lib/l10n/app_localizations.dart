@@ -4279,6 +4279,654 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to update export directory: {error}'**
   String exportDirectoryUpdateFailed(Object error);
+
+  /// No description provided for @menuToolText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get menuToolText;
+
+  /// No description provided for @menuToolArtTextGeneratorEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Art Text Generator…'**
+  String get menuToolArtTextGeneratorEllipsis;
+
+  /// No description provided for @artTextGeneratorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Art Text Generator'**
+  String get artTextGeneratorTitle;
+
+  /// No description provided for @artTextExportPng.
+  ///
+  /// In en, this message translates to:
+  /// **'Export PNG'**
+  String get artTextExportPng;
+
+  /// No description provided for @artTextInsertToCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert to Canvas'**
+  String get artTextInsertToCanvas;
+
+  /// No description provided for @artTextBuildingMesh.
+  ///
+  /// In en, this message translates to:
+  /// **'Building real 3D mesh...'**
+  String get artTextBuildingMesh;
+
+  /// No description provided for @artTextMeshWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Mesh Warning'**
+  String get artTextMeshWarning;
+
+  /// No description provided for @artTextResetCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset View'**
+  String get artTextResetCamera;
+
+  /// No description provided for @artTextOrthographic.
+  ///
+  /// In en, this message translates to:
+  /// **'Orthographic'**
+  String get artTextOrthographic;
+
+  /// No description provided for @artTextSectionSceneFontOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Scene / Font / Output'**
+  String get artTextSectionSceneFontOutput;
+
+  /// No description provided for @artTextGlobalFont.
+  ///
+  /// In en, this message translates to:
+  /// **'Global Font'**
+  String get artTextGlobalFont;
+
+  /// No description provided for @artTextImportFont.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Font'**
+  String get artTextImportFont;
+
+  /// No description provided for @artTextFontPicker.
+  ///
+  /// In en, this message translates to:
+  /// **'Font Picker'**
+  String get artTextFontPicker;
+
+  /// No description provided for @artTextImportWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Workspace'**
+  String get artTextImportWorkspace;
+
+  /// No description provided for @artTextExportWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Workspace'**
+  String get artTextExportWorkspace;
+
+  /// No description provided for @artTextPngWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'PNG Width'**
+  String get artTextPngWidth;
+
+  /// No description provided for @artTextPngHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'PNG Height'**
+  String get artTextPngHeight;
+
+  /// No description provided for @artTextTransparentBackgroundPng.
+  ///
+  /// In en, this message translates to:
+  /// **'Transparent PNG Background'**
+  String get artTextTransparentBackgroundPng;
+
+  /// No description provided for @artTextExportModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Model'**
+  String get artTextExportModel;
+
+  /// No description provided for @artTextContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Content'**
+  String get artTextContent;
+
+  /// No description provided for @artTextCurrentFont.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Font'**
+  String get artTextCurrentFont;
+
+  /// No description provided for @artTextSectionTransformGeometry.
+  ///
+  /// In en, this message translates to:
+  /// **'Transform & Geometry'**
+  String get artTextSectionTransformGeometry;
+
+  /// No description provided for @artTextDepth.
+  ///
+  /// In en, this message translates to:
+  /// **'Depth'**
+  String get artTextDepth;
+
+  /// No description provided for @artTextOutline.
+  ///
+  /// In en, this message translates to:
+  /// **'Outline'**
+  String get artTextOutline;
+
+  /// No description provided for @artTextLetterSpacing.
+  ///
+  /// In en, this message translates to:
+  /// **'Letter Spacing'**
+  String get artTextLetterSpacing;
+
+  /// No description provided for @artTextSpaceWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Space Width'**
+  String get artTextSpaceWidth;
+
+  /// No description provided for @artTextSectionMaterialTextureOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Material / Texture / Overlay'**
+  String get artTextSectionMaterialTextureOverlay;
+
+  /// No description provided for @artTextMaterialPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Material Preset'**
+  String get artTextMaterialPreset;
+
+  /// No description provided for @artTextChoosePreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a preset to apply'**
+  String get artTextChoosePreset;
+
+  /// No description provided for @artTextOverlayHighlight.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay Highlight'**
+  String get artTextOverlayHighlight;
+
+  /// No description provided for @artTextImportMaterial.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Material'**
+  String get artTextImportMaterial;
+
+  /// No description provided for @artTextExportMaterial.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Material'**
+  String get artTextExportMaterial;
+
+  /// No description provided for @artTextMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get artTextMode;
+
+  /// No description provided for @artTextModeColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get artTextModeColor;
+
+  /// No description provided for @artTextModeGradient.
+  ///
+  /// In en, this message translates to:
+  /// **'Gradient'**
+  String get artTextModeGradient;
+
+  /// No description provided for @artTextModeImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Texture'**
+  String get artTextModeImage;
+
+  /// No description provided for @artTextColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get artTextColor;
+
+  /// No description provided for @artTextStartColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Color'**
+  String get artTextStartColor;
+
+  /// No description provided for @artTextEndColor.
+  ///
+  /// In en, this message translates to:
+  /// **'End Color'**
+  String get artTextEndColor;
+
+  /// No description provided for @artTextRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get artTextRepeat;
+
+  /// No description provided for @artTextOffset.
+  ///
+  /// In en, this message translates to:
+  /// **'Offset'**
+  String get artTextOffset;
+
+  /// No description provided for @artTextTextureNotSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No texture selected'**
+  String get artTextTextureNotSelected;
+
+  /// No description provided for @artTextTextureEmbedded.
+  ///
+  /// In en, this message translates to:
+  /// **'Embedded Data URI texture'**
+  String get artTextTextureEmbedded;
+
+  /// No description provided for @artTextUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get artTextUpload;
+
+  /// No description provided for @artTextRepeatX.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat X'**
+  String get artTextRepeatX;
+
+  /// No description provided for @artTextRepeatY.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat Y'**
+  String get artTextRepeatY;
+
+  /// No description provided for @artTextOffsetX.
+  ///
+  /// In en, this message translates to:
+  /// **'Offset X'**
+  String get artTextOffsetX;
+
+  /// No description provided for @artTextOffsetY.
+  ///
+  /// In en, this message translates to:
+  /// **'Offset Y'**
+  String get artTextOffsetY;
+
+  /// No description provided for @artTextPreviewUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to generate art text preview.'**
+  String get artTextPreviewUnavailable;
+
+  /// No description provided for @artTextPreviewDataEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview data is empty'**
+  String get artTextPreviewDataEmpty;
+
+  /// No description provided for @artTextMaterialJsonInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid material JSON.'**
+  String get artTextMaterialJsonInvalid;
+
+  /// No description provided for @artTextMaterialFieldMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing material field.'**
+  String get artTextMaterialFieldMissing;
+
+  /// No description provided for @artTextMeshNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Mesh has not been generated yet.'**
+  String get artTextMeshNotReady;
+
+  /// No description provided for @artTextPngEncodeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'PNG encoding failed.'**
+  String get artTextPngEncodeFailed;
+
+  /// No description provided for @artTextNoObjects.
+  ///
+  /// In en, this message translates to:
+  /// **'No art text objects.'**
+  String get artTextNoObjects;
+
+  /// No description provided for @artTextCustomFont.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Font'**
+  String get artTextCustomFont;
+
+  /// No description provided for @artTextCanvasNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas is not ready, cannot generate art text.'**
+  String get artTextCanvasNotReady;
+
+  /// No description provided for @artTextLayerInserted.
+  ///
+  /// In en, this message translates to:
+  /// **'Art text layer inserted.'**
+  String get artTextLayerInserted;
+
+  /// No description provided for @artTextLayerInsertFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to insert art text layer.'**
+  String get artTextLayerInsertFailed;
+
+  /// No description provided for @artTextDefaultPrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'你好世界'**
+  String get artTextDefaultPrimary;
+
+  /// No description provided for @artTextDefaultSecondary.
+  ///
+  /// In en, this message translates to:
+  /// **'开始吧'**
+  String get artTextDefaultSecondary;
+
+  /// No description provided for @artTextNewText.
+  ///
+  /// In en, this message translates to:
+  /// **'New Text'**
+  String get artTextNewText;
+
+  /// No description provided for @artTextOverlayNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get artTextOverlayNone;
+
+  /// No description provided for @artTextOverlayHighlightTop.
+  ///
+  /// In en, this message translates to:
+  /// **'Top Highlight'**
+  String get artTextOverlayHighlightTop;
+
+  /// No description provided for @artTextOverlayHighlightBottom.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom Highlight'**
+  String get artTextOverlayHighlightBottom;
+
+  /// No description provided for @artTextOverlayHighlightTopBottom.
+  ///
+  /// In en, this message translates to:
+  /// **'Top & Bottom Highlight'**
+  String get artTextOverlayHighlightTopBottom;
+
+  /// No description provided for @artTextOverlayHighlightInnerStroke.
+  ///
+  /// In en, this message translates to:
+  /// **'Inner Stroke'**
+  String get artTextOverlayHighlightInnerStroke;
+
+  /// No description provided for @artTextOverlayHighlightInnerHighlight.
+  ///
+  /// In en, this message translates to:
+  /// **'Inner Highlight'**
+  String get artTextOverlayHighlightInnerHighlight;
+
+  /// No description provided for @artTextOverlayHighlightShine.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagonal Shine'**
+  String get artTextOverlayHighlightShine;
+
+  /// No description provided for @artTextOverlayHighlightGlass.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass Highlight'**
+  String get artTextOverlayHighlightGlass;
+
+  /// No description provided for @artTextFaceFront.
+  ///
+  /// In en, this message translates to:
+  /// **'Front'**
+  String get artTextFaceFront;
+
+  /// No description provided for @artTextFaceBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get artTextFaceBack;
+
+  /// No description provided for @artTextFaceUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Top'**
+  String get artTextFaceUp;
+
+  /// No description provided for @artTextFaceDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Bottom'**
+  String get artTextFaceDown;
+
+  /// No description provided for @artTextFaceLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get artTextFaceLeft;
+
+  /// No description provided for @artTextFaceRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Right'**
+  String get artTextFaceRight;
+
+  /// No description provided for @artTextFaceOutline.
+  ///
+  /// In en, this message translates to:
+  /// **'Outline'**
+  String get artTextFaceOutline;
+
+  /// No description provided for @artTextImportedFont.
+  ///
+  /// In en, this message translates to:
+  /// **'{text} (Imported)'**
+  String artTextImportedFont(Object text);
+
+  /// No description provided for @artTextAssetLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load art text assets: {error}'**
+  String artTextAssetLoadFailed(Object error);
+
+  /// No description provided for @artTextMeshBuildFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mesh generation failed: {error}'**
+  String artTextMeshBuildFailed(Object error);
+
+  /// No description provided for @artTextFontImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported font: {fontId}'**
+  String artTextFontImported(Object fontId);
+
+  /// No description provided for @artTextFontImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to import font: {error}'**
+  String artTextFontImportFailed(Object error);
+
+  /// No description provided for @artTextFontFileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Font file not found: {family}'**
+  String artTextFontFileNotFound(Object family);
+
+  /// No description provided for @artTextSystemFontApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied system font: {family}'**
+  String artTextSystemFontApplied(Object family);
+
+  /// No description provided for @artTextSystemFontApplyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to apply system font: {error}'**
+  String artTextSystemFontApplyFailed(Object error);
+
+  /// No description provided for @artTextWorkspaceImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace import failed: {error}'**
+  String artTextWorkspaceImportFailed(Object error);
+
+  /// No description provided for @artTextExportModelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export {format} Model'**
+  String artTextExportModelTitle(Object format);
+
+  /// No description provided for @artTextModelExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Model export failed: {error}'**
+  String artTextModelExportFailed(Object error);
+
+  /// No description provided for @artTextPngExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'PNG export failed: {error}'**
+  String artTextPngExportFailed(Object error);
+
+  /// No description provided for @artTextGeneratePngFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to generate PNG: {error}'**
+  String artTextGeneratePngFailed(Object error);
+
+  /// No description provided for @artTextCannotReadFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot read file: {name}'**
+  String artTextCannotReadFile(Object name);
+
+  /// No description provided for @artTextPickFaceColorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick color for {face}'**
+  String artTextPickFaceColorTitle(Object face);
+
+  /// No description provided for @artTextPerspectiveAngle.
+  ///
+  /// In en, this message translates to:
+  /// **'Perspective {degrees}°'**
+  String artTextPerspectiveAngle(Object degrees);
+
+  /// No description provided for @artTextZoomLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom {zoom}x'**
+  String artTextZoomLabel(Object zoom);
+
+  /// No description provided for @artTextTriangleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Triangles: {count}'**
+  String artTextTriangleCount(Object count);
+
+  /// No description provided for @artTextObjectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Text {index}'**
+  String artTextObjectTitle(Object index);
+
+  /// No description provided for @artTextUseGlobalFont.
+  ///
+  /// In en, this message translates to:
+  /// **'Use global font ({fontId})'**
+  String artTextUseGlobalFont(Object fontId);
+
+  /// No description provided for @artTextMaterialImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Material import failed: {error}'**
+  String artTextMaterialImportFailed(Object error);
+
+  /// No description provided for @artTextTextureImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Texture import failed: {error}'**
+  String artTextTextureImportFailed(Object error);
+
+  /// No description provided for @artTextBevyPreviewInitFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Bevy 3D preview initialization failed\n{error}'**
+  String artTextBevyPreviewInitFailed(Object error);
+
+  /// No description provided for @artTextExportWorkspaceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export 3D Text Workspace'**
+  String get artTextExportWorkspaceTitle;
+
+  /// No description provided for @artTextExportMaterialTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Material'**
+  String get artTextExportMaterialTitle;
+
+  /// No description provided for @artTextExportTransparentPngTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Transparent PNG'**
+  String get artTextExportTransparentPngTitle;
+
+  /// No description provided for @artTextWorkspaceImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace imported.'**
+  String get artTextWorkspaceImported;
+
+  /// No description provided for @artTextMaterialImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Material imported to current text.'**
+  String get artTextMaterialImported;
+
+  /// No description provided for @artTextRotateUpDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate Up/Down'**
+  String get artTextRotateUpDown;
+
+  /// No description provided for @artTextRotateLeftRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate Left/Right'**
+  String get artTextRotateLeftRight;
+
+  /// No description provided for @artTextRotatePlane.
+  ///
+  /// In en, this message translates to:
+  /// **'Plane Rotation'**
+  String get artTextRotatePlane;
 }
 
 class _AppLocalizationsDelegate

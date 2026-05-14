@@ -15,6 +15,7 @@ import '../../mobile/mobile_utils.dart';
 import '../../src/rust/api/cube_text.dart' as cube_text;
 import '../../src/rust/canvas_engine_ffi.dart' as canvas_engine_ffi;
 import '../../src/rust/rust_init.dart';
+import '../l10n/l10n.dart';
 import '../native/system_fonts.dart';
 import 'font_family_picker_dialog.dart';
 import '../utils/file_name_dialog.dart';
@@ -42,15 +43,15 @@ const Map<String, String> _kBuiltinFonts = <String, String>{
   'Unifont ASCII': 'Unifont_ASCII_Regular.json',
 };
 
-const List<_OverlayChoice> _kOverlayChoices = <_OverlayChoice>[
-  _OverlayChoice('', '无'),
-  _OverlayChoice('overlay.highlightTop', '顶部高光'),
-  _OverlayChoice('overlay.highlightBottom', '底部高光'),
-  _OverlayChoice('overlay.highlightTopBottom', '上下高光'),
-  _OverlayChoice('overlay.highlightInnerStroke', '内描边'),
-  _OverlayChoice('overlay.highlightInnerHighlight', '内高光'),
-  _OverlayChoice('overlay.highlightShine', '斜向闪光'),
-  _OverlayChoice('overlay.highlightGlass', '玻璃高光'),
+const List<String> _kOverlayChoices = <String>[
+  '',
+  'overlay.highlightTop',
+  'overlay.highlightBottom',
+  'overlay.highlightTopBottom',
+  'overlay.highlightInnerStroke',
+  'overlay.highlightInnerHighlight',
+  'overlay.highlightShine',
+  'overlay.highlightGlass',
 ];
 
 const List<String> _kMaterialFaces = <String>[
@@ -63,16 +64,6 @@ const List<String> _kMaterialFaces = <String>[
   'outline',
 ];
 
-const Map<String, String> _kMaterialFaceLabels = <String, String>{
-  'front': '正面',
-  'back': '背面',
-  'up': '上侧',
-  'down': '下侧',
-  'left': '左侧',
-  'right': '右侧',
-  'outline': '描边',
-};
-
 const int _kRasterAntialiasSamples = 2;
 
 int _objectSerial = 0;
@@ -83,13 +74,6 @@ int _exportAntialiasSamples(int width, int height) {
           12000000
       ? _kRasterAntialiasSamples
       : 1;
-}
-
-class _OverlayChoice {
-  const _OverlayChoice(this.value, this.label);
-
-  final String value;
-  final String label;
 }
 
 class _ArtTextGeneratorDialog extends StatefulWidget {
@@ -136,14 +120,56 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
   int _outputHeight = 900;
   bool _transparentBackground = true;
   String _modelFormat = 'glb';
+  bool _textDefaultsInitialized = false;
 
-  @override
-  void initState() {
-    super.initState();
+  AppLocalizations get _l10n => context.l10n;
+
+  String get _defaultPrimaryText => _l10n.artTextDefaultPrimary;
+
+  String get _defaultSecondaryText => _l10n.artTextDefaultSecondary;
+
+  String _overlayLabel(String value) {
+    return switch (value) {
+      '' => _l10n.artTextOverlayNone,
+      'overlay.highlightTop' => _l10n.artTextOverlayHighlightTop,
+      'overlay.highlightBottom' => _l10n.artTextOverlayHighlightBottom,
+      'overlay.highlightTopBottom' => _l10n.artTextOverlayHighlightTopBottom,
+      'overlay.highlightInnerStroke' =>
+        _l10n.artTextOverlayHighlightInnerStroke,
+      'overlay.highlightInnerHighlight' =>
+        _l10n.artTextOverlayHighlightInnerHighlight,
+      'overlay.highlightShine' => _l10n.artTextOverlayHighlightShine,
+      'overlay.highlightGlass' => _l10n.artTextOverlayHighlightGlass,
+      _ => value,
+    };
+  }
+
+  String _faceLabel(String face) {
+    return switch (face) {
+      'front' => _l10n.artTextFaceFront,
+      'back' => _l10n.artTextFaceBack,
+      'up' => _l10n.artTextFaceUp,
+      'down' => _l10n.artTextFaceDown,
+      'left' => _l10n.artTextFaceLeft,
+      'right' => _l10n.artTextFaceRight,
+      'outline' => _l10n.artTextFaceOutline,
+      _ => face,
+    };
+  }
+
+  String _fontDisplay(_CubeFontAsset font) {
+    return font.builtin ? font.id : _l10n.artTextImportedFont(font.id);
+  }
+
+  void _initLocalizedDefaultTextsIfNeeded() {
+    if (_textDefaultsInitialized) {
+      return;
+    }
+    _textDefaultsInitialized = true;
     _texts = <_ArtTextObject>[
       _ArtTextObject(
         id: _newObjectId(),
-        content: '我的世界',
+        content: _defaultPrimaryText,
         options: _TextOptions(
           size: 10,
           depth: 5,
@@ -162,7 +188,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       ),
       _ArtTextObject(
         id: _newObjectId(),
-        content: '中国版',
+        content: _defaultSecondaryText,
         options: _TextOptions(
           size: 5,
           depth: 3,
@@ -183,8 +209,19 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
     for (final _ArtTextObject text in _texts) {
       _contentControllers[text.id] = TextEditingController(text: text.content);
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
     unawaited(_loadSystemFonts());
     _loadAssets();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _initLocalizedDefaultTextsIfNeeded();
   }
 
   @override
@@ -257,7 +294,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       setState(() {
         _loadingAssets = false;
         _statusSeverity = InfoBarSeverity.error;
-        _statusMessage = '艺术字体资源加载失败：$error';
+        _statusMessage = _l10n.artTextAssetLoadFailed(error.toString());
       });
     }
   }
@@ -347,7 +384,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       setState(() {
         _buildingScene = false;
         _statusSeverity = InfoBarSeverity.error;
-        _statusMessage = '网格生成失败：$error';
+        _statusMessage = _l10n.artTextMeshBuildFailed(error.toString());
       });
     }
   }
@@ -369,7 +406,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
 
   _ArtTextObject get _selectedText {
     if (_texts.isEmpty) {
-      throw StateError('No art text objects');
+      throw StateError(_l10n.artTextNoObjects);
     }
     _selectedTextIndex = _selectedTextIndex.clamp(0, _texts.length - 1);
     return _texts[_selectedTextIndex];
@@ -388,7 +425,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
     final int index = _texts.length;
     final _ArtTextObject text = _ArtTextObject(
       id: _newObjectId(),
-      content: 'New Text',
+      content: _l10n.artTextNewText,
       options: _TextOptions(
         size: 5,
         depth: 3,
@@ -472,7 +509,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         _globalFontId = uniqueId;
         _busy = false;
         _statusSeverity = InfoBarSeverity.success;
-        _statusMessage = '已导入字体：$uniqueId';
+        _statusMessage = _l10n.artTextFontImported(uniqueId);
       });
       _scheduleSceneBuild(immediate: true);
     } catch (error) {
@@ -480,7 +517,10 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         return;
       }
       setState(() => _busy = false);
-      _setStatus('字体导入失败：$error', InfoBarSeverity.error);
+      _setStatus(
+        _l10n.artTextFontImportFailed(error.toString()),
+        InfoBarSeverity.error,
+      );
     }
   }
 
@@ -588,7 +628,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
   }) {
     final String previewFontId = _pickerPreviewFontId(selectedFamily, source);
     final String textContent = source.content.trim().isEmpty
-        ? '我的世界'
+        ? _defaultPrimaryText
         : source.content;
     final String cacheKey = [
       previewFontId,
@@ -646,7 +686,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         if (scene == null) {
           return Center(
             child: Text(
-              '无法生成艺术字预览。',
+              _l10n.artTextPreviewUnavailable,
               style: FluentTheme.of(context).typography.body,
               textAlign: TextAlign.center,
             ),
@@ -708,7 +748,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           trimmed,
         );
         if (fontPath == null) {
-          throw StateError('未找到字体文件：$trimmed');
+          throw StateError(_l10n.artTextFontFileNotFound(trimmed));
         }
         final Uint8List bytes = await File(fontPath).readAsBytes();
         await ensureRustInitialized();
@@ -735,7 +775,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         target.fontId = fontId;
         _busy = false;
         _statusSeverity = InfoBarSeverity.success;
-        _statusMessage = '已应用系统字体：$trimmed';
+        _statusMessage = _l10n.artTextSystemFontApplied(trimmed);
       });
       _scheduleSceneBuild(immediate: true);
     } catch (error) {
@@ -743,7 +783,10 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         return;
       }
       setState(() => _busy = false);
-      _setStatus('系统字体应用失败：$error', InfoBarSeverity.error);
+      _setStatus(
+        _l10n.artTextSystemFontApplyFailed(error.toString()),
+        InfoBarSeverity.error,
+      );
     }
   }
 
@@ -830,7 +873,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
             ? <_ArtTextObject>[
                 _ArtTextObject(
                   id: _newObjectId(),
-                  content: 'New Text',
+                  content: _l10n.artTextNewText,
                   options: _TextOptions.defaults(),
                 ),
               ]
@@ -848,7 +891,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                   .toList(growable: false);
         _selectedTextIndex = 0;
         _statusSeverity = InfoBarSeverity.success;
-        _statusMessage = '工作区已导入。';
+        _statusMessage = _l10n.artTextWorkspaceImported;
       });
       if (_contentControllers.isEmpty) {
         for (final _ArtTextObject text in _texts) {
@@ -860,7 +903,10 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       _scheduleSceneBuild(immediate: true);
       unawaited(_syncMaterialImages());
     } catch (error) {
-      _setStatus('工作区导入失败：$error', InfoBarSeverity.error);
+      _setStatus(
+        _l10n.artTextWorkspaceImportFailed(error.toString()),
+        InfoBarSeverity.error,
+      );
     }
   }
 
@@ -869,7 +915,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       '  ',
     ).convert(_workspaceJson());
     await _saveBytes(
-      title: '导出 3D 字体工作区',
+      title: _l10n.artTextExportWorkspaceTitle,
       fileName: '${_safeProjectName()}.json',
       extension: 'json',
       mimeType: 'application/json',
@@ -891,23 +937,26 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       );
       final Object? decoded = jsonDecode(jsonText);
       if (decoded is! Map<String, Object?>) {
-        throw const FormatException('不是有效的材质 JSON。');
+        throw FormatException(_l10n.artTextMaterialJsonInvalid);
       }
       final Object? material = decoded['material'] is Map<String, Object?>
           ? decoded['material']
           : decoded;
       if (material is! Map<String, Object?>) {
-        throw const FormatException('找不到 material 字段。');
+        throw FormatException(_l10n.artTextMaterialFieldMissing);
       }
       _mutate(() {
         _selectedText.options = _selectedText.options.copyWith(
           materials: _TextMaterials.fromJson(material),
         );
         _statusSeverity = InfoBarSeverity.success;
-        _statusMessage = '材质已导入到当前文字。';
+        _statusMessage = _l10n.artTextMaterialImported;
       });
     } catch (error) {
-      _setStatus('材质导入失败：$error', InfoBarSeverity.error);
+      _setStatus(
+        _l10n.artTextMaterialImportFailed(error.toString()),
+        InfoBarSeverity.error,
+      );
     }
   }
 
@@ -917,7 +966,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       'material': _selectedText.options.materials.toJson(),
     };
     await _saveBytes(
-      title: '导出材质',
+      title: _l10n.artTextExportMaterialTitle,
       fileName: 'material.json',
       extension: 'json',
       mimeType: 'application/json',
@@ -948,7 +997,10 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         );
       });
     } catch (error) {
-      _setStatus('贴图导入失败：$error', InfoBarSeverity.error);
+      _setStatus(
+        _l10n.artTextTextureImportFailed(error.toString()),
+        InfoBarSeverity.error,
+      );
     }
   }
 
@@ -967,7 +1019,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
             format: _modelFormat,
           );
       await _saveBytes(
-        title: '导出 ${_modelFormat.toUpperCase()} 模型',
+        title: _l10n.artTextExportModelTitle(_modelFormat.toUpperCase()),
         fileName: result.fileName,
         extension: _modelFormat,
         mimeType: result.mimeType,
@@ -980,7 +1032,10 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       if (mounted) {
         setState(() => _busy = false);
       }
-      _setStatus('模型导出失败：$error', InfoBarSeverity.error);
+      _setStatus(
+        _l10n.artTextModelExportFailed(error.toString()),
+        InfoBarSeverity.error,
+      );
     }
   }
 
@@ -989,7 +1044,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       setState(() => _busy = true);
       final Uint8List bytes = await _renderPngBytes();
       await _saveBytes(
-        title: '导出透明 PNG',
+        title: _l10n.artTextExportTransparentPngTitle,
         fileName: '${_safeProjectName()}.png',
         extension: 'png',
         mimeType: 'image/png',
@@ -1002,7 +1057,10 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       if (mounted) {
         setState(() => _busy = false);
       }
-      _setStatus('PNG 导出失败：$error', InfoBarSeverity.error);
+      _setStatus(
+        _l10n.artTextPngExportFailed(error.toString()),
+        InfoBarSeverity.error,
+      );
     }
   }
 
@@ -1021,7 +1079,10 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         return;
       }
       setState(() => _busy = false);
-      _setStatus('生成 PNG 失败：$error', InfoBarSeverity.error);
+      _setStatus(
+        _l10n.artTextGeneratePngFailed(error.toString()),
+        InfoBarSeverity.error,
+      );
     }
   }
 
@@ -1031,7 +1092,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
     }
     final cube_text.CubeTextScene? scene = _scene;
     if (scene == null) {
-      throw StateError('网格尚未生成。');
+      throw StateError(_l10n.artTextMeshNotReady);
     }
     ui.Image image = await _renderCubeTextRasterImage(
       scene: scene,
@@ -1058,7 +1119,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
     );
     image.dispose();
     if (data == null) {
-      throw StateError('PNG 编码失败。');
+      throw StateError(_l10n.artTextPngEncodeFailed);
     }
     return data.buffer.asUint8List();
   }
@@ -1082,7 +1143,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           context: context,
           title: title,
           suggestedFileName: suggestedName,
-          confirmLabel: '保存',
+          confirmLabel: _l10n.save,
         );
         if (pickedName == null) {
           return;
@@ -1106,9 +1167,9 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         outputPath = _normalizeFileName(outputPath, normalizedExtension);
       }
       await File(outputPath).writeAsBytes(bytes, flush: true);
-      _setStatus('已导出：$outputPath', InfoBarSeverity.success);
+      _setStatus(_l10n.fileExported(outputPath), InfoBarSeverity.success);
     } catch (error) {
-      _setStatus('保存失败：$error', InfoBarSeverity.error);
+      _setStatus(_l10n.exportFailed(error.toString()), InfoBarSeverity.error);
     }
   }
 
@@ -1118,7 +1179,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
     }
     final String? path = file.path;
     if (path == null || path.isEmpty) {
-      throw StateError('无法读取文件：${file.name}');
+      throw StateError(_l10n.artTextCannotReadFile(file.name));
     }
     return File(path).readAsBytes();
   }
@@ -1204,7 +1265,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       context: context,
       builder: (BuildContext context) {
         return ContentDialog(
-          title: Text('选择${_kMaterialFaceLabels[face] ?? face}颜色'),
+          title: Text(_l10n.artTextPickFaceColorTitle(_faceLabel(face))),
           content: SizedBox(
             width: 320,
             child: ColorPicker(
@@ -1223,11 +1284,11 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           actions: <Widget>[
             Button(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
+              child: Text(_l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(selected),
-              child: const Text('确定'),
+              child: Text(_l10n.confirm),
             ),
           ],
         );
@@ -1255,7 +1316,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
       title: Row(
         children: <Widget>[
-          const Expanded(child: Text('艺术字生成器')),
+          Expanded(child: Text(_l10n.artTextGeneratorTitle)),
           if (_loadingAssets || _buildingScene || _busy)
             const SizedBox(
               width: 18,
@@ -1298,15 +1359,15 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       actions: <Widget>[
         Button(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(_l10n.cancel),
         ),
         Button(
           onPressed: _busy || !_canRender ? null : _exportPng,
-          child: const Text('导出 PNG'),
+          child: Text(_l10n.artTextExportPng),
         ),
         FilledButton(
           onPressed: _busy || !_canRender ? null : _insertIntoCanvas,
-          child: const Text('插入画布'),
+          child: Text(_l10n.artTextInsertToCanvas),
         ),
       ],
     );
@@ -1359,7 +1420,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                         if (scene == null) {
                           return Center(
                             child: Text(
-                              _statusMessage ?? '正在生成真实 3D 网格...',
+                              _statusMessage ?? _l10n.artTextBuildingMesh,
                               textAlign: TextAlign.center,
                             ),
                           );
@@ -1402,7 +1463,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: InfoBar(
-              title: Text(_statusMessage ?? '网格警告'),
+              title: Text(_statusMessage ?? _l10n.artTextMeshWarning),
               content: Text(
                 _statusMessage ?? scene!.warnings.take(3).join('\n'),
                 maxLines: 4,
@@ -1424,19 +1485,21 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       children: <Widget>[
         Button(
           onPressed: _resetCamera,
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Icon(FluentIcons.reset, size: 14),
-              SizedBox(width: 6),
-              Text('重置视角'),
+              const Icon(FluentIcons.reset, size: 14),
+              const SizedBox(width: 6),
+              Text(_l10n.artTextResetCamera),
             ],
           ),
         ),
         SizedBox(
           width: 220,
           child: InfoLabel(
-            label: _fov == 0 ? '正交投影' : '透视角 ${_fov.round()}°',
+            label: _fov == 0
+                ? _l10n.artTextOrthographic
+                : _l10n.artTextPerspectiveAngle(_fov.round()),
             child: Slider(
               min: 0,
               max: 120,
@@ -1451,7 +1514,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         SizedBox(
           width: 180,
           child: InfoLabel(
-            label: '缩放 ${_zoom.toStringAsFixed(2)}x',
+            label: _l10n.artTextZoomLabel(_zoom.toStringAsFixed(2)),
             child: Slider(
               min: 0.25,
               max: 4,
@@ -1460,7 +1523,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
             ),
           ),
         ),
-        Text('三角面：$triangleCount'),
+        Text(_l10n.artTextTriangleCount(triangleCount)),
       ],
     );
   }
@@ -1479,12 +1542,12 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
   Widget _buildGlobalControls() {
     return Expander(
       initiallyExpanded: true,
-      header: const Text('场景 / 字体 / 输出'),
+      header: Text(_l10n.artTextSectionSceneFontOutput),
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           InfoLabel(
-            label: '全局字体',
+            label: _l10n.artTextGlobalFont,
             child: ComboBox<String>(
               value: _fonts.any((font) => font.id == _globalFontId)
                   ? _globalFontId
@@ -1495,7 +1558,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                     (font) => ComboBoxItem<String>(
                       value: font.id,
                       child: Text(
-                        font.builtin ? font.id : '${font.id}（导入）',
+                        _fontDisplay(font),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1516,21 +1579,21 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
             children: <Widget>[
               Button(
                 onPressed: _busy ? null : _importFont,
-                child: const Text('导入字体'),
+                child: Text(_l10n.artTextImportFont),
               ),
               Button(
                 onPressed: _busy
                     ? null
                     : () => _openSystemFontPickerForObject(_selectedText),
-                child: const Text('字体选择器'),
+                child: Text(_l10n.artTextFontPicker),
               ),
               Button(
                 onPressed: _busy ? null : _importWorkspace,
-                child: const Text('导入工作区'),
+                child: Text(_l10n.artTextImportWorkspace),
               ),
               Button(
                 onPressed: _busy ? null : _exportWorkspace,
-                child: const Text('导出工作区'),
+                child: Text(_l10n.artTextExportWorkspace),
               ),
             ],
           ),
@@ -1539,7 +1602,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
             children: <Widget>[
               Expanded(
                 child: _buildIntBox(
-                  label: 'PNG 宽',
+                  label: _l10n.artTextPngWidth,
                   value: _outputWidth,
                   min: 64,
                   max: 4096,
@@ -1551,7 +1614,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
               const SizedBox(width: 8),
               Expanded(
                 child: _buildIntBox(
-                  label: 'PNG 高',
+                  label: _l10n.artTextPngHeight,
                   value: _outputHeight,
                   min: 64,
                   max: 4096,
@@ -1565,7 +1628,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           const SizedBox(height: 8),
           ToggleSwitch(
             checked: _transparentBackground,
-            content: const Text('透明背景 PNG'),
+            content: Text(_l10n.artTextTransparentBackgroundPng),
             onChanged: (bool value) {
               setState(() => _transparentBackground = value);
             },
@@ -1593,7 +1656,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
               const SizedBox(width: 8),
               Button(
                 onPressed: _busy || !_canRender ? null : _exportModel,
-                child: const Text('导出模型'),
+                child: Text(_l10n.artTextExportModel),
               ),
             ],
           ),
@@ -1616,7 +1679,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       tabs: List<Tab>.generate(_texts.length, (int index) {
         final _ArtTextObject text = _texts[index];
         final String title = text.content.trim().isEmpty
-            ? '文字 ${index + 1}'
+            ? _l10n.artTextObjectTitle(index + 1)
             : text.content.trim();
         return Tab(
           text: Text(
@@ -1648,7 +1711,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           InfoLabel(
-            label: '内容',
+            label: _l10n.artTextContent,
             child: TextBox(
               controller: controller,
               maxLines: 2,
@@ -1659,7 +1722,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           ),
           const SizedBox(height: 10),
           InfoLabel(
-            label: '本段字体',
+            label: _l10n.artTextCurrentFont,
             child: Row(
               children: <Widget>[
                 Expanded(
@@ -1669,13 +1732,13 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                     items: <ComboBoxItem<String>>[
                       ComboBoxItem<String>(
                         value: '__global__',
-                        child: Text('使用全局字体（$_globalFontId）'),
+                        child: Text(_l10n.artTextUseGlobalFont(_globalFontId)),
                       ),
                       ..._fonts.map(
                         (font) => ComboBoxItem<String>(
                           value: font.id,
                           child: Text(
-                            font.builtin ? font.id : '${font.id}（导入）',
+                            _fontDisplay(font),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -1711,12 +1774,12 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           const SizedBox(height: 12),
           Expander(
             initiallyExpanded: true,
-            header: const Text('变换和几何'),
+            header: Text(_l10n.artTextSectionTransformGeometry),
             content: Column(
               children: <Widget>[
                 _buildVector3Controls(text),
                 _buildNumberSlider(
-                  label: '上下旋转',
+                  label: _l10n.artTextRotateUpDown,
                   value: text.options.rotY,
                   min: -90,
                   max: 90,
@@ -1728,7 +1791,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                   },
                 ),
                 _buildNumberSlider(
-                  label: '左右旋转',
+                  label: _l10n.artTextRotateLeftRight,
                   value: text.options.rotX,
                   min: -180,
                   max: 180,
@@ -1740,7 +1803,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                   },
                 ),
                 _buildNumberSlider(
-                  label: '平面旋转',
+                  label: _l10n.artTextRotatePlane,
                   value: text.options.rotZ,
                   min: -180,
                   max: 180,
@@ -1752,7 +1815,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                   },
                 ),
                 _buildNumberSlider(
-                  label: '字号',
+                  label: _l10n.fontSize,
                   value: text.options.size,
                   min: 1,
                   max: 20,
@@ -1764,7 +1827,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                   },
                 ),
                 _buildNumberSlider(
-                  label: '厚度',
+                  label: _l10n.artTextDepth,
                   value: text.options.depth,
                   min: 1,
                   max: 10,
@@ -1776,7 +1839,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                   },
                 ),
                 _buildNumberSlider(
-                  label: '描边',
+                  label: _l10n.artTextOutline,
                   value: text.options.outlineWidth,
                   min: 0,
                   max: 1,
@@ -1788,7 +1851,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                   },
                 ),
                 _buildNumberSlider(
-                  label: '字间距',
+                  label: _l10n.artTextLetterSpacing,
                   value: text.options.letterSpacing,
                   min: 0,
                   max: 5,
@@ -1800,7 +1863,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                   },
                 ),
                 _buildNumberSlider(
-                  label: '空格宽度',
+                  label: _l10n.artTextSpaceWidth,
                   value: text.options.spacingWidth,
                   min: -0.2,
                   max: 1,
@@ -1877,14 +1940,14 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
   Widget _buildMaterialControls(_ArtTextObject text) {
     return Expander(
       initiallyExpanded: true,
-      header: const Text('材质 / 贴图 / 高光'),
+      header: Text(_l10n.artTextSectionMaterialTextureOverlay),
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           InfoLabel(
-            label: '材质预设',
+            label: _l10n.artTextMaterialPreset,
             child: ComboBox<String>(
-              placeholder: const Text('选择预设并应用'),
+              placeholder: Text(_l10n.artTextChoosePreset),
               isExpanded: true,
               items: _materialPresets.keys
                   .map(
@@ -1907,15 +1970,15 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           ),
           const SizedBox(height: 8),
           InfoLabel(
-            label: '叠加高光',
+            label: _l10n.artTextOverlayHighlight,
             child: ComboBox<String>(
               value: text.options.overlay,
               isExpanded: true,
               items: _kOverlayChoices
                   .map(
                     (choice) => ComboBoxItem<String>(
-                      value: choice.value,
-                      child: Text(choice.label),
+                      value: choice,
+                      child: Text(_overlayLabel(choice)),
                     ),
                   )
                   .toList(growable: false),
@@ -1933,11 +1996,11 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
             children: <Widget>[
               Button(
                 onPressed: _importMaterialForSelected,
-                child: const Text('导入材质'),
+                child: Text(_l10n.artTextImportMaterial),
               ),
               Button(
                 onPressed: _exportMaterialForSelected,
-                child: const Text('导出材质'),
+                child: Text(_l10n.artTextExportMaterial),
               ),
             ],
           ),
@@ -1958,7 +2021,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         children: <Widget>[
           _MaterialSwatch(option: option),
           const SizedBox(width: 8),
-          Text(_kMaterialFaceLabels[face] ?? face),
+          Text(_faceLabel(face)),
         ],
       ),
       contentPadding: const EdgeInsets.all(10),
@@ -1966,14 +2029,23 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           InfoLabel(
-            label: '模式',
+            label: _l10n.artTextMode,
             child: ComboBox<String>(
               value: option.mode,
               isExpanded: true,
-              items: const <ComboBoxItem<String>>[
-                ComboBoxItem<String>(value: 'color', child: Text('纯色')),
-                ComboBoxItem<String>(value: 'gradient', child: Text('渐变')),
-                ComboBoxItem<String>(value: 'image', child: Text('贴图')),
+              items: <ComboBoxItem<String>>[
+                ComboBoxItem<String>(
+                  value: 'color',
+                  child: Text(_l10n.artTextModeColor),
+                ),
+                ComboBoxItem<String>(
+                  value: 'gradient',
+                  child: Text(_l10n.artTextModeGradient),
+                ),
+                ComboBoxItem<String>(
+                  value: 'image',
+                  child: Text(_l10n.artTextModeImage),
+                ),
               ],
               onChanged: (String? value) {
                 if (value == null) {
@@ -1992,23 +2064,27 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           ),
           const SizedBox(height: 8),
           if (option.mode == 'color')
-            _buildColorField(face: face, label: '颜色', value: option.color),
+            _buildColorField(
+              face: face,
+              label: _l10n.artTextColor,
+              value: option.color,
+            ),
           if (option.mode == 'gradient') ...<Widget>[
             _buildColorField(
               face: face,
-              label: '起始色',
+              label: _l10n.artTextStartColor,
               value: option.colorGradualStart,
               field: 'start',
             ),
             const SizedBox(height: 8),
             _buildColorField(
               face: face,
-              label: '结束色',
+              label: _l10n.artTextEndColor,
               value: option.colorGradualEnd,
               field: 'end',
             ),
             _buildNumberSlider(
-              label: '重复',
+              label: _l10n.artTextRepeat,
               value: option.repeat,
               min: 0.1,
               max: 10,
@@ -2021,7 +2097,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
               },
             ),
             _buildNumberSlider(
-              label: '偏移',
+              label: _l10n.artTextOffset,
               value: option.offset,
               min: 0,
               max: 10,
@@ -2039,19 +2115,21 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
               children: <Widget>[
                 Expanded(
                   child: Text(
-                    option.image.isEmpty ? '尚未选择贴图' : '已嵌入 Data URI 贴图',
+                    option.image.isEmpty
+                        ? _l10n.artTextTextureNotSelected
+                        : _l10n.artTextTextureEmbedded,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Button(
                   onPressed: () => _importImageForMaterial(face),
-                  child: const Text('上传'),
+                  child: Text(_l10n.artTextUpload),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             _buildNumberSlider(
-              label: '重复 X',
+              label: _l10n.artTextRepeatX,
               value: option.repeatX,
               min: 0.005,
               max: 2,
@@ -2064,7 +2142,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
               },
             ),
             _buildNumberSlider(
-              label: '重复 Y',
+              label: _l10n.artTextRepeatY,
               value: option.repeatY,
               min: 0.005,
               max: 2,
@@ -2077,7 +2155,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
               },
             ),
             _buildNumberSlider(
-              label: '偏移 X',
+              label: _l10n.artTextOffsetX,
               value: option.offsetX,
               min: 0,
               max: 10,
@@ -2090,7 +2168,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
               },
             ),
             _buildNumberSlider(
-              label: '偏移 Y',
+              label: _l10n.artTextOffsetY,
               value: option.offsetY,
               min: 0,
               max: 10,
@@ -2270,7 +2348,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
 
   String _uniqueFontId(String requested) {
     final String base = requested.trim().isEmpty
-        ? 'Custom Font'
+        ? _l10n.artTextCustomFont
         : requested.trim();
     if (!_fonts.any((font) => font.id == base)) {
       return base;
@@ -2782,7 +2860,7 @@ class _WorkspaceImport {
   static _WorkspaceImport parse(String jsonText) {
     final Object? decoded = jsonDecode(jsonText);
     if (decoded is! Map<String, Object?>) {
-      throw const FormatException('不是有效的工作区 JSON。');
+      throw const FormatException('Invalid workspace JSON.');
     }
     final Object? rawData = decoded['data'];
     final Map<String, Object?> data = rawData is Map<String, Object?>
@@ -3117,13 +3195,17 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
     final int? textureId = _textureId;
     if (_resolvedScene == null) {
-      return const Center(child: Text('预览数据为空'));
+      return Center(child: Text(l10n.artTextPreviewDataEmpty));
     }
     if (_error != null) {
       return Center(
-        child: Text('Bevy 3D 预览初始化失败\n$_error', textAlign: TextAlign.center),
+        child: Text(
+          l10n.artTextBevyPreviewInitFailed(_error.toString()),
+          textAlign: TextAlign.center,
+        ),
       );
     }
     if (textureId == null) {
@@ -4548,7 +4630,7 @@ String _imageMimeType(String fileName) {
 Uint8List _decodeDataUri(String dataUri) {
   final int comma = dataUri.indexOf(',');
   if (comma < 0) {
-    throw const FormatException('无效 Data URI。');
+    throw const FormatException('Invalid Data URI.');
   }
   return base64Decode(dataUri.substring(comma + 1));
 }

@@ -2351,4 +2351,377 @@ class AppLocalizationsEn extends AppLocalizations {
   String exportDirectoryUpdateFailed(Object error) {
     return 'Failed to update export directory: $error';
   }
+
+  @override
+  String get menuToolText => 'Text';
+
+  @override
+  String get menuToolArtTextGeneratorEllipsis => 'Art Text Generator…';
+
+  @override
+  String get artTextGeneratorTitle => 'Art Text Generator';
+
+  @override
+  String get artTextExportPng => 'Export PNG';
+
+  @override
+  String get artTextInsertToCanvas => 'Insert to Canvas';
+
+  @override
+  String get artTextBuildingMesh => 'Building real 3D mesh...';
+
+  @override
+  String get artTextMeshWarning => 'Mesh Warning';
+
+  @override
+  String get artTextResetCamera => 'Reset View';
+
+  @override
+  String get artTextOrthographic => 'Orthographic';
+
+  @override
+  String get artTextSectionSceneFontOutput => 'Scene / Font / Output';
+
+  @override
+  String get artTextGlobalFont => 'Global Font';
+
+  @override
+  String get artTextImportFont => 'Import Font';
+
+  @override
+  String get artTextFontPicker => 'Font Picker';
+
+  @override
+  String get artTextImportWorkspace => 'Import Workspace';
+
+  @override
+  String get artTextExportWorkspace => 'Export Workspace';
+
+  @override
+  String get artTextPngWidth => 'PNG Width';
+
+  @override
+  String get artTextPngHeight => 'PNG Height';
+
+  @override
+  String get artTextTransparentBackgroundPng => 'Transparent PNG Background';
+
+  @override
+  String get artTextExportModel => 'Export Model';
+
+  @override
+  String get artTextContent => 'Content';
+
+  @override
+  String get artTextCurrentFont => 'Current Font';
+
+  @override
+  String get artTextSectionTransformGeometry => 'Transform & Geometry';
+
+  @override
+  String get artTextDepth => 'Depth';
+
+  @override
+  String get artTextOutline => 'Outline';
+
+  @override
+  String get artTextLetterSpacing => 'Letter Spacing';
+
+  @override
+  String get artTextSpaceWidth => 'Space Width';
+
+  @override
+  String get artTextSectionMaterialTextureOverlay =>
+      'Material / Texture / Overlay';
+
+  @override
+  String get artTextMaterialPreset => 'Material Preset';
+
+  @override
+  String get artTextChoosePreset => 'Select a preset to apply';
+
+  @override
+  String get artTextOverlayHighlight => 'Overlay Highlight';
+
+  @override
+  String get artTextImportMaterial => 'Import Material';
+
+  @override
+  String get artTextExportMaterial => 'Export Material';
+
+  @override
+  String get artTextMode => 'Mode';
+
+  @override
+  String get artTextModeColor => 'Color';
+
+  @override
+  String get artTextModeGradient => 'Gradient';
+
+  @override
+  String get artTextModeImage => 'Texture';
+
+  @override
+  String get artTextColor => 'Color';
+
+  @override
+  String get artTextStartColor => 'Start Color';
+
+  @override
+  String get artTextEndColor => 'End Color';
+
+  @override
+  String get artTextRepeat => 'Repeat';
+
+  @override
+  String get artTextOffset => 'Offset';
+
+  @override
+  String get artTextTextureNotSelected => 'No texture selected';
+
+  @override
+  String get artTextTextureEmbedded => 'Embedded Data URI texture';
+
+  @override
+  String get artTextUpload => 'Upload';
+
+  @override
+  String get artTextRepeatX => 'Repeat X';
+
+  @override
+  String get artTextRepeatY => 'Repeat Y';
+
+  @override
+  String get artTextOffsetX => 'Offset X';
+
+  @override
+  String get artTextOffsetY => 'Offset Y';
+
+  @override
+  String get artTextPreviewUnavailable =>
+      'Unable to generate art text preview.';
+
+  @override
+  String get artTextPreviewDataEmpty => 'Preview data is empty';
+
+  @override
+  String get artTextMaterialJsonInvalid => 'Invalid material JSON.';
+
+  @override
+  String get artTextMaterialFieldMissing => 'Missing material field.';
+
+  @override
+  String get artTextMeshNotReady => 'Mesh has not been generated yet.';
+
+  @override
+  String get artTextPngEncodeFailed => 'PNG encoding failed.';
+
+  @override
+  String get artTextNoObjects => 'No art text objects.';
+
+  @override
+  String get artTextCustomFont => 'Custom Font';
+
+  @override
+  String get artTextCanvasNotReady =>
+      'Canvas is not ready, cannot generate art text.';
+
+  @override
+  String get artTextLayerInserted => 'Art text layer inserted.';
+
+  @override
+  String get artTextLayerInsertFailed => 'Failed to insert art text layer.';
+
+  @override
+  String get artTextDefaultPrimary => '你好世界';
+
+  @override
+  String get artTextDefaultSecondary => '开始吧';
+
+  @override
+  String get artTextNewText => 'New Text';
+
+  @override
+  String get artTextOverlayNone => 'None';
+
+  @override
+  String get artTextOverlayHighlightTop => 'Top Highlight';
+
+  @override
+  String get artTextOverlayHighlightBottom => 'Bottom Highlight';
+
+  @override
+  String get artTextOverlayHighlightTopBottom => 'Top & Bottom Highlight';
+
+  @override
+  String get artTextOverlayHighlightInnerStroke => 'Inner Stroke';
+
+  @override
+  String get artTextOverlayHighlightInnerHighlight => 'Inner Highlight';
+
+  @override
+  String get artTextOverlayHighlightShine => 'Diagonal Shine';
+
+  @override
+  String get artTextOverlayHighlightGlass => 'Glass Highlight';
+
+  @override
+  String get artTextFaceFront => 'Front';
+
+  @override
+  String get artTextFaceBack => 'Back';
+
+  @override
+  String get artTextFaceUp => 'Top';
+
+  @override
+  String get artTextFaceDown => 'Bottom';
+
+  @override
+  String get artTextFaceLeft => 'Left';
+
+  @override
+  String get artTextFaceRight => 'Right';
+
+  @override
+  String get artTextFaceOutline => 'Outline';
+
+  @override
+  String artTextImportedFont(Object text) {
+    return '$text (Imported)';
+  }
+
+  @override
+  String artTextAssetLoadFailed(Object error) {
+    return 'Failed to load art text assets: $error';
+  }
+
+  @override
+  String artTextMeshBuildFailed(Object error) {
+    return 'Mesh generation failed: $error';
+  }
+
+  @override
+  String artTextFontImported(Object fontId) {
+    return 'Imported font: $fontId';
+  }
+
+  @override
+  String artTextFontImportFailed(Object error) {
+    return 'Failed to import font: $error';
+  }
+
+  @override
+  String artTextFontFileNotFound(Object family) {
+    return 'Font file not found: $family';
+  }
+
+  @override
+  String artTextSystemFontApplied(Object family) {
+    return 'Applied system font: $family';
+  }
+
+  @override
+  String artTextSystemFontApplyFailed(Object error) {
+    return 'Failed to apply system font: $error';
+  }
+
+  @override
+  String artTextWorkspaceImportFailed(Object error) {
+    return 'Workspace import failed: $error';
+  }
+
+  @override
+  String artTextExportModelTitle(Object format) {
+    return 'Export $format Model';
+  }
+
+  @override
+  String artTextModelExportFailed(Object error) {
+    return 'Model export failed: $error';
+  }
+
+  @override
+  String artTextPngExportFailed(Object error) {
+    return 'PNG export failed: $error';
+  }
+
+  @override
+  String artTextGeneratePngFailed(Object error) {
+    return 'Failed to generate PNG: $error';
+  }
+
+  @override
+  String artTextCannotReadFile(Object name) {
+    return 'Cannot read file: $name';
+  }
+
+  @override
+  String artTextPickFaceColorTitle(Object face) {
+    return 'Pick color for $face';
+  }
+
+  @override
+  String artTextPerspectiveAngle(Object degrees) {
+    return 'Perspective $degrees°';
+  }
+
+  @override
+  String artTextZoomLabel(Object zoom) {
+    return 'Zoom ${zoom}x';
+  }
+
+  @override
+  String artTextTriangleCount(Object count) {
+    return 'Triangles: $count';
+  }
+
+  @override
+  String artTextObjectTitle(Object index) {
+    return 'Text $index';
+  }
+
+  @override
+  String artTextUseGlobalFont(Object fontId) {
+    return 'Use global font ($fontId)';
+  }
+
+  @override
+  String artTextMaterialImportFailed(Object error) {
+    return 'Material import failed: $error';
+  }
+
+  @override
+  String artTextTextureImportFailed(Object error) {
+    return 'Texture import failed: $error';
+  }
+
+  @override
+  String artTextBevyPreviewInitFailed(Object error) {
+    return 'Bevy 3D preview initialization failed\n$error';
+  }
+
+  @override
+  String get artTextExportWorkspaceTitle => 'Export 3D Text Workspace';
+
+  @override
+  String get artTextExportMaterialTitle => 'Export Material';
+
+  @override
+  String get artTextExportTransparentPngTitle => 'Export Transparent PNG';
+
+  @override
+  String get artTextWorkspaceImported => 'Workspace imported.';
+
+  @override
+  String get artTextMaterialImported => 'Material imported to current text.';
+
+  @override
+  String get artTextRotateUpDown => 'Rotate Up/Down';
+
+  @override
+  String get artTextRotateLeftRight => 'Rotate Left/Right';
+
+  @override
+  String get artTextRotatePlane => 'Plane Rotation';
 }

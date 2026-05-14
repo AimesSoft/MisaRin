@@ -566,5 +566,228 @@
     "placeholders": {
       "value": {}
     }
-  }
+  },
+  "menuToolText": "文字",
+  "menuToolArtTextGeneratorEllipsis": "藝術字生成器…",
+  "artTextGeneratorTitle": "藝術字生成器",
+  "artTextExportPng": "匯出 PNG",
+  "artTextInsertToCanvas": "插入畫布",
+  "artTextBuildingMesh": "正在生成真實 3D 網格...",
+  "artTextMeshWarning": "網格警告",
+  "artTextResetCamera": "重設視角",
+  "artTextOrthographic": "正交投影",
+  "artTextSectionSceneFontOutput": "場景 / 字體 / 輸出",
+  "artTextGlobalFont": "全域字體",
+  "artTextImportFont": "匯入字體",
+  "artTextFontPicker": "字體選擇器",
+  "artTextImportWorkspace": "匯入工作區",
+  "artTextExportWorkspace": "匯出工作區",
+  "artTextPngWidth": "PNG 寬",
+  "artTextPngHeight": "PNG 高",
+  "artTextTransparentBackgroundPng": "透明背景 PNG",
+  "artTextExportModel": "匯出模型",
+  "artTextContent": "內容",
+  "artTextCurrentFont": "本段字體",
+  "artTextSectionTransformGeometry": "變換與幾何",
+  "artTextDepth": "厚度",
+  "artTextOutline": "描邊",
+  "artTextLetterSpacing": "字間距",
+  "artTextSpaceWidth": "空白寬度",
+  "artTextSectionMaterialTextureOverlay": "材質 / 貼圖 / 高光",
+  "artTextMaterialPreset": "材質預設",
+  "artTextChoosePreset": "選擇預設並套用",
+  "artTextOverlayHighlight": "疊加高光",
+  "artTextImportMaterial": "匯入材質",
+  "artTextExportMaterial": "匯出材質",
+  "artTextMode": "模式",
+  "artTextModeColor": "純色",
+  "artTextModeGradient": "漸層",
+  "artTextModeImage": "貼圖",
+  "artTextColor": "顏色",
+  "artTextStartColor": "起始色",
+  "artTextEndColor": "結束色",
+  "artTextRepeat": "重複",
+  "artTextOffset": "偏移",
+  "artTextTextureNotSelected": "尚未選擇貼圖",
+  "artTextTextureEmbedded": "已嵌入 Data URI 貼圖",
+  "artTextUpload": "上傳",
+  "artTextRepeatX": "重複 X",
+  "artTextRepeatY": "重複 Y",
+  "artTextOffsetX": "偏移 X",
+  "artTextOffsetY": "偏移 Y",
+  "artTextPreviewUnavailable": "無法生成藝術字預覽。",
+  "artTextPreviewDataEmpty": "預覽資料為空",
+  "artTextMaterialJsonInvalid": "不是有效的材質 JSON。",
+  "artTextMaterialFieldMissing": "找不到 material 欄位。",
+  "artTextMeshNotReady": "網格尚未生成。",
+  "artTextPngEncodeFailed": "PNG 編碼失敗。",
+  "artTextNoObjects": "沒有藝術字物件。",
+  "artTextCustomFont": "自訂字體",
+  "artTextCanvasNotReady": "畫布尚未準備好，無法生成藝術字。",
+  "artTextLayerInserted": "已插入藝術字圖層。",
+  "artTextLayerInsertFailed": "插入藝術字圖層失敗。",
+  "artTextDefaultPrimary": "你好世界",
+  "artTextDefaultSecondary": "開始吧",
+  "artTextNewText": "新文字",
+  "artTextOverlayNone": "無",
+  "artTextOverlayHighlightTop": "頂部高光",
+  "artTextOverlayHighlightBottom": "底部高光",
+  "artTextOverlayHighlightTopBottom": "上下高光",
+  "artTextOverlayHighlightInnerStroke": "內描邊",
+  "artTextOverlayHighlightInnerHighlight": "內高光",
+  "artTextOverlayHighlightShine": "斜向閃光",
+  "artTextOverlayHighlightGlass": "玻璃高光",
+  "artTextFaceFront": "正面",
+  "artTextFaceBack": "背面",
+  "artTextFaceUp": "上側",
+  "artTextFaceDown": "下側",
+  "artTextFaceLeft": "左側",
+  "artTextFaceRight": "右側",
+  "artTextFaceOutline": "描邊",
+  "artTextImportedFont": "{text}（匯入）",
+  "@artTextImportedFont": {
+    "placeholders": {
+      "text": {}
+    }
+  },
+  "artTextAssetLoadFailed": "藝術字資源載入失敗：{error}",
+  "@artTextAssetLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextMeshBuildFailed": "網格生成失敗：{error}",
+  "@artTextMeshBuildFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextFontImported": "已匯入字體：{fontId}",
+  "@artTextFontImported": {
+    "placeholders": {
+      "fontId": {}
+    }
+  },
+  "artTextFontImportFailed": "字體匯入失敗：{error}",
+  "@artTextFontImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextFontFileNotFound": "找不到字體檔案：{family}",
+  "@artTextFontFileNotFound": {
+    "placeholders": {
+      "family": {}
+    }
+  },
+  "artTextSystemFontApplied": "已套用系統字體：{family}",
+  "@artTextSystemFontApplied": {
+    "placeholders": {
+      "family": {}
+    }
+  },
+  "artTextSystemFontApplyFailed": "系統字體套用失敗：{error}",
+  "@artTextSystemFontApplyFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextWorkspaceImportFailed": "工作區匯入失敗：{error}",
+  "@artTextWorkspaceImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextExportModelTitle": "匯出 {format} 模型",
+  "@artTextExportModelTitle": {
+    "placeholders": {
+      "format": {}
+    }
+  },
+  "artTextModelExportFailed": "模型匯出失敗：{error}",
+  "@artTextModelExportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextPngExportFailed": "PNG 匯出失敗：{error}",
+  "@artTextPngExportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextGeneratePngFailed": "生成 PNG 失敗：{error}",
+  "@artTextGeneratePngFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextCannotReadFile": "無法讀取檔案：{name}",
+  "@artTextCannotReadFile": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "artTextPickFaceColorTitle": "選擇{face}顏色",
+  "@artTextPickFaceColorTitle": {
+    "placeholders": {
+      "face": {}
+    }
+  },
+  "artTextPerspectiveAngle": "透視角 {degrees}°",
+  "@artTextPerspectiveAngle": {
+    "placeholders": {
+      "degrees": {}
+    }
+  },
+  "artTextZoomLabel": "縮放 {zoom}x",
+  "@artTextZoomLabel": {
+    "placeholders": {
+      "zoom": {}
+    }
+  },
+  "artTextTriangleCount": "三角面：{count}",
+  "@artTextTriangleCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "artTextObjectTitle": "文字 {index}",
+  "@artTextObjectTitle": {
+    "placeholders": {
+      "index": {}
+    }
+  },
+  "artTextUseGlobalFont": "使用全域字體（{fontId}）",
+  "@artTextUseGlobalFont": {
+    "placeholders": {
+      "fontId": {}
+    }
+  },
+  "artTextMaterialImportFailed": "材質匯入失敗：{error}",
+  "@artTextMaterialImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextTextureImportFailed": "貼圖匯入失敗：{error}",
+  "@artTextTextureImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextBevyPreviewInitFailed": "Bevy 3D 預覽初始化失敗\n{error}",
+  "@artTextBevyPreviewInitFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextExportWorkspaceTitle": "匯出 3D 字體工作區",
+  "artTextExportMaterialTitle": "匯出材質",
+  "artTextExportTransparentPngTitle": "匯出透明 PNG",
+  "artTextWorkspaceImported": "工作區已匯入。",
+  "artTextMaterialImported": "材質已匯入到目前文字。",
+  "artTextRotateUpDown": "上下旋轉",
+  "artTextRotateLeftRight": "左右旋轉",
+  "artTextRotatePlane": "平面旋轉"
 }

@@ -2274,4 +2274,374 @@ class AppLocalizationsJa extends AppLocalizations {
   String exportDirectoryUpdateFailed(Object error) {
     return 'Failed to update export directory: $error';
   }
+
+  @override
+  String get menuToolText => 'テキスト';
+
+  @override
+  String get menuToolArtTextGeneratorEllipsis => 'アート文字ジェネレーター…';
+
+  @override
+  String get artTextGeneratorTitle => 'アート文字ジェネレーター';
+
+  @override
+  String get artTextExportPng => 'PNG を書き出し';
+
+  @override
+  String get artTextInsertToCanvas => 'キャンバスに挿入';
+
+  @override
+  String get artTextBuildingMesh => '実際の 3D メッシュを生成中...';
+
+  @override
+  String get artTextMeshWarning => 'メッシュ警告';
+
+  @override
+  String get artTextResetCamera => '視点をリセット';
+
+  @override
+  String get artTextOrthographic => '平行投影';
+
+  @override
+  String get artTextSectionSceneFontOutput => 'シーン / フォント / 出力';
+
+  @override
+  String get artTextGlobalFont => '全体フォント';
+
+  @override
+  String get artTextImportFont => 'フォントをインポート';
+
+  @override
+  String get artTextFontPicker => 'フォント選択';
+
+  @override
+  String get artTextImportWorkspace => 'ワークスペースをインポート';
+
+  @override
+  String get artTextExportWorkspace => 'ワークスペースを書き出し';
+
+  @override
+  String get artTextPngWidth => 'PNG 幅';
+
+  @override
+  String get artTextPngHeight => 'PNG 高さ';
+
+  @override
+  String get artTextTransparentBackgroundPng => '透過背景 PNG';
+
+  @override
+  String get artTextExportModel => 'モデルを書き出し';
+
+  @override
+  String get artTextContent => '内容';
+
+  @override
+  String get artTextCurrentFont => 'このテキストのフォント';
+
+  @override
+  String get artTextSectionTransformGeometry => '変形とジオメトリ';
+
+  @override
+  String get artTextDepth => '厚み';
+
+  @override
+  String get artTextOutline => '輪郭';
+
+  @override
+  String get artTextLetterSpacing => '字間隔';
+
+  @override
+  String get artTextSpaceWidth => 'スペース幅';
+
+  @override
+  String get artTextSectionMaterialTextureOverlay => 'マテリアル / テクスチャ / ハイライト';
+
+  @override
+  String get artTextMaterialPreset => 'マテリアルプリセット';
+
+  @override
+  String get artTextChoosePreset => 'プリセットを選択して適用';
+
+  @override
+  String get artTextOverlayHighlight => 'オーバーレイハイライト';
+
+  @override
+  String get artTextImportMaterial => 'マテリアルをインポート';
+
+  @override
+  String get artTextExportMaterial => 'マテリアルを書き出し';
+
+  @override
+  String get artTextMode => 'モード';
+
+  @override
+  String get artTextModeColor => '単色';
+
+  @override
+  String get artTextModeGradient => 'グラデーション';
+
+  @override
+  String get artTextModeImage => 'テクスチャ';
+
+  @override
+  String get artTextColor => '色';
+
+  @override
+  String get artTextStartColor => '開始色';
+
+  @override
+  String get artTextEndColor => '終了色';
+
+  @override
+  String get artTextRepeat => '繰り返し';
+
+  @override
+  String get artTextOffset => 'オフセット';
+
+  @override
+  String get artTextTextureNotSelected => 'テクスチャ未選択';
+
+  @override
+  String get artTextTextureEmbedded => 'Data URI テクスチャを埋め込み済み';
+
+  @override
+  String get artTextUpload => 'アップロード';
+
+  @override
+  String get artTextRepeatX => '繰り返し X';
+
+  @override
+  String get artTextRepeatY => '繰り返し Y';
+
+  @override
+  String get artTextOffsetX => 'オフセット X';
+
+  @override
+  String get artTextOffsetY => 'オフセット Y';
+
+  @override
+  String get artTextPreviewUnavailable => 'アート文字プレビューを生成できません。';
+
+  @override
+  String get artTextPreviewDataEmpty => 'プレビュー用データが空です';
+
+  @override
+  String get artTextMaterialJsonInvalid => '有効なマテリアル JSON ではありません。';
+
+  @override
+  String get artTextMaterialFieldMissing => 'material フィールドが見つかりません。';
+
+  @override
+  String get artTextMeshNotReady => 'メッシュはまだ生成されていません。';
+
+  @override
+  String get artTextPngEncodeFailed => 'PNG のエンコードに失敗しました。';
+
+  @override
+  String get artTextNoObjects => 'アート文字オブジェクトがありません。';
+
+  @override
+  String get artTextCustomFont => 'カスタムフォント';
+
+  @override
+  String get artTextCanvasNotReady => 'キャンバスの準備ができていないため、アート文字を生成できません。';
+
+  @override
+  String get artTextLayerInserted => 'アート文字レイヤーを挿入しました。';
+
+  @override
+  String get artTextLayerInsertFailed => 'アート文字レイヤーの挿入に失敗しました。';
+
+  @override
+  String get artTextDefaultPrimary => '你好世界';
+
+  @override
+  String get artTextDefaultSecondary => '开始吧';
+
+  @override
+  String get artTextNewText => '新しい文字';
+
+  @override
+  String get artTextOverlayNone => 'なし';
+
+  @override
+  String get artTextOverlayHighlightTop => '上部ハイライト';
+
+  @override
+  String get artTextOverlayHighlightBottom => '下部ハイライト';
+
+  @override
+  String get artTextOverlayHighlightTopBottom => '上下ハイライト';
+
+  @override
+  String get artTextOverlayHighlightInnerStroke => '内側ストローク';
+
+  @override
+  String get artTextOverlayHighlightInnerHighlight => '内側ハイライト';
+
+  @override
+  String get artTextOverlayHighlightShine => '斜めグレア';
+
+  @override
+  String get artTextOverlayHighlightGlass => 'ガラスハイライト';
+
+  @override
+  String get artTextFaceFront => '前面';
+
+  @override
+  String get artTextFaceBack => '背面';
+
+  @override
+  String get artTextFaceUp => '上面';
+
+  @override
+  String get artTextFaceDown => '下面';
+
+  @override
+  String get artTextFaceLeft => '左側';
+
+  @override
+  String get artTextFaceRight => '右側';
+
+  @override
+  String get artTextFaceOutline => '輪郭';
+
+  @override
+  String artTextImportedFont(Object text) {
+    return '$text（インポート）';
+  }
+
+  @override
+  String artTextAssetLoadFailed(Object error) {
+    return 'アート文字リソースの読み込みに失敗しました: $error';
+  }
+
+  @override
+  String artTextMeshBuildFailed(Object error) {
+    return 'メッシュ生成に失敗しました: $error';
+  }
+
+  @override
+  String artTextFontImported(Object fontId) {
+    return 'フォントをインポートしました: $fontId';
+  }
+
+  @override
+  String artTextFontImportFailed(Object error) {
+    return 'フォントのインポートに失敗しました: $error';
+  }
+
+  @override
+  String artTextFontFileNotFound(Object family) {
+    return 'フォントファイルが見つかりません: $family';
+  }
+
+  @override
+  String artTextSystemFontApplied(Object family) {
+    return 'システムフォントを適用しました: $family';
+  }
+
+  @override
+  String artTextSystemFontApplyFailed(Object error) {
+    return 'システムフォントの適用に失敗しました: $error';
+  }
+
+  @override
+  String artTextWorkspaceImportFailed(Object error) {
+    return 'ワークスペースのインポートに失敗しました: $error';
+  }
+
+  @override
+  String artTextExportModelTitle(Object format) {
+    return '$format モデルを書き出し';
+  }
+
+  @override
+  String artTextModelExportFailed(Object error) {
+    return 'モデルの書き出しに失敗しました: $error';
+  }
+
+  @override
+  String artTextPngExportFailed(Object error) {
+    return 'PNG 書き出しに失敗しました: $error';
+  }
+
+  @override
+  String artTextGeneratePngFailed(Object error) {
+    return 'PNG 生成に失敗しました: $error';
+  }
+
+  @override
+  String artTextCannotReadFile(Object name) {
+    return 'ファイルを読み取れません: $name';
+  }
+
+  @override
+  String artTextPickFaceColorTitle(Object face) {
+    return '$faceの色を選択';
+  }
+
+  @override
+  String artTextPerspectiveAngle(Object degrees) {
+    return '視野角 $degrees°';
+  }
+
+  @override
+  String artTextZoomLabel(Object zoom) {
+    return 'ズーム ${zoom}x';
+  }
+
+  @override
+  String artTextTriangleCount(Object count) {
+    return '三角面: $count';
+  }
+
+  @override
+  String artTextObjectTitle(Object index) {
+    return '文字 $index';
+  }
+
+  @override
+  String artTextUseGlobalFont(Object fontId) {
+    return '全体フォントを使用（$fontId）';
+  }
+
+  @override
+  String artTextMaterialImportFailed(Object error) {
+    return 'マテリアルのインポートに失敗しました: $error';
+  }
+
+  @override
+  String artTextTextureImportFailed(Object error) {
+    return 'テクスチャのインポートに失敗しました: $error';
+  }
+
+  @override
+  String artTextBevyPreviewInitFailed(Object error) {
+    return 'Bevy 3D プレビューの初期化に失敗しました\n$error';
+  }
+
+  @override
+  String get artTextExportWorkspaceTitle => '3D テキストワークスペースを書き出し';
+
+  @override
+  String get artTextExportMaterialTitle => 'マテリアルを書き出し';
+
+  @override
+  String get artTextExportTransparentPngTitle => '透過 PNG を書き出し';
+
+  @override
+  String get artTextWorkspaceImported => 'ワークスペースをインポートしました。';
+
+  @override
+  String get artTextMaterialImported => '現在の文字にマテリアルをインポートしました。';
+
+  @override
+  String get artTextRotateUpDown => '上下回転';
+
+  @override
+  String get artTextRotateLeftRight => '左右回転';
+
+  @override
+  String get artTextRotatePlane => '平面回転';
 }

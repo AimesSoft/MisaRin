@@ -2284,4 +2284,374 @@ class AppLocalizationsKo extends AppLocalizations {
   String exportDirectoryUpdateFailed(Object error) {
     return 'Failed to update export directory: $error';
   }
+
+  @override
+  String get menuToolText => '텍스트';
+
+  @override
+  String get menuToolArtTextGeneratorEllipsis => '아트 텍스트 생성기…';
+
+  @override
+  String get artTextGeneratorTitle => '아트 텍스트 생성기';
+
+  @override
+  String get artTextExportPng => 'PNG 내보내기';
+
+  @override
+  String get artTextInsertToCanvas => '캔버스에 삽입';
+
+  @override
+  String get artTextBuildingMesh => '실제 3D 메시를 생성하는 중...';
+
+  @override
+  String get artTextMeshWarning => '메시 경고';
+
+  @override
+  String get artTextResetCamera => '시점 초기화';
+
+  @override
+  String get artTextOrthographic => '정사영';
+
+  @override
+  String get artTextSectionSceneFontOutput => '장면 / 글꼴 / 출력';
+
+  @override
+  String get artTextGlobalFont => '전체 글꼴';
+
+  @override
+  String get artTextImportFont => '글꼴 가져오기';
+
+  @override
+  String get artTextFontPicker => '글꼴 선택기';
+
+  @override
+  String get artTextImportWorkspace => '작업 공간 가져오기';
+
+  @override
+  String get artTextExportWorkspace => '작업 공간 내보내기';
+
+  @override
+  String get artTextPngWidth => 'PNG 너비';
+
+  @override
+  String get artTextPngHeight => 'PNG 높이';
+
+  @override
+  String get artTextTransparentBackgroundPng => '투명 배경 PNG';
+
+  @override
+  String get artTextExportModel => '모델 내보내기';
+
+  @override
+  String get artTextContent => '내용';
+
+  @override
+  String get artTextCurrentFont => '현재 텍스트 글꼴';
+
+  @override
+  String get artTextSectionTransformGeometry => '변형 및 기하';
+
+  @override
+  String get artTextDepth => '깊이';
+
+  @override
+  String get artTextOutline => '외곽선';
+
+  @override
+  String get artTextLetterSpacing => '자간';
+
+  @override
+  String get artTextSpaceWidth => '공백 너비';
+
+  @override
+  String get artTextSectionMaterialTextureOverlay => '재질 / 텍스처 / 하이라이트';
+
+  @override
+  String get artTextMaterialPreset => '재질 프리셋';
+
+  @override
+  String get artTextChoosePreset => '프리셋을 선택해 적용';
+
+  @override
+  String get artTextOverlayHighlight => '오버레이 하이라이트';
+
+  @override
+  String get artTextImportMaterial => '재질 가져오기';
+
+  @override
+  String get artTextExportMaterial => '재질 내보내기';
+
+  @override
+  String get artTextMode => '모드';
+
+  @override
+  String get artTextModeColor => '단색';
+
+  @override
+  String get artTextModeGradient => '그라데이션';
+
+  @override
+  String get artTextModeImage => '텍스처';
+
+  @override
+  String get artTextColor => '색상';
+
+  @override
+  String get artTextStartColor => '시작 색상';
+
+  @override
+  String get artTextEndColor => '끝 색상';
+
+  @override
+  String get artTextRepeat => '반복';
+
+  @override
+  String get artTextOffset => '오프셋';
+
+  @override
+  String get artTextTextureNotSelected => '텍스처가 선택되지 않음';
+
+  @override
+  String get artTextTextureEmbedded => 'Data URI 텍스처가 포함됨';
+
+  @override
+  String get artTextUpload => '업로드';
+
+  @override
+  String get artTextRepeatX => '반복 X';
+
+  @override
+  String get artTextRepeatY => '반복 Y';
+
+  @override
+  String get artTextOffsetX => '오프셋 X';
+
+  @override
+  String get artTextOffsetY => '오프셋 Y';
+
+  @override
+  String get artTextPreviewUnavailable => '아트 텍스트 미리보기를 생성할 수 없습니다.';
+
+  @override
+  String get artTextPreviewDataEmpty => '미리보기 데이터가 비어 있습니다';
+
+  @override
+  String get artTextMaterialJsonInvalid => '유효한 재질 JSON이 아닙니다.';
+
+  @override
+  String get artTextMaterialFieldMissing => 'material 필드를 찾을 수 없습니다.';
+
+  @override
+  String get artTextMeshNotReady => '메시가 아직 생성되지 않았습니다.';
+
+  @override
+  String get artTextPngEncodeFailed => 'PNG 인코딩에 실패했습니다.';
+
+  @override
+  String get artTextNoObjects => '아트 텍스트 오브젝트가 없습니다.';
+
+  @override
+  String get artTextCustomFont => '사용자 지정 글꼴';
+
+  @override
+  String get artTextCanvasNotReady => '캔버스가 준비되지 않아 아트 텍스트를 생성할 수 없습니다.';
+
+  @override
+  String get artTextLayerInserted => '아트 텍스트 레이어를 삽입했습니다.';
+
+  @override
+  String get artTextLayerInsertFailed => '아트 텍스트 레이어 삽입에 실패했습니다.';
+
+  @override
+  String get artTextDefaultPrimary => '你好世界';
+
+  @override
+  String get artTextDefaultSecondary => '开始吧';
+
+  @override
+  String get artTextNewText => '새 텍스트';
+
+  @override
+  String get artTextOverlayNone => '없음';
+
+  @override
+  String get artTextOverlayHighlightTop => '상단 하이라이트';
+
+  @override
+  String get artTextOverlayHighlightBottom => '하단 하이라이트';
+
+  @override
+  String get artTextOverlayHighlightTopBottom => '상하 하이라이트';
+
+  @override
+  String get artTextOverlayHighlightInnerStroke => '내부 외곽선';
+
+  @override
+  String get artTextOverlayHighlightInnerHighlight => '내부 하이라이트';
+
+  @override
+  String get artTextOverlayHighlightShine => '대각선 광택';
+
+  @override
+  String get artTextOverlayHighlightGlass => '유리 하이라이트';
+
+  @override
+  String get artTextFaceFront => '앞면';
+
+  @override
+  String get artTextFaceBack => '뒷면';
+
+  @override
+  String get artTextFaceUp => '윗면';
+
+  @override
+  String get artTextFaceDown => '아랫면';
+
+  @override
+  String get artTextFaceLeft => '왼쪽';
+
+  @override
+  String get artTextFaceRight => '오른쪽';
+
+  @override
+  String get artTextFaceOutline => '외곽선';
+
+  @override
+  String artTextImportedFont(Object text) {
+    return '$text (가져옴)';
+  }
+
+  @override
+  String artTextAssetLoadFailed(Object error) {
+    return '아트 텍스트 리소스 로드 실패: $error';
+  }
+
+  @override
+  String artTextMeshBuildFailed(Object error) {
+    return '메시 생성 실패: $error';
+  }
+
+  @override
+  String artTextFontImported(Object fontId) {
+    return '글꼴을 가져왔습니다: $fontId';
+  }
+
+  @override
+  String artTextFontImportFailed(Object error) {
+    return '글꼴 가져오기 실패: $error';
+  }
+
+  @override
+  String artTextFontFileNotFound(Object family) {
+    return '글꼴 파일을 찾을 수 없습니다: $family';
+  }
+
+  @override
+  String artTextSystemFontApplied(Object family) {
+    return '시스템 글꼴 적용됨: $family';
+  }
+
+  @override
+  String artTextSystemFontApplyFailed(Object error) {
+    return '시스템 글꼴 적용 실패: $error';
+  }
+
+  @override
+  String artTextWorkspaceImportFailed(Object error) {
+    return '작업 공간 가져오기 실패: $error';
+  }
+
+  @override
+  String artTextExportModelTitle(Object format) {
+    return '$format 모델 내보내기';
+  }
+
+  @override
+  String artTextModelExportFailed(Object error) {
+    return '모델 내보내기 실패: $error';
+  }
+
+  @override
+  String artTextPngExportFailed(Object error) {
+    return 'PNG 내보내기 실패: $error';
+  }
+
+  @override
+  String artTextGeneratePngFailed(Object error) {
+    return 'PNG 생성 실패: $error';
+  }
+
+  @override
+  String artTextCannotReadFile(Object name) {
+    return '파일을 읽을 수 없습니다: $name';
+  }
+
+  @override
+  String artTextPickFaceColorTitle(Object face) {
+    return '$face 색상 선택';
+  }
+
+  @override
+  String artTextPerspectiveAngle(Object degrees) {
+    return '원근 각도 $degrees°';
+  }
+
+  @override
+  String artTextZoomLabel(Object zoom) {
+    return '확대 ${zoom}x';
+  }
+
+  @override
+  String artTextTriangleCount(Object count) {
+    return '삼각형 면: $count';
+  }
+
+  @override
+  String artTextObjectTitle(Object index) {
+    return '텍스트 $index';
+  }
+
+  @override
+  String artTextUseGlobalFont(Object fontId) {
+    return '전체 글꼴 사용 ($fontId)';
+  }
+
+  @override
+  String artTextMaterialImportFailed(Object error) {
+    return '재질 가져오기 실패: $error';
+  }
+
+  @override
+  String artTextTextureImportFailed(Object error) {
+    return '텍스처 가져오기 실패: $error';
+  }
+
+  @override
+  String artTextBevyPreviewInitFailed(Object error) {
+    return 'Bevy 3D 미리보기 초기화 실패\n$error';
+  }
+
+  @override
+  String get artTextExportWorkspaceTitle => '3D 텍스트 작업 공간 내보내기';
+
+  @override
+  String get artTextExportMaterialTitle => '재질 내보내기';
+
+  @override
+  String get artTextExportTransparentPngTitle => '투명 PNG 내보내기';
+
+  @override
+  String get artTextWorkspaceImported => '작업 공간을 가져왔습니다.';
+
+  @override
+  String get artTextMaterialImported => '현재 텍스트에 재질을 가져왔습니다.';
+
+  @override
+  String get artTextRotateUpDown => '상하 회전';
+
+  @override
+  String get artTextRotateLeftRight => '좌우 회전';
+
+  @override
+  String get artTextRotatePlane => '평면 회전';
 }

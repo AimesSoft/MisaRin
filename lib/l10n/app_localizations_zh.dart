@@ -2259,6 +2259,376 @@ class AppLocalizationsZh extends AppLocalizations {
   String exportDirectoryUpdateFailed(Object error) {
     return '设置导出目录失败：$error';
   }
+
+  @override
+  String get menuToolText => '文本';
+
+  @override
+  String get menuToolArtTextGeneratorEllipsis => '艺术字生成器…';
+
+  @override
+  String get artTextGeneratorTitle => '艺术字生成器';
+
+  @override
+  String get artTextExportPng => '导出 PNG';
+
+  @override
+  String get artTextInsertToCanvas => '插入画布';
+
+  @override
+  String get artTextBuildingMesh => '正在生成真实 3D 网格...';
+
+  @override
+  String get artTextMeshWarning => '网格警告';
+
+  @override
+  String get artTextResetCamera => '重置视角';
+
+  @override
+  String get artTextOrthographic => '正交投影';
+
+  @override
+  String get artTextSectionSceneFontOutput => '场景 / 字体 / 输出';
+
+  @override
+  String get artTextGlobalFont => '全局字体';
+
+  @override
+  String get artTextImportFont => '导入字体';
+
+  @override
+  String get artTextFontPicker => '字体选择器';
+
+  @override
+  String get artTextImportWorkspace => '导入工作区';
+
+  @override
+  String get artTextExportWorkspace => '导出工作区';
+
+  @override
+  String get artTextPngWidth => 'PNG 宽';
+
+  @override
+  String get artTextPngHeight => 'PNG 高';
+
+  @override
+  String get artTextTransparentBackgroundPng => '透明背景 PNG';
+
+  @override
+  String get artTextExportModel => '导出模型';
+
+  @override
+  String get artTextContent => '内容';
+
+  @override
+  String get artTextCurrentFont => '本段字体';
+
+  @override
+  String get artTextSectionTransformGeometry => '变换和几何';
+
+  @override
+  String get artTextDepth => '厚度';
+
+  @override
+  String get artTextOutline => '描边';
+
+  @override
+  String get artTextLetterSpacing => '字间距';
+
+  @override
+  String get artTextSpaceWidth => '空格宽度';
+
+  @override
+  String get artTextSectionMaterialTextureOverlay => '材质 / 贴图 / 高光';
+
+  @override
+  String get artTextMaterialPreset => '材质预设';
+
+  @override
+  String get artTextChoosePreset => '选择预设并应用';
+
+  @override
+  String get artTextOverlayHighlight => '叠加高光';
+
+  @override
+  String get artTextImportMaterial => '导入材质';
+
+  @override
+  String get artTextExportMaterial => '导出材质';
+
+  @override
+  String get artTextMode => '模式';
+
+  @override
+  String get artTextModeColor => '纯色';
+
+  @override
+  String get artTextModeGradient => '渐变';
+
+  @override
+  String get artTextModeImage => '贴图';
+
+  @override
+  String get artTextColor => '颜色';
+
+  @override
+  String get artTextStartColor => '起始色';
+
+  @override
+  String get artTextEndColor => '结束色';
+
+  @override
+  String get artTextRepeat => '重复';
+
+  @override
+  String get artTextOffset => '偏移';
+
+  @override
+  String get artTextTextureNotSelected => '尚未选择贴图';
+
+  @override
+  String get artTextTextureEmbedded => '已嵌入 Data URI 贴图';
+
+  @override
+  String get artTextUpload => '上传';
+
+  @override
+  String get artTextRepeatX => '重复 X';
+
+  @override
+  String get artTextRepeatY => '重复 Y';
+
+  @override
+  String get artTextOffsetX => '偏移 X';
+
+  @override
+  String get artTextOffsetY => '偏移 Y';
+
+  @override
+  String get artTextPreviewUnavailable => '无法生成艺术字预览。';
+
+  @override
+  String get artTextPreviewDataEmpty => '预览数据为空';
+
+  @override
+  String get artTextMaterialJsonInvalid => '不是有效的材质 JSON。';
+
+  @override
+  String get artTextMaterialFieldMissing => '找不到 material 字段。';
+
+  @override
+  String get artTextMeshNotReady => '网格尚未生成。';
+
+  @override
+  String get artTextPngEncodeFailed => 'PNG 编码失败。';
+
+  @override
+  String get artTextNoObjects => '没有艺术字对象。';
+
+  @override
+  String get artTextCustomFont => '自定义字体';
+
+  @override
+  String get artTextCanvasNotReady => '画布尚未准备好，无法生成艺术字体。';
+
+  @override
+  String get artTextLayerInserted => '已插入艺术字体图层。';
+
+  @override
+  String get artTextLayerInsertFailed => '插入艺术字体图层失败。';
+
+  @override
+  String get artTextDefaultPrimary => '你好世界';
+
+  @override
+  String get artTextDefaultSecondary => '开始吧';
+
+  @override
+  String get artTextNewText => '新文字';
+
+  @override
+  String get artTextOverlayNone => '无';
+
+  @override
+  String get artTextOverlayHighlightTop => '顶部高光';
+
+  @override
+  String get artTextOverlayHighlightBottom => '底部高光';
+
+  @override
+  String get artTextOverlayHighlightTopBottom => '上下高光';
+
+  @override
+  String get artTextOverlayHighlightInnerStroke => '内描边';
+
+  @override
+  String get artTextOverlayHighlightInnerHighlight => '内高光';
+
+  @override
+  String get artTextOverlayHighlightShine => '斜向闪光';
+
+  @override
+  String get artTextOverlayHighlightGlass => '玻璃高光';
+
+  @override
+  String get artTextFaceFront => '正面';
+
+  @override
+  String get artTextFaceBack => '背面';
+
+  @override
+  String get artTextFaceUp => '上侧';
+
+  @override
+  String get artTextFaceDown => '下侧';
+
+  @override
+  String get artTextFaceLeft => '左侧';
+
+  @override
+  String get artTextFaceRight => '右侧';
+
+  @override
+  String get artTextFaceOutline => '描边';
+
+  @override
+  String artTextImportedFont(Object text) {
+    return '$text（导入）';
+  }
+
+  @override
+  String artTextAssetLoadFailed(Object error) {
+    return '艺术字体资源加载失败：$error';
+  }
+
+  @override
+  String artTextMeshBuildFailed(Object error) {
+    return '网格生成失败：$error';
+  }
+
+  @override
+  String artTextFontImported(Object fontId) {
+    return '已导入字体：$fontId';
+  }
+
+  @override
+  String artTextFontImportFailed(Object error) {
+    return '字体导入失败：$error';
+  }
+
+  @override
+  String artTextFontFileNotFound(Object family) {
+    return '未找到字体文件：$family';
+  }
+
+  @override
+  String artTextSystemFontApplied(Object family) {
+    return '已应用系统字体：$family';
+  }
+
+  @override
+  String artTextSystemFontApplyFailed(Object error) {
+    return '系统字体应用失败：$error';
+  }
+
+  @override
+  String artTextWorkspaceImportFailed(Object error) {
+    return '工作区导入失败：$error';
+  }
+
+  @override
+  String artTextExportModelTitle(Object format) {
+    return '导出 $format 模型';
+  }
+
+  @override
+  String artTextModelExportFailed(Object error) {
+    return '模型导出失败：$error';
+  }
+
+  @override
+  String artTextPngExportFailed(Object error) {
+    return 'PNG 导出失败：$error';
+  }
+
+  @override
+  String artTextGeneratePngFailed(Object error) {
+    return '生成 PNG 失败：$error';
+  }
+
+  @override
+  String artTextCannotReadFile(Object name) {
+    return '无法读取文件：$name';
+  }
+
+  @override
+  String artTextPickFaceColorTitle(Object face) {
+    return '选择$face颜色';
+  }
+
+  @override
+  String artTextPerspectiveAngle(Object degrees) {
+    return '透视角 $degrees°';
+  }
+
+  @override
+  String artTextZoomLabel(Object zoom) {
+    return '缩放 ${zoom}x';
+  }
+
+  @override
+  String artTextTriangleCount(Object count) {
+    return '三角面：$count';
+  }
+
+  @override
+  String artTextObjectTitle(Object index) {
+    return '文字 $index';
+  }
+
+  @override
+  String artTextUseGlobalFont(Object fontId) {
+    return '使用全局字体（$fontId）';
+  }
+
+  @override
+  String artTextMaterialImportFailed(Object error) {
+    return '材质导入失败：$error';
+  }
+
+  @override
+  String artTextTextureImportFailed(Object error) {
+    return '贴图导入失败：$error';
+  }
+
+  @override
+  String artTextBevyPreviewInitFailed(Object error) {
+    return 'Bevy 3D 预览初始化失败\n$error';
+  }
+
+  @override
+  String get artTextExportWorkspaceTitle => '导出 3D 字体工作区';
+
+  @override
+  String get artTextExportMaterialTitle => '导出材质';
+
+  @override
+  String get artTextExportTransparentPngTitle => '导出透明 PNG';
+
+  @override
+  String get artTextWorkspaceImported => '工作区已导入。';
+
+  @override
+  String get artTextMaterialImported => '材质已导入到当前文字。';
+
+  @override
+  String get artTextRotateUpDown => '上下旋转';
+
+  @override
+  String get artTextRotateLeftRight => '左右旋转';
+
+  @override
+  String get artTextRotatePlane => '平面旋转';
 }
 
 /// The translations for Chinese, as used in China (`zh_CN`).
@@ -3371,6 +3741,376 @@ class AppLocalizationsZhCn extends AppLocalizationsZh {
   String exportDirectoryUpdateFailed(Object error) {
     return '设置导出目录失败：$error';
   }
+
+  @override
+  String get menuToolText => '文本';
+
+  @override
+  String get menuToolArtTextGeneratorEllipsis => '艺术字生成器…';
+
+  @override
+  String get artTextGeneratorTitle => '艺术字生成器';
+
+  @override
+  String get artTextExportPng => '导出 PNG';
+
+  @override
+  String get artTextInsertToCanvas => '插入画布';
+
+  @override
+  String get artTextBuildingMesh => '正在生成真实 3D 网格...';
+
+  @override
+  String get artTextMeshWarning => '网格警告';
+
+  @override
+  String get artTextResetCamera => '重置视角';
+
+  @override
+  String get artTextOrthographic => '正交投影';
+
+  @override
+  String get artTextSectionSceneFontOutput => '场景 / 字体 / 输出';
+
+  @override
+  String get artTextGlobalFont => '全局字体';
+
+  @override
+  String get artTextImportFont => '导入字体';
+
+  @override
+  String get artTextFontPicker => '字体选择器';
+
+  @override
+  String get artTextImportWorkspace => '导入工作区';
+
+  @override
+  String get artTextExportWorkspace => '导出工作区';
+
+  @override
+  String get artTextPngWidth => 'PNG 宽';
+
+  @override
+  String get artTextPngHeight => 'PNG 高';
+
+  @override
+  String get artTextTransparentBackgroundPng => '透明背景 PNG';
+
+  @override
+  String get artTextExportModel => '导出模型';
+
+  @override
+  String get artTextContent => '内容';
+
+  @override
+  String get artTextCurrentFont => '本段字体';
+
+  @override
+  String get artTextSectionTransformGeometry => '变换和几何';
+
+  @override
+  String get artTextDepth => '厚度';
+
+  @override
+  String get artTextOutline => '描边';
+
+  @override
+  String get artTextLetterSpacing => '字间距';
+
+  @override
+  String get artTextSpaceWidth => '空格宽度';
+
+  @override
+  String get artTextSectionMaterialTextureOverlay => '材质 / 贴图 / 高光';
+
+  @override
+  String get artTextMaterialPreset => '材质预设';
+
+  @override
+  String get artTextChoosePreset => '选择预设并应用';
+
+  @override
+  String get artTextOverlayHighlight => '叠加高光';
+
+  @override
+  String get artTextImportMaterial => '导入材质';
+
+  @override
+  String get artTextExportMaterial => '导出材质';
+
+  @override
+  String get artTextMode => '模式';
+
+  @override
+  String get artTextModeColor => '纯色';
+
+  @override
+  String get artTextModeGradient => '渐变';
+
+  @override
+  String get artTextModeImage => '贴图';
+
+  @override
+  String get artTextColor => '颜色';
+
+  @override
+  String get artTextStartColor => '起始色';
+
+  @override
+  String get artTextEndColor => '结束色';
+
+  @override
+  String get artTextRepeat => '重复';
+
+  @override
+  String get artTextOffset => '偏移';
+
+  @override
+  String get artTextTextureNotSelected => '尚未选择贴图';
+
+  @override
+  String get artTextTextureEmbedded => '已嵌入 Data URI 贴图';
+
+  @override
+  String get artTextUpload => '上传';
+
+  @override
+  String get artTextRepeatX => '重复 X';
+
+  @override
+  String get artTextRepeatY => '重复 Y';
+
+  @override
+  String get artTextOffsetX => '偏移 X';
+
+  @override
+  String get artTextOffsetY => '偏移 Y';
+
+  @override
+  String get artTextPreviewUnavailable => '无法生成艺术字预览。';
+
+  @override
+  String get artTextPreviewDataEmpty => '预览数据为空';
+
+  @override
+  String get artTextMaterialJsonInvalid => '不是有效的材质 JSON。';
+
+  @override
+  String get artTextMaterialFieldMissing => '找不到 material 字段。';
+
+  @override
+  String get artTextMeshNotReady => '网格尚未生成。';
+
+  @override
+  String get artTextPngEncodeFailed => 'PNG 编码失败。';
+
+  @override
+  String get artTextNoObjects => '没有艺术字对象。';
+
+  @override
+  String get artTextCustomFont => '自定义字体';
+
+  @override
+  String get artTextCanvasNotReady => '画布尚未准备好，无法生成艺术字体。';
+
+  @override
+  String get artTextLayerInserted => '已插入艺术字体图层。';
+
+  @override
+  String get artTextLayerInsertFailed => '插入艺术字体图层失败。';
+
+  @override
+  String get artTextDefaultPrimary => '你好世界';
+
+  @override
+  String get artTextDefaultSecondary => '开始吧';
+
+  @override
+  String get artTextNewText => '新文字';
+
+  @override
+  String get artTextOverlayNone => '无';
+
+  @override
+  String get artTextOverlayHighlightTop => '顶部高光';
+
+  @override
+  String get artTextOverlayHighlightBottom => '底部高光';
+
+  @override
+  String get artTextOverlayHighlightTopBottom => '上下高光';
+
+  @override
+  String get artTextOverlayHighlightInnerStroke => '内描边';
+
+  @override
+  String get artTextOverlayHighlightInnerHighlight => '内高光';
+
+  @override
+  String get artTextOverlayHighlightShine => '斜向闪光';
+
+  @override
+  String get artTextOverlayHighlightGlass => '玻璃高光';
+
+  @override
+  String get artTextFaceFront => '正面';
+
+  @override
+  String get artTextFaceBack => '背面';
+
+  @override
+  String get artTextFaceUp => '上侧';
+
+  @override
+  String get artTextFaceDown => '下侧';
+
+  @override
+  String get artTextFaceLeft => '左侧';
+
+  @override
+  String get artTextFaceRight => '右侧';
+
+  @override
+  String get artTextFaceOutline => '描边';
+
+  @override
+  String artTextImportedFont(Object text) {
+    return '$text（导入）';
+  }
+
+  @override
+  String artTextAssetLoadFailed(Object error) {
+    return '艺术字体资源加载失败：$error';
+  }
+
+  @override
+  String artTextMeshBuildFailed(Object error) {
+    return '网格生成失败：$error';
+  }
+
+  @override
+  String artTextFontImported(Object fontId) {
+    return '已导入字体：$fontId';
+  }
+
+  @override
+  String artTextFontImportFailed(Object error) {
+    return '字体导入失败：$error';
+  }
+
+  @override
+  String artTextFontFileNotFound(Object family) {
+    return '未找到字体文件：$family';
+  }
+
+  @override
+  String artTextSystemFontApplied(Object family) {
+    return '已应用系统字体：$family';
+  }
+
+  @override
+  String artTextSystemFontApplyFailed(Object error) {
+    return '系统字体应用失败：$error';
+  }
+
+  @override
+  String artTextWorkspaceImportFailed(Object error) {
+    return '工作区导入失败：$error';
+  }
+
+  @override
+  String artTextExportModelTitle(Object format) {
+    return '导出 $format 模型';
+  }
+
+  @override
+  String artTextModelExportFailed(Object error) {
+    return '模型导出失败：$error';
+  }
+
+  @override
+  String artTextPngExportFailed(Object error) {
+    return 'PNG 导出失败：$error';
+  }
+
+  @override
+  String artTextGeneratePngFailed(Object error) {
+    return '生成 PNG 失败：$error';
+  }
+
+  @override
+  String artTextCannotReadFile(Object name) {
+    return '无法读取文件：$name';
+  }
+
+  @override
+  String artTextPickFaceColorTitle(Object face) {
+    return '选择$face颜色';
+  }
+
+  @override
+  String artTextPerspectiveAngle(Object degrees) {
+    return '透视角 $degrees°';
+  }
+
+  @override
+  String artTextZoomLabel(Object zoom) {
+    return '缩放 ${zoom}x';
+  }
+
+  @override
+  String artTextTriangleCount(Object count) {
+    return '三角面：$count';
+  }
+
+  @override
+  String artTextObjectTitle(Object index) {
+    return '文字 $index';
+  }
+
+  @override
+  String artTextUseGlobalFont(Object fontId) {
+    return '使用全局字体（$fontId）';
+  }
+
+  @override
+  String artTextMaterialImportFailed(Object error) {
+    return '材质导入失败：$error';
+  }
+
+  @override
+  String artTextTextureImportFailed(Object error) {
+    return '贴图导入失败：$error';
+  }
+
+  @override
+  String artTextBevyPreviewInitFailed(Object error) {
+    return 'Bevy 3D 预览初始化失败\n$error';
+  }
+
+  @override
+  String get artTextExportWorkspaceTitle => '导出 3D 字体工作区';
+
+  @override
+  String get artTextExportMaterialTitle => '导出材质';
+
+  @override
+  String get artTextExportTransparentPngTitle => '导出透明 PNG';
+
+  @override
+  String get artTextWorkspaceImported => '工作区已导入。';
+
+  @override
+  String get artTextMaterialImported => '材质已导入到当前文字。';
+
+  @override
+  String get artTextRotateUpDown => '上下旋转';
+
+  @override
+  String get artTextRotateLeftRight => '左右旋转';
+
+  @override
+  String get artTextRotatePlane => '平面旋转';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -4502,4 +5242,374 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String exportDirectoryUpdateFailed(Object error) {
     return '設定匯出目錄失敗：$error';
   }
+
+  @override
+  String get menuToolText => '文字';
+
+  @override
+  String get menuToolArtTextGeneratorEllipsis => '藝術字生成器…';
+
+  @override
+  String get artTextGeneratorTitle => '藝術字生成器';
+
+  @override
+  String get artTextExportPng => '匯出 PNG';
+
+  @override
+  String get artTextInsertToCanvas => '插入畫布';
+
+  @override
+  String get artTextBuildingMesh => '正在生成真實 3D 網格...';
+
+  @override
+  String get artTextMeshWarning => '網格警告';
+
+  @override
+  String get artTextResetCamera => '重設視角';
+
+  @override
+  String get artTextOrthographic => '正交投影';
+
+  @override
+  String get artTextSectionSceneFontOutput => '場景 / 字體 / 輸出';
+
+  @override
+  String get artTextGlobalFont => '全域字體';
+
+  @override
+  String get artTextImportFont => '匯入字體';
+
+  @override
+  String get artTextFontPicker => '字體選擇器';
+
+  @override
+  String get artTextImportWorkspace => '匯入工作區';
+
+  @override
+  String get artTextExportWorkspace => '匯出工作區';
+
+  @override
+  String get artTextPngWidth => 'PNG 寬';
+
+  @override
+  String get artTextPngHeight => 'PNG 高';
+
+  @override
+  String get artTextTransparentBackgroundPng => '透明背景 PNG';
+
+  @override
+  String get artTextExportModel => '匯出模型';
+
+  @override
+  String get artTextContent => '內容';
+
+  @override
+  String get artTextCurrentFont => '本段字體';
+
+  @override
+  String get artTextSectionTransformGeometry => '變換與幾何';
+
+  @override
+  String get artTextDepth => '厚度';
+
+  @override
+  String get artTextOutline => '描邊';
+
+  @override
+  String get artTextLetterSpacing => '字間距';
+
+  @override
+  String get artTextSpaceWidth => '空白寬度';
+
+  @override
+  String get artTextSectionMaterialTextureOverlay => '材質 / 貼圖 / 高光';
+
+  @override
+  String get artTextMaterialPreset => '材質預設';
+
+  @override
+  String get artTextChoosePreset => '選擇預設並套用';
+
+  @override
+  String get artTextOverlayHighlight => '疊加高光';
+
+  @override
+  String get artTextImportMaterial => '匯入材質';
+
+  @override
+  String get artTextExportMaterial => '匯出材質';
+
+  @override
+  String get artTextMode => '模式';
+
+  @override
+  String get artTextModeColor => '純色';
+
+  @override
+  String get artTextModeGradient => '漸層';
+
+  @override
+  String get artTextModeImage => '貼圖';
+
+  @override
+  String get artTextColor => '顏色';
+
+  @override
+  String get artTextStartColor => '起始色';
+
+  @override
+  String get artTextEndColor => '結束色';
+
+  @override
+  String get artTextRepeat => '重複';
+
+  @override
+  String get artTextOffset => '偏移';
+
+  @override
+  String get artTextTextureNotSelected => '尚未選擇貼圖';
+
+  @override
+  String get artTextTextureEmbedded => '已嵌入 Data URI 貼圖';
+
+  @override
+  String get artTextUpload => '上傳';
+
+  @override
+  String get artTextRepeatX => '重複 X';
+
+  @override
+  String get artTextRepeatY => '重複 Y';
+
+  @override
+  String get artTextOffsetX => '偏移 X';
+
+  @override
+  String get artTextOffsetY => '偏移 Y';
+
+  @override
+  String get artTextPreviewUnavailable => '無法生成藝術字預覽。';
+
+  @override
+  String get artTextPreviewDataEmpty => '預覽資料為空';
+
+  @override
+  String get artTextMaterialJsonInvalid => '不是有效的材質 JSON。';
+
+  @override
+  String get artTextMaterialFieldMissing => '找不到 material 欄位。';
+
+  @override
+  String get artTextMeshNotReady => '網格尚未生成。';
+
+  @override
+  String get artTextPngEncodeFailed => 'PNG 編碼失敗。';
+
+  @override
+  String get artTextNoObjects => '沒有藝術字物件。';
+
+  @override
+  String get artTextCustomFont => '自訂字體';
+
+  @override
+  String get artTextCanvasNotReady => '畫布尚未準備好，無法生成藝術字。';
+
+  @override
+  String get artTextLayerInserted => '已插入藝術字圖層。';
+
+  @override
+  String get artTextLayerInsertFailed => '插入藝術字圖層失敗。';
+
+  @override
+  String get artTextDefaultPrimary => '你好世界';
+
+  @override
+  String get artTextDefaultSecondary => '開始吧';
+
+  @override
+  String get artTextNewText => '新文字';
+
+  @override
+  String get artTextOverlayNone => '無';
+
+  @override
+  String get artTextOverlayHighlightTop => '頂部高光';
+
+  @override
+  String get artTextOverlayHighlightBottom => '底部高光';
+
+  @override
+  String get artTextOverlayHighlightTopBottom => '上下高光';
+
+  @override
+  String get artTextOverlayHighlightInnerStroke => '內描邊';
+
+  @override
+  String get artTextOverlayHighlightInnerHighlight => '內高光';
+
+  @override
+  String get artTextOverlayHighlightShine => '斜向閃光';
+
+  @override
+  String get artTextOverlayHighlightGlass => '玻璃高光';
+
+  @override
+  String get artTextFaceFront => '正面';
+
+  @override
+  String get artTextFaceBack => '背面';
+
+  @override
+  String get artTextFaceUp => '上側';
+
+  @override
+  String get artTextFaceDown => '下側';
+
+  @override
+  String get artTextFaceLeft => '左側';
+
+  @override
+  String get artTextFaceRight => '右側';
+
+  @override
+  String get artTextFaceOutline => '描邊';
+
+  @override
+  String artTextImportedFont(Object text) {
+    return '$text（匯入）';
+  }
+
+  @override
+  String artTextAssetLoadFailed(Object error) {
+    return '藝術字資源載入失敗：$error';
+  }
+
+  @override
+  String artTextMeshBuildFailed(Object error) {
+    return '網格生成失敗：$error';
+  }
+
+  @override
+  String artTextFontImported(Object fontId) {
+    return '已匯入字體：$fontId';
+  }
+
+  @override
+  String artTextFontImportFailed(Object error) {
+    return '字體匯入失敗：$error';
+  }
+
+  @override
+  String artTextFontFileNotFound(Object family) {
+    return '找不到字體檔案：$family';
+  }
+
+  @override
+  String artTextSystemFontApplied(Object family) {
+    return '已套用系統字體：$family';
+  }
+
+  @override
+  String artTextSystemFontApplyFailed(Object error) {
+    return '系統字體套用失敗：$error';
+  }
+
+  @override
+  String artTextWorkspaceImportFailed(Object error) {
+    return '工作區匯入失敗：$error';
+  }
+
+  @override
+  String artTextExportModelTitle(Object format) {
+    return '匯出 $format 模型';
+  }
+
+  @override
+  String artTextModelExportFailed(Object error) {
+    return '模型匯出失敗：$error';
+  }
+
+  @override
+  String artTextPngExportFailed(Object error) {
+    return 'PNG 匯出失敗：$error';
+  }
+
+  @override
+  String artTextGeneratePngFailed(Object error) {
+    return '生成 PNG 失敗：$error';
+  }
+
+  @override
+  String artTextCannotReadFile(Object name) {
+    return '無法讀取檔案：$name';
+  }
+
+  @override
+  String artTextPickFaceColorTitle(Object face) {
+    return '選擇$face顏色';
+  }
+
+  @override
+  String artTextPerspectiveAngle(Object degrees) {
+    return '透視角 $degrees°';
+  }
+
+  @override
+  String artTextZoomLabel(Object zoom) {
+    return '縮放 ${zoom}x';
+  }
+
+  @override
+  String artTextTriangleCount(Object count) {
+    return '三角面：$count';
+  }
+
+  @override
+  String artTextObjectTitle(Object index) {
+    return '文字 $index';
+  }
+
+  @override
+  String artTextUseGlobalFont(Object fontId) {
+    return '使用全域字體（$fontId）';
+  }
+
+  @override
+  String artTextMaterialImportFailed(Object error) {
+    return '材質匯入失敗：$error';
+  }
+
+  @override
+  String artTextTextureImportFailed(Object error) {
+    return '貼圖匯入失敗：$error';
+  }
+
+  @override
+  String artTextBevyPreviewInitFailed(Object error) {
+    return 'Bevy 3D 預覽初始化失敗\n$error';
+  }
+
+  @override
+  String get artTextExportWorkspaceTitle => '匯出 3D 字體工作區';
+
+  @override
+  String get artTextExportMaterialTitle => '匯出材質';
+
+  @override
+  String get artTextExportTransparentPngTitle => '匯出透明 PNG';
+
+  @override
+  String get artTextWorkspaceImported => '工作區已匯入。';
+
+  @override
+  String get artTextMaterialImported => '材質已匯入到目前文字。';
+
+  @override
+  String get artTextRotateUpDown => '上下旋轉';
+
+  @override
+  String get artTextRotateLeftRight => '左右旋轉';
+
+  @override
+  String get artTextRotatePlane => '平面旋轉';
 }

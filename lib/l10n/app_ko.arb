@@ -1046,5 +1046,228 @@
       "limit": {}
     }
   },
-  "autoSaveCleanupDialogClean": "정리"
+  "autoSaveCleanupDialogClean": "정리",
+  "menuToolText": "텍스트",
+  "menuToolArtTextGeneratorEllipsis": "아트 텍스트 생성기…",
+  "artTextGeneratorTitle": "아트 텍스트 생성기",
+  "artTextExportPng": "PNG 내보내기",
+  "artTextInsertToCanvas": "캔버스에 삽입",
+  "artTextBuildingMesh": "실제 3D 메시를 생성하는 중...",
+  "artTextMeshWarning": "메시 경고",
+  "artTextResetCamera": "시점 초기화",
+  "artTextOrthographic": "정사영",
+  "artTextSectionSceneFontOutput": "장면 / 글꼴 / 출력",
+  "artTextGlobalFont": "전체 글꼴",
+  "artTextImportFont": "글꼴 가져오기",
+  "artTextFontPicker": "글꼴 선택기",
+  "artTextImportWorkspace": "작업 공간 가져오기",
+  "artTextExportWorkspace": "작업 공간 내보내기",
+  "artTextPngWidth": "PNG 너비",
+  "artTextPngHeight": "PNG 높이",
+  "artTextTransparentBackgroundPng": "투명 배경 PNG",
+  "artTextExportModel": "모델 내보내기",
+  "artTextContent": "내용",
+  "artTextCurrentFont": "현재 텍스트 글꼴",
+  "artTextSectionTransformGeometry": "변형 및 기하",
+  "artTextDepth": "깊이",
+  "artTextOutline": "외곽선",
+  "artTextLetterSpacing": "자간",
+  "artTextSpaceWidth": "공백 너비",
+  "artTextSectionMaterialTextureOverlay": "재질 / 텍스처 / 하이라이트",
+  "artTextMaterialPreset": "재질 프리셋",
+  "artTextChoosePreset": "프리셋을 선택해 적용",
+  "artTextOverlayHighlight": "오버레이 하이라이트",
+  "artTextImportMaterial": "재질 가져오기",
+  "artTextExportMaterial": "재질 내보내기",
+  "artTextMode": "모드",
+  "artTextModeColor": "단색",
+  "artTextModeGradient": "그라데이션",
+  "artTextModeImage": "텍스처",
+  "artTextColor": "색상",
+  "artTextStartColor": "시작 색상",
+  "artTextEndColor": "끝 색상",
+  "artTextRepeat": "반복",
+  "artTextOffset": "오프셋",
+  "artTextTextureNotSelected": "텍스처가 선택되지 않음",
+  "artTextTextureEmbedded": "Data URI 텍스처가 포함됨",
+  "artTextUpload": "업로드",
+  "artTextRepeatX": "반복 X",
+  "artTextRepeatY": "반복 Y",
+  "artTextOffsetX": "오프셋 X",
+  "artTextOffsetY": "오프셋 Y",
+  "artTextPreviewUnavailable": "아트 텍스트 미리보기를 생성할 수 없습니다.",
+  "artTextPreviewDataEmpty": "미리보기 데이터가 비어 있습니다",
+  "artTextMaterialJsonInvalid": "유효한 재질 JSON이 아닙니다.",
+  "artTextMaterialFieldMissing": "material 필드를 찾을 수 없습니다.",
+  "artTextMeshNotReady": "메시가 아직 생성되지 않았습니다.",
+  "artTextPngEncodeFailed": "PNG 인코딩에 실패했습니다.",
+  "artTextNoObjects": "아트 텍스트 오브젝트가 없습니다.",
+  "artTextCustomFont": "사용자 지정 글꼴",
+  "artTextCanvasNotReady": "캔버스가 준비되지 않아 아트 텍스트를 생성할 수 없습니다.",
+  "artTextLayerInserted": "아트 텍스트 레이어를 삽입했습니다.",
+  "artTextLayerInsertFailed": "아트 텍스트 레이어 삽입에 실패했습니다.",
+  "artTextDefaultPrimary": "你好世界",
+  "artTextDefaultSecondary": "开始吧",
+  "artTextNewText": "새 텍스트",
+  "artTextOverlayNone": "없음",
+  "artTextOverlayHighlightTop": "상단 하이라이트",
+  "artTextOverlayHighlightBottom": "하단 하이라이트",
+  "artTextOverlayHighlightTopBottom": "상하 하이라이트",
+  "artTextOverlayHighlightInnerStroke": "내부 외곽선",
+  "artTextOverlayHighlightInnerHighlight": "내부 하이라이트",
+  "artTextOverlayHighlightShine": "대각선 광택",
+  "artTextOverlayHighlightGlass": "유리 하이라이트",
+  "artTextFaceFront": "앞면",
+  "artTextFaceBack": "뒷면",
+  "artTextFaceUp": "윗면",
+  "artTextFaceDown": "아랫면",
+  "artTextFaceLeft": "왼쪽",
+  "artTextFaceRight": "오른쪽",
+  "artTextFaceOutline": "외곽선",
+  "artTextImportedFont": "{text} (가져옴)",
+  "@artTextImportedFont": {
+    "placeholders": {
+      "text": {}
+    }
+  },
+  "artTextAssetLoadFailed": "아트 텍스트 리소스 로드 실패: {error}",
+  "@artTextAssetLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextMeshBuildFailed": "메시 생성 실패: {error}",
+  "@artTextMeshBuildFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextFontImported": "글꼴을 가져왔습니다: {fontId}",
+  "@artTextFontImported": {
+    "placeholders": {
+      "fontId": {}
+    }
+  },
+  "artTextFontImportFailed": "글꼴 가져오기 실패: {error}",
+  "@artTextFontImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextFontFileNotFound": "글꼴 파일을 찾을 수 없습니다: {family}",
+  "@artTextFontFileNotFound": {
+    "placeholders": {
+      "family": {}
+    }
+  },
+  "artTextSystemFontApplied": "시스템 글꼴 적용됨: {family}",
+  "@artTextSystemFontApplied": {
+    "placeholders": {
+      "family": {}
+    }
+  },
+  "artTextSystemFontApplyFailed": "시스템 글꼴 적용 실패: {error}",
+  "@artTextSystemFontApplyFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextWorkspaceImportFailed": "작업 공간 가져오기 실패: {error}",
+  "@artTextWorkspaceImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextExportModelTitle": "{format} 모델 내보내기",
+  "@artTextExportModelTitle": {
+    "placeholders": {
+      "format": {}
+    }
+  },
+  "artTextModelExportFailed": "모델 내보내기 실패: {error}",
+  "@artTextModelExportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextPngExportFailed": "PNG 내보내기 실패: {error}",
+  "@artTextPngExportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextGeneratePngFailed": "PNG 생성 실패: {error}",
+  "@artTextGeneratePngFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextCannotReadFile": "파일을 읽을 수 없습니다: {name}",
+  "@artTextCannotReadFile": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "artTextPickFaceColorTitle": "{face} 색상 선택",
+  "@artTextPickFaceColorTitle": {
+    "placeholders": {
+      "face": {}
+    }
+  },
+  "artTextPerspectiveAngle": "원근 각도 {degrees}°",
+  "@artTextPerspectiveAngle": {
+    "placeholders": {
+      "degrees": {}
+    }
+  },
+  "artTextZoomLabel": "확대 {zoom}x",
+  "@artTextZoomLabel": {
+    "placeholders": {
+      "zoom": {}
+    }
+  },
+  "artTextTriangleCount": "삼각형 면: {count}",
+  "@artTextTriangleCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "artTextObjectTitle": "텍스트 {index}",
+  "@artTextObjectTitle": {
+    "placeholders": {
+      "index": {}
+    }
+  },
+  "artTextUseGlobalFont": "전체 글꼴 사용 ({fontId})",
+  "@artTextUseGlobalFont": {
+    "placeholders": {
+      "fontId": {}
+    }
+  },
+  "artTextMaterialImportFailed": "재질 가져오기 실패: {error}",
+  "@artTextMaterialImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextTextureImportFailed": "텍스처 가져오기 실패: {error}",
+  "@artTextTextureImportFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextBevyPreviewInitFailed": "Bevy 3D 미리보기 초기화 실패\n{error}",
+  "@artTextBevyPreviewInitFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "artTextExportWorkspaceTitle": "3D 텍스트 작업 공간 내보내기",
+  "artTextExportMaterialTitle": "재질 내보내기",
+  "artTextExportTransparentPngTitle": "투명 PNG 내보내기",
+  "artTextWorkspaceImported": "작업 공간을 가져왔습니다.",
+  "artTextMaterialImported": "현재 텍스트에 재질을 가져왔습니다.",
+  "artTextRotateUpDown": "상하 회전",
+  "artTextRotateLeftRight": "좌우 회전",
+  "artTextRotatePlane": "평면 회전"
 }
