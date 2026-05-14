@@ -8,12 +8,66 @@ import '../l10n/l10n.dart';
 
 enum _FontLanguageCategory { all, favorites, latin, zhHans, zhHant, ja, ko }
 
+typedef FontFamilyPickerRightPaneBuilder =
+    Widget Function(BuildContext context, FontFamilyPickerPreviewState state);
+
+class FontFamilyPickerPreviewState {
+  const FontFamilyPickerPreviewState({
+    required this.selectedFamily,
+    required this.selectedDisplay,
+    required this.previewController,
+    required this.previewSize,
+    required this.minPreviewSize,
+    required this.maxPreviewSize,
+    required this.includeLatin,
+    required this.includeZhHans,
+    required this.includeZhHant,
+    required this.includeJa,
+    required this.includeKo,
+    required this.buildSampleText,
+    required this.onPreviewSizeChanged,
+    required this.onToggleLatin,
+    required this.onToggleZhHans,
+    required this.onToggleZhHant,
+    required this.onToggleJa,
+    required this.onToggleKo,
+  });
+
+  final String selectedFamily;
+  final String selectedDisplay;
+  final TextEditingController previewController;
+  final double previewSize;
+  final double minPreviewSize;
+  final double maxPreviewSize;
+  final bool includeLatin;
+  final bool includeZhHans;
+  final bool includeZhHant;
+  final bool includeJa;
+  final bool includeKo;
+  final String Function() buildSampleText;
+  final ValueChanged<double> onPreviewSizeChanged;
+  final ValueChanged<bool> onToggleLatin;
+  final ValueChanged<bool> onToggleZhHans;
+  final ValueChanged<bool> onToggleZhHant;
+  final ValueChanged<bool> onToggleJa;
+  final ValueChanged<bool> onToggleKo;
+
+  String get effectivePreviewText {
+    final String text = previewController.text;
+    return text.isEmpty ? buildSampleText() : text;
+  }
+
+  String? get selectedFlutterFamily =>
+      selectedFamily == 'System Default' ? null : selectedFamily;
+}
+
 Future<String?> showFontFamilyPickerDialog(
   BuildContext context, {
   required List<String> fontFamilies,
   required String selectedFamily,
   bool isLoading = false,
   double? initialPreviewSize,
+  FontFamilyPickerRightPaneBuilder? rightPaneBuilder,
 }) {
   return showResponsiveDialog<String>(
     context: context,
@@ -22,6 +76,7 @@ Future<String?> showFontFamilyPickerDialog(
       selectedFamily: selectedFamily,
       isLoading: isLoading,
       initialPreviewSize: initialPreviewSize,
+      rightPaneBuilder: rightPaneBuilder,
     ),
   );
 }
@@ -33,12 +88,14 @@ class FontFamilyPickerDialog extends StatefulWidget {
     required this.selectedFamily,
     this.isLoading = false,
     this.initialPreviewSize,
+    this.rightPaneBuilder,
   });
 
   final List<String> fontFamilies;
   final String selectedFamily;
   final bool isLoading;
   final double? initialPreviewSize;
+  final FontFamilyPickerRightPaneBuilder? rightPaneBuilder;
 
   @override
   State<FontFamilyPickerDialog> createState() => _FontFamilyPickerDialogState();
@@ -49,7 +106,8 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
   static const double _listItemExtent = 44;
   static const double _minPreviewSize = 10;
   static const double _maxPreviewSize = 200;
-  static const String _sampleLatin = 'The quick brown fox jumps over the lazy dog. 0123456789';
+  static const String _sampleLatin =
+      'The quick brown fox jumps over the lazy dog. 0123456789';
   static const String _sampleZhHans = '简体中文：欢迎使用字体测试！';
   static const String _sampleZhHant = '繁體中文：歡迎使用字體測試！';
   static const String _sampleJa = '日本語：こんにちは世界！';
@@ -59,8 +117,7 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
   static const int _langZhHant = 1 << 1;
   static const int _langJa = 1 << 2;
   static const int _langKo = 1 << 3;
-  static const int _langCjk =
-      _langZhHans | _langZhHant | _langJa | _langKo;
+  static const int _langCjk = _langZhHans | _langZhHant | _langJa | _langKo;
 
   static final RegExp _cjkNamePattern = RegExp(
     r'(cjk|source\s*han|sourcehan|noto\s*sans\s*cjk|noto\s*serif\s*cjk|han\s*sans|han\s*serif)',
@@ -132,8 +189,10 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
   void initState() {
     super.initState();
     _selectedFamily = widget.selectedFamily;
-    _previewSize = (widget.initialPreviewSize ?? 28)
-        .clamp(_minPreviewSize, _maxPreviewSize);
+    _previewSize = (widget.initialPreviewSize ?? 28).clamp(
+      _minPreviewSize,
+      _maxPreviewSize,
+    );
     _searchController = TextEditingController()..addListener(_applySearch);
     _previewController = TextEditingController();
     _applySampleText();
@@ -178,8 +237,8 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
     final List<_FontFamilyEntry> nextEntries = query.isEmpty
         ? candidates.toList(growable: false)
         : candidates
-            .where((entry) => entry.displayLower.contains(query))
-            .toList(growable: false);
+              .where((entry) => entry.displayLower.contains(query))
+              .toList(growable: false);
     setState(() => _filteredEntries = nextEntries);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -327,8 +386,9 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
     if (!_scrollController.hasClients) {
       return;
     }
-    final int index =
-        _filteredEntries.indexWhere((entry) => entry.family == _selectedFamily);
+    final int index = _filteredEntries.indexWhere(
+      (entry) => entry.family == _selectedFamily,
+    );
     if (index < 0) {
       _scrollController.jumpTo(0);
       return;
@@ -448,12 +508,178 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
 
   bool _isLowSurrogate(int value) => value >= 0xDC00 && value <= 0xDFFF;
 
+  FontFamilyPickerPreviewState _buildPreviewState() {
+    return FontFamilyPickerPreviewState(
+      selectedFamily: _selectedFamily,
+      selectedDisplay: _sanitizeDisplayText(_selectedFamily),
+      previewController: _previewController,
+      previewSize: _previewSize,
+      minPreviewSize: _minPreviewSize,
+      maxPreviewSize: _maxPreviewSize,
+      includeLatin: _includeLatin,
+      includeZhHans: _includeZhHans,
+      includeZhHant: _includeZhHant,
+      includeJa: _includeJa,
+      includeKo: _includeKo,
+      buildSampleText: _buildSampleText,
+      onPreviewSizeChanged: (double value) {
+        setState(() {
+          _previewSize = value.clamp(_minPreviewSize, _maxPreviewSize);
+        });
+      },
+      onToggleLatin: (bool value) => _toggleLanguage(
+        current: _includeLatin,
+        next: value,
+        assign: (next) => _includeLatin = next,
+      ),
+      onToggleZhHans: (bool value) => _toggleLanguage(
+        current: _includeZhHans,
+        next: value,
+        assign: (next) => _includeZhHans = next,
+      ),
+      onToggleZhHant: (bool value) => _toggleLanguage(
+        current: _includeZhHant,
+        next: value,
+        assign: (next) => _includeZhHant = next,
+      ),
+      onToggleJa: (bool value) => _toggleLanguage(
+        current: _includeJa,
+        next: value,
+        assign: (next) => _includeJa = next,
+      ),
+      onToggleKo: (bool value) => _toggleLanguage(
+        current: _includeKo,
+        next: value,
+        assign: (next) => _includeKo = next,
+      ),
+    );
+  }
+
+  Widget _buildDefaultRightPane(
+    BuildContext context,
+    FluentThemeData theme,
+    FontFamilyPickerPreviewState state,
+  ) {
+    final l10n = context.l10n;
+    final Widget previewTextBox = TextBox(controller: state.previewController);
+    final Widget languageToggles = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        ToggleButton(
+          checked: state.includeLatin,
+          onChanged: state.onToggleLatin,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text('EN+123'),
+          ),
+        ),
+        ToggleButton(
+          checked: state.includeZhHans,
+          onChanged: state.onToggleZhHans,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text('简体'),
+          ),
+        ),
+        ToggleButton(
+          checked: state.includeZhHant,
+          onChanged: state.onToggleZhHant,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text('繁體'),
+          ),
+        ),
+        ToggleButton(
+          checked: state.includeJa,
+          onChanged: state.onToggleJa,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text('日本語'),
+          ),
+        ),
+        ToggleButton(
+          checked: state.includeKo,
+          onChanged: state.onToggleKo,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text('한국어'),
+          ),
+        ),
+      ],
+    );
+    final Widget previewSlider = Row(
+      children: [
+        Text(
+          '${l10n.fontSize}：${state.previewSize.toStringAsFixed(0)}',
+          style: theme.typography.caption,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Slider(
+            min: state.minPreviewSize,
+            max: state.maxPreviewSize,
+            value: state.previewSize,
+            onChanged: state.onPreviewSizeChanged,
+          ),
+        ),
+      ],
+    );
+    final Widget previewArea = Container(
+      decoration: BoxDecoration(
+        color: theme.resources.controlFillColorSecondary,
+        border: Border.all(color: theme.resources.controlStrokeColorDefault),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: state.previewController,
+        builder: (context, value, _) {
+          return SingleChildScrollView(
+            child: SelectableText(
+              state.effectivePreviewText,
+              style: theme.typography.body?.copyWith(
+                fontFamily: state.selectedFlutterFamily,
+                fontSize: state.previewSize,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          state.selectedDisplay,
+          style: theme.typography.subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          softWrap: false,
+        ),
+        const SizedBox(height: 12),
+        Text(l10n.fontPreviewText, style: theme.typography.caption),
+        const SizedBox(height: 4),
+        previewTextBox,
+        const SizedBox(height: 12),
+        Text(l10n.fontPreviewLanguages, style: theme.typography.caption),
+        const SizedBox(height: 4),
+        languageToggles,
+        const SizedBox(height: 12),
+        previewSlider,
+        const SizedBox(height: 12),
+        Expanded(child: previewArea),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final FluentThemeData theme = FluentTheme.of(context);
     final l10n = context.l10n;
-    final Color selectedBackground =
-        theme.accentColor.defaultBrushFor(theme.brightness);
+    final Color selectedBackground = theme.accentColor.defaultBrushFor(
+      theme.brightness,
+    );
     final Color selectedForeground = _bestForegroundFor(selectedBackground);
 
     final Widget loadingIndicator = SizedBox(
@@ -466,10 +692,7 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(l10n.fontFamily),
-        if (widget.isLoading) ...[
-          const SizedBox(width: 8),
-          loadingIndicator,
-        ],
+        if (widget.isLoading) ...[const SizedBox(width: 8), loadingIndicator],
       ],
     );
 
@@ -555,34 +778,36 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
                 itemBuilder: (context, index) {
                   final _FontFamilyEntry entry = _filteredEntries[index];
                   final bool selected = entry.family == _selectedFamily;
-                  final bool isFavorite =
-                      _favoriteFamilies.contains(entry.family);
+                  final bool isFavorite = _favoriteFamilies.contains(
+                    entry.family,
+                  );
                   final Color foreground = selected
                       ? selectedForeground
                       : theme.typography.body?.color ?? Colors.black;
-                  final String? family =
-                      entry.family == 'System Default' ? null : entry.family;
+                  final String? family = entry.family == 'System Default'
+                      ? null
+                      : entry.family;
                   final Color favoriteIconColor = selected
                       ? selectedForeground
                       : isFavorite
-                          ? theme.accentColor.defaultBrushFor(theme.brightness)
-                          : theme.resources.textFillColorSecondary;
+                      ? theme.accentColor.defaultBrushFor(theme.brightness)
+                      : theme.resources.textFillColorSecondary;
                   return Button(
                     style: ButtonStyle(
                       padding: WidgetStateProperty.all<EdgeInsets>(
                         const EdgeInsets.symmetric(horizontal: 10),
                       ),
-                      backgroundColor: WidgetStateProperty.resolveWith<Color?>(
-                        (states) {
-                          if (selected) {
-                            return selectedBackground;
-                          }
-                          if (states.contains(WidgetState.hovered)) {
-                            return theme.resources.controlFillColorSecondary;
-                          }
-                          return Colors.transparent;
-                        },
-                      ),
+                      backgroundColor: WidgetStateProperty.resolveWith<Color?>((
+                        states,
+                      ) {
+                        if (selected) {
+                          return selectedBackground;
+                        }
+                        if (states.contains(WidgetState.hovered)) {
+                          return theme.resources.controlFillColorSecondary;
+                        }
+                        return Colors.transparent;
+                      }),
                     ),
                     onPressed: () => _selectFamily(entry.family),
                     child: Row(
@@ -618,119 +843,10 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
             ),
     );
 
-    final Widget previewTextBox = TextBox(controller: _previewController);
-
-    final Widget languageToggles = Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        ToggleButton(
-          checked: _includeLatin,
-          onChanged: (value) => _toggleLanguage(
-            current: _includeLatin,
-            next: value,
-            assign: (next) => _includeLatin = next,
-          ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Text('EN+123'),
-          ),
-        ),
-        ToggleButton(
-          checked: _includeZhHans,
-          onChanged: (value) => _toggleLanguage(
-            current: _includeZhHans,
-            next: value,
-            assign: (next) => _includeZhHans = next,
-          ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Text('简体'),
-          ),
-        ),
-        ToggleButton(
-          checked: _includeZhHant,
-          onChanged: (value) => _toggleLanguage(
-            current: _includeZhHant,
-            next: value,
-            assign: (next) => _includeZhHant = next,
-          ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Text('繁體'),
-          ),
-        ),
-        ToggleButton(
-          checked: _includeJa,
-          onChanged: (value) => _toggleLanguage(
-            current: _includeJa,
-            next: value,
-            assign: (next) => _includeJa = next,
-          ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Text('日本語'),
-          ),
-        ),
-        ToggleButton(
-          checked: _includeKo,
-          onChanged: (value) => _toggleLanguage(
-            current: _includeKo,
-            next: value,
-            assign: (next) => _includeKo = next,
-          ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Text('한국어'),
-          ),
-        ),
-      ],
-    );
-
-    final Widget previewSlider = Row(
-      children: [
-        Text(
-          '${l10n.fontSize}：${_previewSize.toStringAsFixed(0)}',
-          style: theme.typography.caption,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Slider(
-            min: _minPreviewSize,
-            max: _maxPreviewSize,
-            value: _previewSize,
-            onChanged: (value) => setState(() => _previewSize = value),
-          ),
-        ),
-      ],
-    );
-
-    final Widget previewArea = Container(
-      decoration: BoxDecoration(
-        color: theme.resources.controlFillColorSecondary,
-        border: Border.all(color: theme.resources.controlStrokeColorDefault),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: ValueListenableBuilder<TextEditingValue>(
-        valueListenable: _previewController,
-        builder: (context, value, _) {
-          final String text =
-              value.text.isEmpty ? _buildSampleText() : value.text;
-          final String? family =
-              _selectedFamily == 'System Default' ? null : _selectedFamily;
-          return SingleChildScrollView(
-            child: SelectableText(
-              text,
-              style: theme.typography.body?.copyWith(
-                fontFamily: family,
-                fontSize: _previewSize,
-              ),
-            ),
-          );
-        },
-      ),
-    );
+    final FontFamilyPickerPreviewState previewState = _buildPreviewState();
+    final Widget rightPane =
+        widget.rightPaneBuilder?.call(context, previewState) ??
+        _buildDefaultRightPane(context, theme, previewState);
 
     final Widget content = SizedBox(
       width: 820,
@@ -758,32 +874,7 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
             ),
           ),
           const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _sanitizeDisplayText(_selectedFamily),
-                  style: theme.typography.subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                ),
-                const SizedBox(height: 12),
-                Text(l10n.fontPreviewText, style: theme.typography.caption),
-                const SizedBox(height: 4),
-                previewTextBox,
-                const SizedBox(height: 12),
-                Text(l10n.fontPreviewLanguages, style: theme.typography.caption),
-                const SizedBox(height: 4),
-                languageToggles,
-                const SizedBox(height: 12),
-                previewSlider,
-                const SizedBox(height: 12),
-                Expanded(child: previewArea),
-              ],
-            ),
-          ),
+          Expanded(child: rightPane),
         ],
       ),
     );

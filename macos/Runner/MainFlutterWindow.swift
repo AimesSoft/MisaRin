@@ -1,6 +1,7 @@
 import Cocoa
 import FlutterMacOS
 import rust_lib_misa_rin
+import CoreText
 
 private final class LoggingFlutterViewController: FlutterViewController {
   private var tabletChannel: FlutterMethodChannel?
@@ -39,11 +40,45 @@ private final class LoggingFlutterViewController: FlutterViewController {
           $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
         }
         result(families)
+      case "getFontFileForFamily":
+        guard
+          let args = call.arguments as? [String: Any],
+          let family = args["family"] as? String
+        else {
+          result(nil)
+          return
+        }
+        result(self.resolveFontFile(for: family))
       default:
         result(FlutterMethodNotImplemented)
       }
     }
     systemFontsChannel = channel
+  }
+
+  private func resolveFontFile(for family: String) -> String? {
+    let trimmed = family.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty || trimmed == "System Default" {
+      return nil
+    }
+    guard let members = NSFontManager.shared.availableMembers(ofFontFamily: trimmed) else {
+      return nil
+    }
+    for member in members {
+      guard
+        let postScript = member[safe: 0] as? String,
+        let descriptor = NSFontDescriptor(fontAttributes: [.name: postScript]) as NSFontDescriptor?,
+        let ctDescriptor = descriptor as CTFontDescriptor?
+      else {
+        continue
+      }
+      if let url = CTFontDescriptorCopyAttribute(ctDescriptor, kCTFontURLAttribute) as? URL {
+        if !url.path.isEmpty {
+          return url.path
+        }
+      }
+    }
+    return nil
   }
 
   private func dispatchPointerEvent(tag: String, event: NSEvent, inContact: Bool) {
@@ -93,6 +128,15 @@ private final class LoggingFlutterViewController: FlutterViewController {
   override func mouseUp(with event: NSEvent) {
     dispatchPointerEvent(tag: "mouseUp", event: event, inContact: false)
     super.mouseUp(with: event)
+  }
+}
+
+private extension Array {
+  subscript(safe index: Int) -> Element? {
+    guard indices.contains(index) else {
+      return nil
+    }
+    return self[index]
   }
 }
 

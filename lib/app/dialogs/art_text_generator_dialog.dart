@@ -15,6 +15,8 @@ import '../../mobile/mobile_utils.dart';
 import '../../src/rust/api/cube_text.dart' as cube_text;
 import '../../src/rust/canvas_engine_ffi.dart' as canvas_engine_ffi;
 import '../../src/rust/rust_init.dart';
+import '../native/system_fonts.dart';
+import 'font_family_picker_dialog.dart';
 import '../utils/file_name_dialog.dart';
 import '../utils/mobile_export_paths.dart';
 
@@ -34,8 +36,6 @@ Future<ArtTextImageResult?> showArtTextGeneratorDialog(BuildContext context) {
 }
 
 const Map<String, String> _kBuiltinFonts = <String, String>{
-  '汉仪力量黑(简)': 'HYLiLiangHeiJ_Regular.json',
-  '锐字太空历险像素简': 'REEJI-TaikoMagicGB-Flash_Regular.json',
   'Minecraft Ten': 'Minecraft_Ten_Regular.json',
   'Fusion Pixel 8px': 'Fusion_Pixel_8px_Proportional_zh_hans_Regular.json',
   'Fusion Pixel 10px': 'Fusion_Pixel_10px_Proportional_zh_hans_Regular.json',
@@ -105,8 +105,16 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
   final Map<String, TextEditingController> _contentControllers =
       <String, TextEditingController>{};
   final Map<String, ui.Image> _materialImages = <String, ui.Image>{};
+  final Map<String, _CubeFontAsset> _systemPreviewFontCache =
+      <String, _CubeFontAsset>{};
+  final Map<String, Future<_CubeFontAsset?>> _systemPreviewFontTasks =
+      <String, Future<_CubeFontAsset?>>{};
+  final Map<String, Future<cube_text.CubeTextScene?>> _fontPickerSceneCache =
+      <String, Future<cube_text.CubeTextScene?>>{};
 
   List<_CubeFontAsset> _fonts = <_CubeFontAsset>[];
+  List<String> _systemFontFamilies = const <String>['System Default'];
+  bool _loadingSystemFonts = false;
   Map<String, _TextMaterials> _materialPresets = <String, _TextMaterials>{};
   List<_ArtTextObject> _texts = <_ArtTextObject>[];
   String _globalFontId = 'Fusion Pixel 10px';
@@ -176,6 +184,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
     for (final _ArtTextObject text in _texts) {
       _contentControllers[text.id] = TextEditingController(text: text.content);
     }
+    unawaited(_loadSystemFonts());
     _loadAssets();
   }
 
@@ -250,6 +259,42 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         _loadingAssets = false;
         _statusSeverity = InfoBarSeverity.error;
         _statusMessage = '艺术字体资源加载失败：$error';
+      });
+    }
+  }
+
+  Future<void> _loadSystemFonts() async {
+    if (_loadingSystemFonts) {
+      return;
+    }
+    setState(() => _loadingSystemFonts = true);
+    try {
+      final List<String> families = await SystemFonts.loadFamilies();
+      if (!mounted) {
+        return;
+      }
+      final Set<String> seen = <String>{'system default'};
+      final List<String> values = <String>['System Default'];
+      for (final String family in families) {
+        final String trimmed = family.trim();
+        if (trimmed.isEmpty) {
+          continue;
+        }
+        final String key = trimmed.toLowerCase();
+        if (seen.add(key)) {
+          values.add(trimmed);
+        }
+      }
+      setState(() {
+        _systemFontFamilies = values;
+        _loadingSystemFonts = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _loadingSystemFonts = false;
       });
     }
   }
@@ -438,6 +483,297 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       setState(() => _busy = false);
       _setStatus('字体导入失败：$error', InfoBarSeverity.error);
     }
+  }
+
+  String _initialSystemPickerFamily(_ArtTextObject text) {
+    final String activeFontId = (text.fontId ?? _globalFontId).trim();
+    if (activeFontId.isEmpty) {
+      return 'System Default';
+    }
+    final _CubeFontAsset? asset = _fonts
+        .where((font) => font.id == activeFontId)
+        .firstOrNull;
+    final String candidate = asset?.sourceSystemFamily ?? activeFontId;
+    return _systemFontFamilies.any((family) => family == candidate)
+        ? candidate
+        : 'System Default';
+  }
+
+  String? _fontIdForSystemFamily(String family) {
+    return _fonts
+        .where((font) => font.sourceSystemFamily == family)
+        .map((font) => font.id)
+        .firstOrNull;
+  }
+
+  Future<void> _openSystemFontPickerForObject(_ArtTextObject text) async {
+    if (_systemFontFamilies.length <= 1 && !_loadingSystemFonts) {
+      unawaited(_loadSystemFonts());
+    }
+    final String? pickedFamily = await showFontFamilyPickerDialog(
+      context,
+      fontFamilies: _systemFontFamilies,
+      selectedFamily: _initialSystemPickerFamily(text),
+      isLoading: _loadingSystemFonts,
+      initialPreviewSize: (text.options.size * 6).clamp(16, 96).toDouble(),
+      rightPaneBuilder: _buildArtFontPickerPane,
+    );
+    if (!mounted || pickedFamily == null || pickedFamily == 'System Default') {
+      return;
+    }
+    await _applySystemFontFamily(text, pickedFamily);
+  }
+
+  Future<_CubeFontAsset?> _previewFontAssetForFamily(String family) async {
+    final String trimmed = family.trim();
+    if (trimmed.isEmpty || trimmed == 'System Default') {
+      return null;
+    }
+    final _CubeFontAsset? byId = _fonts
+        .where((font) => font.id == trimmed)
+        .firstOrNull;
+    if (byId != null) {
+      return byId;
+    }
+    final _CubeFontAsset? bySystemFamily = _fonts
+        .where((font) => font.sourceSystemFamily == trimmed)
+        .firstOrNull;
+    if (bySystemFamily != null) {
+      return bySystemFamily;
+    }
+    final _CubeFontAsset? cached = _systemPreviewFontCache[trimmed];
+    if (cached != null) {
+      return cached;
+    }
+    return _systemPreviewFontTasks.putIfAbsent(trimmed, () async {
+      try {
+        final String? fontPath = await SystemFonts.resolveFontFileForFamily(
+          trimmed,
+        );
+        if (fontPath == null) {
+          return null;
+        }
+        final Uint8List bytes = await File(fontPath).readAsBytes();
+        await ensureRustInitialized();
+        final cube_text.CubeTextFontConvertResult converted = await cube_text
+            .cubeTextConvertTtfToFontJson(bytes: bytes);
+        final _CubeFontAsset asset = _CubeFontAsset(
+          id: trimmed,
+          json: converted.json,
+          fileName: p.basename(fontPath),
+          builtin: false,
+          sourceSystemFamily: trimmed,
+        );
+        _systemPreviewFontCache[trimmed] = asset;
+        return asset;
+      } catch (_) {
+        return null;
+      } finally {
+        _systemPreviewFontTasks.remove(trimmed);
+      }
+    });
+  }
+
+  String _pickerPreviewFontId(String selectedFamily, _ArtTextObject source) {
+    final String trimmed = selectedFamily.trim();
+    if (trimmed.isEmpty || trimmed == 'System Default') {
+      final String sourceFont = source.fontId?.trim() ?? '';
+      return sourceFont.isEmpty ? _globalFontId : sourceFont;
+    }
+    return trimmed;
+  }
+
+  Future<cube_text.CubeTextScene?> _fontPickerPreviewScene({
+    required String selectedFamily,
+    required _ArtTextObject source,
+  }) {
+    final String previewFontId = _pickerPreviewFontId(selectedFamily, source);
+    final String textContent = source.content.trim().isEmpty
+        ? '我的世界'
+        : source.content;
+    final String cacheKey = [
+      previewFontId,
+      textContent,
+      source.options.size,
+      source.options.depth,
+      source.options.outlineWidth,
+      source.options.letterSpacing,
+      source.options.spacingWidth,
+      source.options.overlay,
+      source.options.materials.toJson().toString(),
+    ].join('|');
+    return _fontPickerSceneCache.putIfAbsent(cacheKey, () async {
+      final _CubeFontAsset? fontAsset = await _previewFontAssetForFamily(
+        previewFontId,
+      );
+      if (fontAsset == null) {
+        return null;
+      }
+      final _ArtTextObject preview = _ArtTextObject(
+        id: 'font_picker_source',
+        content: textContent,
+        options: source.options.copyWith(
+          x: 0,
+          y: 0,
+          z: 0,
+          rotY: 0,
+          rotX: 0,
+          rotZ: 0,
+        ),
+        fontId: previewFontId,
+      );
+      return cube_text.cubeTextBuildScene(
+        fonts: <cube_text.CubeTextFontAsset>[
+          cube_text.CubeTextFontAsset(id: fontAsset.id, json: fontAsset.json),
+        ],
+        globalFontId: previewFontId,
+        texts: <cube_text.CubeTextObject>[preview.toCubeTextObject()],
+      );
+    });
+  }
+
+  Widget _buildFontPickerArtPreview(
+    BuildContext context, {
+    required String family,
+    required _ArtTextObject source,
+  }) {
+    return FutureBuilder<cube_text.CubeTextScene?>(
+      future: _fontPickerPreviewScene(selectedFamily: family, source: source),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: ProgressRing());
+        }
+        final cube_text.CubeTextScene? scene = snapshot.data;
+        if (scene == null) {
+          return Center(
+            child: Text(
+              '无法生成艺术字预览。',
+              style: FluentTheme.of(context).typography.body,
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: Color(0xFF2F2F33)),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double rawWidth = constraints.maxWidth.isFinite
+                    ? constraints.maxWidth
+                    : 420;
+                final double rawHeight = constraints.maxHeight.isFinite
+                    ? constraints.maxHeight
+                    : 300;
+                final double pixelRatio = MediaQuery.devicePixelRatioOf(
+                  context,
+                ).clamp(1.0, 2.0);
+                final int width = math.max(1, (rawWidth * pixelRatio).round());
+                final int height = math.max(
+                  1,
+                  (rawHeight * pixelRatio).round(),
+                );
+                return _CubeTextBevyPreview(
+                  key: ValueKey<String>('font_picker_${family}_${source.id}'),
+                  scene: scene,
+                  materialImages: const <String, ui.Image>{},
+                  width: width,
+                  height: height,
+                  yaw: 0,
+                  pitch: -18,
+                  zoom: 1.06,
+                  fov: 74,
+                  transparentBackground: true,
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _applySystemFontFamily(
+    _ArtTextObject target,
+    String family,
+  ) async {
+    final String trimmed = family.trim();
+    if (trimmed.isEmpty || trimmed == 'System Default') {
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      String? fontId = _fontIdForSystemFamily(trimmed);
+      if (fontId == null) {
+        final String? fontPath = await SystemFonts.resolveFontFileForFamily(
+          trimmed,
+        );
+        if (fontPath == null) {
+          throw StateError('未找到字体文件：$trimmed');
+        }
+        final Uint8List bytes = await File(fontPath).readAsBytes();
+        await ensureRustInitialized();
+        final cube_text.CubeTextFontConvertResult converted = await cube_text
+            .cubeTextConvertTtfToFontJson(bytes: bytes);
+        final String baseId = converted.fontId.trim().isEmpty
+            ? trimmed
+            : converted.fontId.trim();
+        fontId = _uniqueFontId(baseId);
+        _fonts.add(
+          _CubeFontAsset(
+            id: fontId,
+            json: converted.json,
+            fileName: p.basename(fontPath),
+            builtin: false,
+            sourceSystemFamily: trimmed,
+          ),
+        );
+      }
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        target.fontId = fontId;
+        _busy = false;
+        _statusSeverity = InfoBarSeverity.success;
+        _statusMessage = '已应用系统字体：$trimmed';
+      });
+      _scheduleSceneBuild(immediate: true);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _busy = false);
+      _setStatus('系统字体应用失败：$error', InfoBarSeverity.error);
+    }
+  }
+
+  Widget _buildArtFontPickerPane(
+    BuildContext context,
+    FontFamilyPickerPreviewState state,
+  ) {
+    final FluentThemeData theme = FluentTheme.of(context);
+    final _ArtTextObject source = _selectedText;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          state.selectedDisplay,
+          style: theme.typography.subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          softWrap: false,
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: _buildFontPickerArtPreview(
+            context,
+            family: state.selectedFamily,
+            source: source,
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _deleteFont(String id) async {
@@ -1184,6 +1520,12 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                 child: const Text('导入字体'),
               ),
               Button(
+                onPressed: _busy
+                    ? null
+                    : () => _openSystemFontPickerForObject(_selectedText),
+                child: const Text('字体选择器'),
+              ),
+              Button(
                 onPressed: _busy ? null : _importWorkspace,
                 child: const Text('导入工作区'),
               ),
@@ -1348,6 +1690,13 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
                       });
                     },
                   ),
+                ),
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: const Icon(FluentIcons.search, size: 14),
+                  onPressed: _busy
+                      ? null
+                      : () => _openSystemFontPickerForObject(text),
                 ),
                 if (text.fontId != null &&
                     _fonts.any(
@@ -1956,12 +2305,14 @@ class _CubeFontAsset {
     required this.json,
     required this.fileName,
     required this.builtin,
+    this.sourceSystemFamily,
   });
 
   final String id;
   final String json;
   final String fileName;
   final bool builtin;
+  final String? sourceSystemFamily;
 }
 
 class _ArtTextObject {
@@ -2508,7 +2859,8 @@ class _MaterialSwatch extends StatelessWidget {
 
 class _CubeTextBevyPreview extends StatefulWidget {
   const _CubeTextBevyPreview({
-    required this.scene,
+    super.key,
+    this.scene,
     required this.materialImages,
     required this.width,
     required this.height,
@@ -2519,7 +2871,7 @@ class _CubeTextBevyPreview extends StatefulWidget {
     required this.transparentBackground,
   });
 
-  final cube_text.CubeTextScene scene;
+  final cube_text.CubeTextScene? scene;
   final Map<String, ui.Image> materialImages;
   final int width;
   final int height;
@@ -2552,6 +2904,7 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
   bool _syncPending = false;
   bool _pendingUploadScene = false;
   cube_text.CubeTextScene? _uploadedScene;
+  cube_text.CubeTextScene? _resolvedScene;
   String? _uploadedMaterialKey;
   Object? _error;
 
@@ -2559,6 +2912,7 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
   void initState() {
     super.initState();
     _surfaceId = 'cube_text_bevy_preview_${_nextSurfaceId++}';
+    _resolvedScene = widget.scene;
     _requestSync(uploadScene: true);
   }
 
@@ -2569,6 +2923,7 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
         oldWidget.width != widget.width || oldWidget.height != widget.height;
     final bool sceneChanged = !identical(oldWidget.scene, widget.scene);
     if (sceneChanged) {
+      _resolvedScene = widget.scene;
       _uploadedScene = null;
       _uploadedMaterialKey = null;
     }
@@ -2624,6 +2979,10 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
   }
 
   Future<void> _sync({required bool uploadScene}) async {
+    final cube_text.CubeTextScene? scene = _resolvedScene;
+    if (scene == null) {
+      return;
+    }
     final int serial = ++_syncSerial;
     try {
       canvas_engine_ffi.CanvasEngineFfi.instance.setLogLevel(2);
@@ -2636,28 +2995,25 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
         return;
       }
       final String materialKey = _cubeTextPreviewMaterialKey(
-        widget.scene,
+        scene,
         widget.materialImages,
       );
       if (uploadScene ||
-          !identical(_uploadedScene, widget.scene) ||
+          !identical(_uploadedScene, scene) ||
           _uploadedMaterialKey != materialKey) {
         final _CubeTextPreviewMaterialUpload materialUpload =
-            await _cubeTextPreviewMaterialUpload(
-              widget.scene,
-              widget.materialImages,
-            );
+            await _cubeTextPreviewMaterialUpload(scene, widget.materialImages);
         if (!mounted || serial != _syncSerial) {
           return;
         }
         final bool ok = canvas_engine_ffi.CanvasEngineFfi.instance
             .setCubeTextPreviewScene(
               handle: handle,
-              positions: widget.scene.positions,
-              normals: widget.scene.normals,
-              uvs: widget.scene.uvs,
-              indices: widget.scene.indices,
-              materialIndices: widget.scene.materialIndices,
+              positions: scene.positions,
+              normals: scene.normals,
+              uvs: scene.uvs,
+              indices: scene.indices,
+              materialIndices: scene.materialIndices,
               materialsJson: materialUpload.materialsJson,
               imageWidths: materialUpload.imageWidths,
               imageHeights: materialUpload.imageHeights,
@@ -2668,7 +3024,7 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
         if (!ok) {
           throw StateError('engine_set_cube_text_preview_scene failed');
         }
-        _uploadedScene = widget.scene;
+        _uploadedScene = scene;
         _uploadedMaterialKey = materialKey;
       }
       final bool rendered = canvas_engine_ffi.CanvasEngineFfi.instance
@@ -2763,6 +3119,9 @@ class _CubeTextBevyPreviewState extends State<_CubeTextBevyPreview> {
   @override
   Widget build(BuildContext context) {
     final int? textureId = _textureId;
+    if (_resolvedScene == null) {
+      return const Center(child: Text('预览数据为空'));
+    }
     if (_error != null) {
       return Center(
         child: Text('Bevy 3D 预览初始化失败\n$_error', textAlign: TextAlign.center),

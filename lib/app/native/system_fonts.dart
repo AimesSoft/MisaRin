@@ -58,11 +58,34 @@ class SystemFonts {
     return _cachedFamilies!;
   }
 
+  static Future<String?> resolveFontFileForFamily(String family) async {
+    final String trimmed = family.trim();
+    if (!_supportsNativeFonts ||
+        trimmed.isEmpty ||
+        trimmed == 'System Default') {
+      return null;
+    }
+    if (!Platform.isMacOS) {
+      return null;
+    }
+    try {
+      final String? path = await _platformChannel.invokeMethod<String>(
+        'getFontFileForFamily',
+        <String, Object?>{'family': trimmed},
+      );
+      if (path == null || path.trim().isEmpty) {
+        return null;
+      }
+      return path.trim();
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<List<String>?> _loadFamiliesFromPlatformChannel() async {
     try {
-      final List<String>? families = await _platformChannel.invokeListMethod<String>(
-        'getFamilies',
-      );
+      final List<String>? families = await _platformChannel
+          .invokeListMethod<String>('getFamilies');
       if (families == null || families.isEmpty) {
         return null;
       }
@@ -89,8 +112,9 @@ class SystemFonts {
       try {
         final Directory assetsRoot = Directory('/System/Library/AssetsV2');
         if (assetsRoot.existsSync()) {
-          for (final FileSystemEntity entity
-              in assetsRoot.listSync(followLinks: false)) {
+          for (final FileSystemEntity entity in assetsRoot.listSync(
+            followLinks: false,
+          )) {
             if (entity is! Directory) {
               continue;
             }
@@ -114,7 +138,14 @@ class SystemFonts {
       final String? userProfile = Platform.environment['USERPROFILE'];
       if (userProfile != null && userProfile.isNotEmpty) {
         dirs.add(
-          p.join(userProfile, 'AppData', 'Local', 'Microsoft', 'Windows', 'Fonts'),
+          p.join(
+            userProfile,
+            'AppData',
+            'Local',
+            'Microsoft',
+            'Windows',
+            'Fonts',
+          ),
         );
       }
     } else if (Platform.isLinux) {
@@ -137,7 +168,9 @@ List<String> _collectFontNames(List<String> roots) {
     _collectDirectoryFontNames(root, visitedDirs, familiesByLower);
   }
   final List<String> fonts = familiesByLower.values.toList(growable: false);
-  fonts.sort((String a, String b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  fonts.sort(
+    (String a, String b) => a.toLowerCase().compareTo(b.toLowerCase()),
+  );
   return fonts;
 }
 
@@ -166,8 +199,9 @@ void _collectDirectoryFontNames(
     return;
   }
   try {
-    for (final FileSystemEntity entity
-        in directory.listSync(followLinks: false)) {
+    for (final FileSystemEntity entity in directory.listSync(
+      followLinks: false,
+    )) {
       if (entity is Directory) {
         _collectDirectoryFontNames(entity.path, visitedDirs, familiesByLower);
         continue;
