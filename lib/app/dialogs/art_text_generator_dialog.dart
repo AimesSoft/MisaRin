@@ -39,7 +39,6 @@ const Map<String, String> _kBuiltinFonts = <String, String>{
   'Minecraft Ten': 'Minecraft_Ten_Regular.json',
   'Fusion Pixel 8px': 'Fusion_Pixel_8px_Proportional_zh_hans_Regular.json',
   'Fusion Pixel 10px': 'Fusion_Pixel_10px_Proportional_zh_hans_Regular.json',
-  '得意黑': 'Smiley_Sans_Oblique_Regular.json',
   'Unifont ASCII': 'Unifont_ASCII_Regular.json',
 };
 
@@ -1256,7 +1255,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
       constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
       title: Row(
         children: <Widget>[
-          const Expanded(child: Text('Cube 3D Text 艺术字体生成器')),
+          const Expanded(child: Text('艺术字生成器')),
           if (_loadingAssets || _buildingScene || _busy)
             const SizedBox(
               width: 18,

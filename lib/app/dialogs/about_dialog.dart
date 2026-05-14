@@ -15,10 +15,7 @@ Future<void> showAboutMisarinDialog(BuildContext context) async {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          l10n.aboutDescription,
-          style: theme.typography.body,
-        ),
+        Text(l10n.aboutDescription, style: theme.typography.body),
         const SizedBox(height: 12),
         InfoLabel(
           label: l10n.aboutAppIdLabel,
@@ -40,6 +37,21 @@ Future<void> showAboutMisarinDialog(BuildContext context) async {
           label: l10n.aboutDeveloperLabel,
           child: SelectableText(
             'Aimes Soft',
+            style: theme.typography.bodyStrong,
+          ),
+        ),
+        const SizedBox(height: 12),
+        InfoLabel(
+          label: '鸣谢项目',
+          child: SelectableText(
+            'cube-3d-text\n'
+            'https://github.com/EaseCation/cube-3d-text\n\n'
+            'Krita\n'
+            'https://krita.org\n\n'
+            'Aseprite\n'
+            'https://www.aseprite.org\n\n'
+            'Blockbench\n'
+            'https://www.blockbench.net',
             style: theme.typography.bodyStrong,
           ),
         ),

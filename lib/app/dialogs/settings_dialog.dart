@@ -40,8 +40,9 @@ Future<void> showSettingsDialog(
         title: Text(l10n.settingsTitle),
         content: _SettingsDialogContent(
           key: contentKey,
-          initialSection:
-              openAboutTab ? _SettingsSection.about : _SettingsSection.general,
+          initialSection: openAboutTab
+              ? _SettingsSection.about
+              : _SettingsSection.general,
         ),
         contentWidth: null,
         maxWidth: 920,
@@ -73,18 +74,10 @@ enum _AppLocaleOption {
   chineseTraditional,
 }
 
-enum _SettingsSection {
-  general,
-  input,
-  storage,
-  about,
-}
+enum _SettingsSection { general, input, storage, about }
 
 class _SettingsDialogContent extends StatefulWidget {
-  const _SettingsDialogContent({
-    super.key,
-    required this.initialSection,
-  });
+  const _SettingsDialogContent({super.key, required this.initialSection});
 
   final _SettingsSection initialSection;
 
@@ -125,8 +118,8 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
   }
 
   Future<void> _loadBrushShapeFolderPath() async {
-    final String? path =
-        await BrushLibrary.instance.shapeLibrary.resolveShapeDirectoryPath();
+    final String? path = await BrushLibrary.instance.shapeLibrary
+        .resolveShapeDirectoryPath();
     if (!mounted) {
       return;
     }
@@ -134,8 +127,7 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
   }
 
   Future<void> _loadAndroidExportDirectory() async {
-    final String? path =
-        await MobileExportPaths.readAndroidExportDirectory();
+    final String? path = await MobileExportPaths.readAndroidExportDirectory();
     if (!mounted) {
       return;
     }
@@ -189,10 +181,7 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
     final Widget body = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          width: 220,
-          child: _buildSectionTabs(context, sections),
-        ),
+        SizedBox(width: 220, child: _buildSectionTabs(context, sections)),
         const SizedBox(width: 16),
         Expanded(
           child: Container(
@@ -218,10 +207,7 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
       ],
     );
 
-    return SizedBox(
-      height: 520,
-      child: body,
-    );
+    return SizedBox(height: 520, child: body);
   }
 
   Widget _buildSectionTabs(
@@ -233,9 +219,7 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
       decoration: BoxDecoration(
         color: theme.resources.subtleFillColorTertiary,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.resources.controlStrokeColorDefault,
-        ),
+        border: Border.all(color: theme.resources.controlStrokeColorDefault),
       ),
       padding: const EdgeInsets.all(8),
       child: Column(
@@ -261,9 +245,7 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
       ),
       selected: selected,
       onPressed: () => setState(() => _selectedSection = section),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       tileColor: WidgetStateProperty.resolveWith(
         (states) => states.isHovered || selected
             ? theme.resources.subtleFillColorSecondary
@@ -301,8 +283,9 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
                   }
                   setState(() => _localeOption = option);
                   final Locale? locale = _localeForOption(option);
-                  final LocaleController controller =
-                      LocaleController.of(context);
+                  final LocaleController controller = LocaleController.of(
+                    context,
+                  );
                   controller.onLocaleChanged(locale);
                   final AppPreferences prefs = AppPreferences.instance;
                   if (prefs.localeOverride != locale) {
@@ -320,11 +303,17 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
                 value: themeMode,
                 items: [
                   ComboBoxItem(
-                      value: ThemeMode.light, child: Text(l10n.themeLight)),
+                    value: ThemeMode.light,
+                    child: Text(l10n.themeLight),
+                  ),
                   ComboBoxItem(
-                      value: ThemeMode.dark, child: Text(l10n.themeDark)),
+                    value: ThemeMode.dark,
+                    child: Text(l10n.themeDark),
+                  ),
                   ComboBoxItem(
-                      value: ThemeMode.system, child: Text(l10n.themeSystem)),
+                    value: ThemeMode.system,
+                    child: Text(l10n.themeSystem),
+                  ),
                 ],
                 onChanged: (mode) {
                   if (mode == null) {
@@ -439,10 +428,8 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
       case _SettingsSection.storage:
         final int minHistory = AppPreferences.minHistoryLimit;
         final int maxHistory = AppPreferences.maxHistoryLimit;
-        final int minAutoSave =
-            AppPreferences.minAutoSaveCleanupThresholdMb;
-        final int maxAutoSave =
-            AppPreferences.maxAutoSaveCleanupThresholdMb;
+        final int minAutoSave = AppPreferences.minAutoSaveCleanupThresholdMb;
+        final int maxAutoSave = AppPreferences.maxAutoSaveCleanupThresholdMb;
         final int autoSaveDivisions =
             ((maxAutoSave - minAutoSave) / _autoSaveCleanupStepMb).round();
         final bool showAndroidExport = Platform.isAndroid;
@@ -544,14 +531,15 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
                       children: [
                         Button(
                           onPressed: () async {
-                            final String? path =
-                                await FilePicker.platform.getDirectoryPath();
+                            final String? path = await FilePicker.platform
+                                .getDirectoryPath();
                             if (path == null) {
                               return;
                             }
                             try {
-                              await MobileExportPaths
-                                  .writeAndroidExportDirectory(path);
+                              await MobileExportPaths.writeAndroidExportDirectory(
+                                path,
+                              );
                               if (!mounted) {
                                 return;
                               }
@@ -567,7 +555,9 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
                               }
                               AppNotifications.show(
                                 context,
-                                message: l10n.exportDirectoryUpdateFailed(error),
+                                message: l10n.exportDirectoryUpdateFailed(
+                                  error,
+                                ),
                                 severity: InfoBarSeverity.error,
                               );
                             }
@@ -579,12 +569,15 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
                               ? null
                               : () async {
                                   try {
-                                    await MobileExportPaths
-                                        .writeAndroidExportDirectory(null);
+                                    await MobileExportPaths.writeAndroidExportDirectory(
+                                      null,
+                                    );
                                     if (!mounted) {
                                       return;
                                     }
-                                    setState(() => _androidExportDirectory = null);
+                                    setState(
+                                      () => _androidExportDirectory = null,
+                                    );
                                     AppNotifications.show(
                                       context,
                                       message: l10n.exportDirectoryCleared,
@@ -596,7 +589,9 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
                                     }
                                     AppNotifications.show(
                                       context,
-                                      message: l10n.exportDirectoryUpdateFailed(error),
+                                      message: l10n.exportDirectoryUpdateFailed(
+                                        error,
+                                      ),
                                       severity: InfoBarSeverity.error,
                                     );
                                   }
@@ -649,6 +644,21 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
               label: l10n.aboutDeveloperLabel,
               child: SelectableText(
                 'Aimes Soft',
+                style: theme.typography.bodyStrong,
+              ),
+            ),
+            const SizedBox(height: 12),
+            InfoLabel(
+              label: '鸣谢项目',
+              child: SelectableText(
+                'cube-3d-text\n'
+                'https://github.com/EaseCation/cube-3d-text\n\n'
+                'Krita\n'
+                'https://krita.org\n\n'
+                'Aseprite\n'
+                'https://www.aseprite.org\n\n'
+                'Blockbench\n'
+                'https://www.blockbench.net',
                 style: theme.typography.bodyStrong,
               ),
             ),
@@ -872,8 +882,7 @@ class _TabletInspectPaneState extends State<_TabletInspectPane> {
     final double pressure =
         TabletInputBridge.instance.pressureForEvent(event) ??
         (event.pressure.isFinite ? event.pressure.clamp(0.0, 1.0) : 0.0);
-    final double radius =
-        _brushRadiusForPressure(pressure, devicePixelRatio);
+    final double radius = _brushRadiusForPressure(pressure, devicePixelRatio);
     final double physicalRadius = radius * devicePixelRatio;
     final bool inContact = event.down || pressure > 0.0;
     setState(() {
@@ -996,11 +1005,16 @@ class _TabletInspectPaneState extends State<_TabletInspectPane> {
                 _buildStat(l10n.tabletPressureMax, _latestMax),
                 _buildStat(l10n.tabletRadiusPx, _latestPhysicalRadius),
                 _buildStat(l10n.tabletTiltRad, _latestTilt),
-                _buildStat(l10n.tabletSampleCount, _sampleCount.toDouble(),
-                    fractionDigits: 0),
+                _buildStat(
+                  l10n.tabletSampleCount,
+                  _sampleCount.toDouble(),
+                  fractionDigits: 0,
+                ),
                 _buildStat(l10n.tabletSampleRateHz, _estimatedRps),
                 _buildTextStat(
-                    l10n.tabletPointerType, _pointerKindLabel(_latestPointerKind)),
+                  l10n.tabletPointerType,
+                  _pointerKindLabel(_latestPointerKind),
+                ),
                 const Spacer(),
                 Button(onPressed: _clear, child: Text(l10n.clearScribble)),
               ],
@@ -1018,8 +1032,9 @@ class _TabletInspectPaneState extends State<_TabletInspectPane> {
     final double eased = math.sqrt(normalized);
     final double physicalRadius =
         minPhysicalRadius + (maxPhysicalRadius - minPhysicalRadius) * eased;
-    final double safePixelRatio =
-        devicePixelRatio <= 0 ? 1.0 : devicePixelRatio;
+    final double safePixelRatio = devicePixelRatio <= 0
+        ? 1.0
+        : devicePixelRatio;
     return physicalRadius / safePixelRatio;
   }
 
@@ -1127,8 +1142,9 @@ class _TabletPainter extends CustomPainter {
     if (points.isEmpty) {
       return;
     }
-    final double safePixelRatio =
-        devicePixelRatio <= 0 ? 1.0 : devicePixelRatio;
+    final double safePixelRatio = devicePixelRatio <= 0
+        ? 1.0
+        : devicePixelRatio;
     final double minLogicalStroke = 1.0 / safePixelRatio;
     final double maxLogicalStroke = 12.0 / safePixelRatio;
     final Paint strokePaint = Paint()

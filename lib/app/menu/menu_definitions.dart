@@ -482,7 +482,12 @@ class MenuDefinitionBuilder {
     final List<MenuEntry> entries = <MenuEntry>[];
     _addSection(entries, <MenuEntry>[
       if (handler.generateArtText != null)
-        MenuActionEntry(label: '艺术字体生成器…', action: handler.generateArtText),
+        MenuSubmenuEntry(
+          label: '文本',
+          entries: <MenuEntry>[
+            MenuActionEntry(label: '艺术字生成器…', action: handler.generateArtText),
+          ],
+        ),
     ]);
     if (paletteEntries.isNotEmpty) {
       _addSection(entries, <MenuEntry>[
