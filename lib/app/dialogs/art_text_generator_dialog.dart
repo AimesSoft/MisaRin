@@ -37,7 +37,6 @@ Future<ArtTextImageResult?> showArtTextGeneratorDialog(BuildContext context) {
 }
 
 const Map<String, String> _kBuiltinFonts = <String, String>{
-  'Minecraft Ten': 'Minecraft_Ten_Regular.json',
   'Fusion Pixel 8px': 'Fusion_Pixel_8px_Proportional_zh_hans_Regular.json',
   'Fusion Pixel 10px': 'Fusion_Pixel_10px_Proportional_zh_hans_Regular.json',
   'Unifont ASCII': 'Unifont_ASCII_Regular.json',

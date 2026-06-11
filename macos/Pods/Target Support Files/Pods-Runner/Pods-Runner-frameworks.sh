@@ -176,39 +176,21 @@ code_sign_if_enabled() {
 }
 
 if [[ "$CONFIGURATION" == "Debug" ]]; then
-  install_framework "${BUILT_PRODUCTS_DIR}/battery_plus/battery_plus.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/desktop_drop/desktop_drop.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/device_info_plus/device_info_plus.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/file_selector_macos/file_selector_macos.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/package_info_plus/package_info_plus.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/pasteboard/pasteboard.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/rust_lib_misa_rin/rust_lib_misa_rin.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/screen_retriever/screen_retriever.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/shared_preferences_foundation/shared_preferences_foundation.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/window_manager/window_manager.framework"
 fi
 if [[ "$CONFIGURATION" == "Profile" ]]; then
-  install_framework "${BUILT_PRODUCTS_DIR}/battery_plus/battery_plus.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/desktop_drop/desktop_drop.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/device_info_plus/device_info_plus.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/file_selector_macos/file_selector_macos.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/package_info_plus/package_info_plus.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/pasteboard/pasteboard.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/rust_lib_misa_rin/rust_lib_misa_rin.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/screen_retriever/screen_retriever.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/shared_preferences_foundation/shared_preferences_foundation.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/window_manager/window_manager.framework"
 fi
 if [[ "$CONFIGURATION" == "Release" ]]; then
-  install_framework "${BUILT_PRODUCTS_DIR}/battery_plus/battery_plus.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/desktop_drop/desktop_drop.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/device_info_plus/device_info_plus.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/file_selector_macos/file_selector_macos.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/package_info_plus/package_info_plus.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/pasteboard/pasteboard.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/rust_lib_misa_rin/rust_lib_misa_rin.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/screen_retriever/screen_retriever.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/shared_preferences_foundation/shared_preferences_foundation.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/window_manager/window_manager.framework"
 fi
 if [ "${COCOAPODS_PARALLEL_CODE_SIGN}" == "true" ]; then

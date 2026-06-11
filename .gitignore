@@ -59,3 +59,5 @@ app.*.map.json
 /rust/target
 /linux/flutter/ephemeral/.plugin_symlinks
 *.jks
+/ios/Flutter/ephemeral
+/macos/Flutter/ephemeral
