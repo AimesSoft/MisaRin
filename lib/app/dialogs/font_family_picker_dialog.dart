@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:misa_rin/app/widgets/app_slider.dart';
 import 'package:misa_rin/mobile/responsive_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -616,7 +617,7 @@ class _FontFamilyPickerDialogState extends State<FontFamilyPickerDialog> {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Slider(
+          child: AppSlider(
             min: state.minPreviewSize,
             max: state.maxPreviewSize,
             value: state.previewSize,

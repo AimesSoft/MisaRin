@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:misa_rin/app/widgets/app_slider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show Localizations;
 
@@ -558,7 +559,7 @@ class BrushPresetEditorFormState extends State<BrushPresetEditorForm> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('$label: $valueLabel', style: theme.typography.bodyStrong),
-          Slider(
+          AppSlider(
             value: clamped,
             min: min,
             max: max,

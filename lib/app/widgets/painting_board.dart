@@ -83,6 +83,8 @@ import 'package:path/path.dart' as p;
 import 'package:vector_math/vector_math_64.dart' show Matrix4, Vector3;
 import 'package:file_picker/file_picker.dart';
 
+import 'app_color_picker.dart';
+import 'app_slider.dart';
 import '../dialogs/misarin_dialog.dart';
 import '../../mobile/responsive_dialog.dart';
 import '../../mobile/mobile_bottom_sheet.dart';

@@ -564,7 +564,7 @@ class _ReferenceModelCardState extends State<_ReferenceModelCard>
                 const Icon(FluentIcons.search, size: 14),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Slider(
+                  child: AppSlider(
                     value: _zoom.clamp(0.35, 6.0),
                     min: 0.35,
                     max: 6.0,

@@ -1,15 +1,15 @@
 use std::any::TypeId;
-use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::mem;
 use std::sync::Arc;
 
 use bevy::asset::{AssetPlugin, Assets, RenderAssetUsages};
-use bevy::camera::CameraPlugin;
-use bevy::camera::visibility::{NoFrustumCulling, ViewVisibility, VisibleEntities};
-use bevy::camera::{ManualTextureViewHandle, RenderTarget};
 use bevy::camera::visibility::RenderLayers;
-use bevy::core_pipeline::CorePipelinePlugin;
+use bevy::camera::visibility::{NoFrustumCulling, ViewVisibility, VisibleEntities};
+use bevy::camera::CameraPlugin;
+use bevy::camera::{ManualTextureViewHandle, RenderTarget};
 use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::core_pipeline::CorePipelinePlugin;
 use bevy::image::{
     Image, ImageAddressMode, ImageFilterMode, ImagePlugin, ImageSampler, ImageSamplerDescriptor,
 };
@@ -115,24 +115,29 @@ impl Default for CubeTextPreviewCamera {
 pub(crate) struct CubeTextPreviewRenderer {
     format: wgpu::TextureFormat,
     app: App,
-    device: SharedRenderDevice,
-    queue: Arc<wgpu::Queue>,
-    checkerboard_pipeline: wgpu::RenderPipeline,
     main_camera: Entity,
     outline_camera: Entity,
     mesh_entities: Vec<Entity>,
+    pending_despawn_mesh_entities: Vec<Entity>,
+    material_handle_cache: BTreeMap<u64, Handle<StandardMaterial>>,
+    texture_handle_cache: BTreeMap<u64, Handle<Image>>,
     scene_key: Option<SceneKey>,
     scene_just_rebuilt: bool,
     render_debug_logged: bool,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct SceneKey {
     positions_len: usize,
     normals_len: usize,
     uvs_len: usize,
     indices_len: usize,
     material_indices_len: usize,
+    positions_hash: u64,
+    normals_hash: u64,
+    uvs_hash: u64,
+    indices_hash: u64,
+    material_indices_hash: u64,
     materials_hash: u64,
     images_hash: u64,
 }
@@ -158,9 +163,6 @@ impl CubeTextPreviewRenderer {
             RenderAdapter(Arc::new(WgpuWrapper::new(adapter.as_ref().clone()))),
             RenderInstance(Arc::new(WgpuWrapper::new(instance.as_ref().clone()))),
         );
-        let checkerboard_pipeline =
-            create_checkerboard_pipeline(device.as_ref(), format.add_srgb_suffix());
-
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
             .add_plugins(bevy::transform::TransformPlugin)
@@ -261,12 +263,12 @@ impl CubeTextPreviewRenderer {
         Self {
             format,
             app,
-            device: device.clone(),
-            queue: Arc::clone(queue),
-            checkerboard_pipeline,
             main_camera,
             outline_camera,
             mesh_entities: Vec::new(),
+            pending_despawn_mesh_entities: Vec::new(),
+            material_handle_cache: BTreeMap::new(),
+            texture_handle_cache: BTreeMap::new(),
             scene_key: None,
             scene_just_rebuilt: false,
             render_debug_logged: false,
@@ -291,69 +293,16 @@ impl CubeTextPreviewRenderer {
         self.update_target(target_texture, width, height);
         self.ensure_scene(scene);
         self.update_camera(scene, width, height, camera);
-        if camera.transparent_background {
-            self.render_checkerboard_background(target_texture, width, height);
-        }
         if self.scene_just_rebuilt {
             // Bevy render assets/material bind groups are extracted and prepared on update.
-            // A warm-up update prevents the first visible frame from using incomplete render state.
+            // Keep the previous mesh alive during the warm-up so the preview never presents
+            // a transparent frame while replacement meshes are still being prepared.
             self.app.update();
+            self.despawn_pending_mesh_entities();
             self.scene_just_rebuilt = false;
         }
         self.app.update();
         self.log_render_state_once();
-    }
-
-    fn render_checkerboard_background(
-        &self,
-        target_texture: &wgpu::Texture,
-        width: u32,
-        height: u32,
-    ) {
-        if width == 0 || height == 0 {
-            return;
-        }
-        let view_format = self.format.add_srgb_suffix();
-        let target_view = target_texture.create_view(&wgpu::TextureViewDescriptor {
-            label: Some("misa-rin cube text checkerboard target view"),
-            dimension: Some(TextureViewDimension::D2),
-            format: Some(view_format),
-            mip_level_count: Some(1),
-            array_layer_count: Some(1),
-            ..Default::default()
-        });
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("misa-rin cube text checkerboard encoder"),
-            });
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("misa-rin cube text checkerboard pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    depth_slice: None,
-                    view: &target_view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-            pass.set_pipeline(&self.checkerboard_pipeline);
-            pass.draw(0..3, 0..1);
-        }
-        self.queue.submit(Some(encoder.finish()));
-        debug::log(
-            LogLevel::Verbose,
-            format_args!(
-                "cube_text_preview checkerboard prefill size={}x{} format={:?}",
-                width, height, view_format,
-            ),
-        );
     }
 
     fn update_target(&mut self, target_texture: &wgpu::Texture, width: u32, height: u32) {
@@ -399,11 +348,8 @@ impl CubeTextPreviewRenderer {
                 scene.images.len(),
             ),
         );
-        for entity in self.mesh_entities.drain(..) {
-            if let Ok(entity_commands) = self.app.world_mut().get_entity_mut(entity) {
-                entity_commands.despawn();
-            }
-        }
+        self.pending_despawn_mesh_entities
+            .extend(mem::take(&mut self.mesh_entities));
 
         let chunks = split_scene_by_material(scene);
 
@@ -423,9 +369,11 @@ impl CubeTextPreviewRenderer {
             ));
 
             let spec = material_spec(scene, material_index);
-            let texture = self.material_texture(spec, scene);
-            let texture_id = texture.as_ref().map(|handle| format!("{:?}", handle.id()));
-            let color = material_color(spec);
+            let material_handle = self.cached_material_handle(material_index, spec, scene);
+            let texture_id = self
+                .material_texture(spec, scene)
+                .as_ref()
+                .map(|handle| format!("{:?}", handle.id()));
             let slot = material_index % 7;
             debug::log(
                 LogLevel::Info,
@@ -436,7 +384,7 @@ impl CubeTextPreviewRenderer {
                     spec.color,
                     spec.gradient_start,
                     spec.gradient_end,
-                    texture.is_some(),
+                    texture_id.is_some(),
                     texture_id.as_deref().unwrap_or("none"),
                     chunk.vertex_count,
                 ),
@@ -444,42 +392,8 @@ impl CubeTextPreviewRenderer {
             let mut meshes = self.app.world_mut().resource_mut::<Assets<Mesh>>();
             let mesh_handle = meshes.add(mesh);
             drop(meshes);
-            let mut materials = self
-                .app
-                .world_mut()
-                .resource_mut::<Assets<StandardMaterial>>();
             let is_outline_slot = slot == 6;
-            let alpha_mode = AlphaMode::Opaque;
-            let material_handle = materials.add(StandardMaterial {
-                base_color: if texture.is_some() {
-                    Color::WHITE
-                } else {
-                    color
-                },
-                base_color_texture: texture,
-                perceptual_roughness: if slot == 6 { 0.92 } else { 0.68 },
-                metallic: 0.0,
-                reflectance: if slot == 6 { 0.04 } else { 0.18 },
-                unlit: true,
-                fog_enabled: false,
-                // Main glyph triangles can have mixed winding for complex contours.
-                // Keep them double-sided to avoid random missing blocks.
-                double_sided: !is_outline_slot,
-                // Outline should render as back-side shell (like reference renderer).
-                cull_mode: if is_outline_slot {
-                    Some(Face::Front)
-                } else {
-                    None
-                },
-                // Keep outline in opaque pass and apply depth bias to reduce shimmering
-                // when camera rotates near coplanar regions.
-                depth_bias: if is_outline_slot { 2.0 } else { 0.0 },
-                alpha_mode,
-                opaque_render_method: OpaqueRendererMethod::Forward,
-                ..default()
-            });
             let material_id = material_handle.id();
-            drop(materials);
             debug::log(
                 LogLevel::Verbose,
                 format_args!(
@@ -508,6 +422,14 @@ impl CubeTextPreviewRenderer {
         self.scene_key = Some(key);
         self.scene_just_rebuilt = true;
         self.render_debug_logged = false;
+    }
+
+    fn despawn_pending_mesh_entities(&mut self) {
+        for entity in self.pending_despawn_mesh_entities.drain(..) {
+            if let Ok(entity_commands) = self.app.world_mut().get_entity_mut(entity) {
+                entity_commands.despawn();
+            }
+        }
     }
 
     fn update_camera(
@@ -736,6 +658,11 @@ impl SceneKey {
             uvs_len: scene.uvs.len(),
             indices_len: scene.indices.len(),
             material_indices_len: scene.material_indices.len(),
+            positions_hash: hash_f32_values(&scene.positions),
+            normals_hash: hash_f32_values(&scene.normals),
+            uvs_hash: hash_f32_values(&scene.uvs),
+            indices_hash: hash_u32_values(&scene.indices),
+            material_indices_hash: hash_i32_values(&scene.material_indices),
             materials_hash: hash_materials(&scene.materials),
             images_hash: hash_images(&scene.images),
         }
@@ -876,12 +803,113 @@ fn material_color(material: &CubeTextPreviewMaterial) -> Color {
     Color::srgba(r, g, b, a)
 }
 
+fn material_handle_key(
+    material: &CubeTextPreviewMaterial,
+    scene: &CubeTextPreviewScene,
+    slot: u32,
+) -> u64 {
+    let mut hash = hash_mix(0xcbf2_9ce4_8422_2325u64, material_hash_value(material));
+    hash = hash_mix(hash, slot as u64);
+    if let Some(texture_key) = material_texture_key(material, scene) {
+        hash = hash_mix(hash, texture_key);
+    }
+    hash
+}
+
+fn material_texture_key(
+    material: &CubeTextPreviewMaterial,
+    scene: &CubeTextPreviewScene,
+) -> Option<u64> {
+    match material.mode {
+        CubeTextPreviewMaterialMode::Gradient => {
+            let mut hash = hash_mix(0xcbf2_9ce4_8422_2325u64, 1);
+            hash = hash_mix(hash, material.gradient_start as u64);
+            hash = hash_mix(hash, material.gradient_end as u64);
+            Some(hash)
+        }
+        CubeTextPreviewMaterialMode::Image => {
+            if material.image_index < 0 {
+                None
+            } else {
+                scene
+                    .images
+                    .get(material.image_index as usize)
+                    .map(|image| {
+                        let mut hash = hash_mix(0xcbf2_9ce4_8422_2325u64, 2);
+                        hash = hash_mix(hash, hash_preview_image(image));
+                        hash
+                    })
+            }
+        }
+        CubeTextPreviewMaterialMode::Color => None,
+    }
+}
+
 impl CubeTextPreviewRenderer {
+    fn cached_material_handle(
+        &mut self,
+        material_index: u32,
+        material: &CubeTextPreviewMaterial,
+        scene: &CubeTextPreviewScene,
+    ) -> Handle<StandardMaterial> {
+        let slot = material_index % 7;
+        let key = material_handle_key(material, scene, slot);
+        if let Some(handle) = self.material_handle_cache.get(&key).cloned() {
+            return handle;
+        }
+
+        let texture = self.material_texture(material, scene);
+        let color = material_color(material);
+        let is_outline_slot = slot == 6;
+        let material_handle = self
+            .app
+            .world_mut()
+            .resource_mut::<Assets<StandardMaterial>>()
+            .add(StandardMaterial {
+                base_color: if texture.is_some() {
+                    Color::WHITE
+                } else {
+                    color
+                },
+                base_color_texture: texture,
+                perceptual_roughness: if is_outline_slot { 0.92 } else { 0.68 },
+                metallic: 0.0,
+                reflectance: if is_outline_slot { 0.04 } else { 0.18 },
+                unlit: true,
+                fog_enabled: false,
+                // Main glyph triangles can have mixed winding for complex contours.
+                // Keep them double-sided to avoid random missing blocks.
+                double_sided: !is_outline_slot,
+                // Outline should render as back-side shell (like reference renderer).
+                cull_mode: if is_outline_slot {
+                    Some(Face::Front)
+                } else {
+                    None
+                },
+                // Keep outline in opaque pass and apply depth bias to reduce shimmering
+                // when camera rotates near coplanar regions.
+                depth_bias: if is_outline_slot { 2.0 } else { 0.0 },
+                alpha_mode: AlphaMode::Opaque,
+                opaque_render_method: OpaqueRendererMethod::Forward,
+                ..default()
+            });
+        self.material_handle_cache
+            .insert(key, material_handle.clone());
+        material_handle
+    }
+
     fn material_texture(
         &mut self,
         material: &CubeTextPreviewMaterial,
         scene: &CubeTextPreviewScene,
     ) -> Option<Handle<Image>> {
+        let texture_key = material_texture_key(material, scene);
+        if let Some(key) = texture_key {
+            if let Some(handle) = self.texture_handle_cache.get(&key).cloned() {
+                return Some(handle);
+            }
+        }
+
         let image = match material.mode {
             CubeTextPreviewMaterialMode::Gradient => Some(gradient_image(
                 material.gradient_start,
@@ -917,7 +945,11 @@ impl CubeTextPreviewRenderer {
             CubeTextPreviewMaterialMode::Color => None,
         }?;
         let mut images = self.app.world_mut().resource_mut::<Assets<Image>>();
-        Some(images.add(image))
+        let handle = images.add(image);
+        if let Some(key) = texture_key {
+            self.texture_handle_cache.insert(key, handle.clone());
+        }
+        Some(handle)
     }
 }
 
@@ -1026,85 +1058,6 @@ fn lerp_rgba(start: u32, end: u32, t: f32) -> u32 {
     (r << 24) | (g << 16) | (b << 8) | a
 }
 
-fn create_checkerboard_pipeline(
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("misa-rin cube text checkerboard shader"),
-        source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(
-            r#"
-struct VertexOut {
-    @builtin(position) position: vec4<f32>,
-    @location(0) uv: vec2<f32>,
-};
-
-@vertex
-fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOut {
-    var positions = array<vec2<f32>, 3>(
-        vec2<f32>(-1.0, -3.0),
-        vec2<f32>(-1.0, 1.0),
-        vec2<f32>(3.0, 1.0)
-    );
-    var out: VertexOut;
-    let position = positions[vertex_index];
-    out.position = vec4<f32>(position, 0.0, 1.0);
-    out.uv = position * 0.5 + vec2<f32>(0.5, 0.5);
-    return out;
-}
-
-@fragment
-fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    let cell = floor(in.position.xy / vec2<f32>(14.0, 14.0));
-    let odd = (u32(cell.x) + u32(cell.y)) & 1u;
-    let light = vec3<f32>(0.88, 0.91, 0.95);
-    let dark = vec3<f32>(0.72, 0.77, 0.84);
-    let color = select(light, dark, odd == 1u);
-    return vec4<f32>(color, 1.0);
-}
-"#,
-        )),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("misa-rin cube text checkerboard pipeline layout"),
-        bind_group_layouts: &[],
-        push_constant_ranges: &[],
-    });
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        cache: None,
-        label: Some("misa-rin cube text checkerboard pipeline"),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: Some("vs_main"),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: Some("fs_main"),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
-            unclipped_depth: false,
-            polygon_mode: wgpu::PolygonMode::Fill,
-            conservative: false,
-        },
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        multiview: None,
-    })
-}
-
 impl Bounds3 {
     fn from_positions(positions: &[f32]) -> Self {
         if positions.len() < 3 {
@@ -1137,30 +1090,64 @@ impl Bounds3 {
 fn hash_materials(values: &[CubeTextPreviewMaterial]) -> u64 {
     let mut hash = 0xcbf2_9ce4_8422_2325u64;
     for value in values {
-        hash = hash_mix(hash, value.mode as u64);
-        hash = hash_mix(hash, value.color as u64);
-        hash = hash_mix(hash, value.gradient_start as u64);
-        hash = hash_mix(hash, value.gradient_end as u64);
-        hash = hash_mix(hash, value.repeat.to_bits() as u64);
-        hash = hash_mix(hash, value.offset.to_bits() as u64);
-        hash = hash_mix(hash, value.image_index as u64);
-        hash = hash_mix(hash, value.repeat_x.to_bits() as u64);
-        hash = hash_mix(hash, value.repeat_y.to_bits() as u64);
-        hash = hash_mix(hash, value.offset_x.to_bits() as u64);
-        hash = hash_mix(hash, value.offset_y.to_bits() as u64);
+        hash = hash_mix(hash, material_hash_value(value));
     }
+    hash
+}
+
+fn material_hash_value(value: &CubeTextPreviewMaterial) -> u64 {
+    let mut hash = hash_mix(0xcbf2_9ce4_8422_2325u64, value.mode as u64);
+    hash = hash_mix(hash, value.color as u64);
+    hash = hash_mix(hash, value.gradient_start as u64);
+    hash = hash_mix(hash, value.gradient_end as u64);
+    hash = hash_mix(hash, value.repeat.to_bits() as u64);
+    hash = hash_mix(hash, value.offset.to_bits() as u64);
+    hash = hash_mix(hash, value.image_index as u32 as u64);
+    hash = hash_mix(hash, value.repeat_x.to_bits() as u64);
+    hash = hash_mix(hash, value.repeat_y.to_bits() as u64);
+    hash = hash_mix(hash, value.offset_x.to_bits() as u64);
+    hash = hash_mix(hash, value.offset_y.to_bits() as u64);
     hash
 }
 
 fn hash_images(values: &[CubeTextPreviewImage]) -> u64 {
     let mut hash = 0xcbf2_9ce4_8422_2325u64;
     for value in values {
-        hash = hash_mix(hash, value.width as u64);
-        hash = hash_mix(hash, value.height as u64);
-        for byte in &value.rgba {
-            hash ^= *byte as u64;
-            hash = hash.wrapping_mul(0x1000_0000_01b3);
-        }
+        hash = hash_mix(hash, hash_preview_image(value));
+    }
+    hash
+}
+
+fn hash_preview_image(value: &CubeTextPreviewImage) -> u64 {
+    let mut hash = hash_mix(0xcbf2_9ce4_8422_2325u64, value.width as u64);
+    hash = hash_mix(hash, value.height as u64);
+    for byte in &value.rgba {
+        hash ^= *byte as u64;
+        hash = hash.wrapping_mul(0x1000_0000_01b3);
+    }
+    hash
+}
+
+fn hash_f32_values(values: &[f32]) -> u64 {
+    let mut hash = hash_mix(0xcbf2_9ce4_8422_2325u64, values.len() as u64);
+    for value in values {
+        hash = hash_mix(hash, value.to_bits() as u64);
+    }
+    hash
+}
+
+fn hash_u32_values(values: &[u32]) -> u64 {
+    let mut hash = hash_mix(0xcbf2_9ce4_8422_2325u64, values.len() as u64);
+    for value in values {
+        hash = hash_mix(hash, *value as u64);
+    }
+    hash
+}
+
+fn hash_i32_values(values: &[i32]) -> u64 {
+    let mut hash = hash_mix(0xcbf2_9ce4_8422_2325u64, values.len() as u64);
+    for value in values {
+        hash = hash_mix(hash, *value as u32 as u64);
     }
     hash
 }
@@ -1277,5 +1264,58 @@ fn finite_or(value: f32, fallback: f32) -> f32 {
         value
     } else {
         fallback
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scene_with_positions(positions: Vec<f32>) -> CubeTextPreviewScene {
+        CubeTextPreviewScene {
+            positions,
+            normals: vec![0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0],
+            uvs: vec![0.0, 0.0, 1.0, 0.0, 0.0, 1.0],
+            indices: vec![0, 1, 2],
+            material_indices: vec![0],
+            materials: vec![CubeTextPreviewMaterial::default()],
+            images: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn scene_key_changes_when_geometry_values_change() {
+        let base = scene_with_positions(vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0]);
+        let moved = scene_with_positions(vec![2.0, 0.0, 0.0, 3.0, 0.0, 0.0, 2.0, 1.0, 0.0]);
+
+        assert_eq!(base.positions.len(), moved.positions.len());
+        assert_eq!(base.indices.len(), moved.indices.len());
+        assert_ne!(SceneKey::from_scene(&base), SceneKey::from_scene(&moved));
+    }
+
+    #[test]
+    fn material_handle_key_changes_when_image_content_changes() {
+        let material = CubeTextPreviewMaterial {
+            mode: CubeTextPreviewMaterialMode::Image,
+            image_index: 0,
+            ..Default::default()
+        };
+        let mut base = scene_with_positions(vec![0.0, 0.0, 0.0]);
+        base.images = vec![CubeTextPreviewImage {
+            width: 1,
+            height: 1,
+            rgba: vec![255, 0, 0, 255],
+        }];
+        let mut changed = scene_with_positions(vec![0.0, 0.0, 0.0]);
+        changed.images = vec![CubeTextPreviewImage {
+            width: 1,
+            height: 1,
+            rgba: vec![0, 0, 255, 255],
+        }];
+
+        assert_ne!(
+            material_handle_key(&material, &base, 0),
+            material_handle_key(&material, &changed, 0)
+        );
     }
 }

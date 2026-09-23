@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:misa_rin/app/widgets/app_slider.dart';
 import 'package:misa_rin/mobile/responsive_dialog.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -441,7 +442,7 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Slider(
+                  AppSlider(
                     value: _historyLimit.toDouble(),
                     min: minHistory.toDouble(),
                     max: maxHistory.toDouble(),
@@ -477,7 +478,7 @@ class _SettingsDialogContentState extends State<_SettingsDialogContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Slider(
+                  AppSlider(
                     value: _autoSaveCleanupThresholdMb
                         .clamp(minAutoSave, maxAutoSave)
                         .toDouble(),
@@ -825,7 +826,7 @@ class _StylusSliderTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final FluentThemeData theme = FluentTheme.of(context);
     final double clampedValue = value.clamp(min, max);
-    final Widget slider = Slider(
+    final Widget slider = AppSlider(
       value: clampedValue,
       min: min,
       max: max,

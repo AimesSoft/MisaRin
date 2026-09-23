@@ -150,7 +150,7 @@ class _BinarizeControls extends StatelessWidget {
             Text(clamped.toStringAsFixed(0), style: theme.typography.caption),
           ],
         ),
-        Slider(
+        AppSlider(
           min: 0,
           max: 255,
           divisions: 255,
@@ -284,7 +284,7 @@ class _GaussianBlurControls extends StatelessWidget {
             ),
           ],
         ),
-        Slider(
+        AppSlider(
           min: 0,
           max: sliderDivisions.toDouble(),
           divisions: sliderDivisions,
@@ -329,7 +329,7 @@ class _LeakRemovalControls extends StatelessWidget {
             Text('$rounded px', style: theme.typography.caption),
           ],
         ),
-        Slider(
+        AppSlider(
           min: 0,
           max: _kLeakRemovalMaxRadius,
           divisions: divisions,
@@ -378,7 +378,7 @@ class _MorphologyControls extends StatelessWidget {
             ),
           ],
         ),
-        Slider(
+        AppSlider(
           min: 0,
           max: maxRadius,
           divisions: divisions,
@@ -420,7 +420,7 @@ class _AntialiasPanelBody extends StatelessWidget {
           style: theme.typography.caption,
         ),
         const SizedBox(height: 12),
-        Slider(
+        AppSlider(
           value: safeLevel.toDouble(),
           min: 0,
           max: maxLevel.toDouble(),
@@ -502,7 +502,7 @@ class _ColorRangeCardBody extends StatelessWidget {
               ),
           ],
         ),
-        Slider(
+        AppSlider(
           min: 1,
           max: maxColors.toDouble(),
           value: clampedSelection.toDouble(),
@@ -553,7 +553,7 @@ class _FilterSlider extends StatelessWidget {
               Text(value.toStringAsFixed(0), style: theme.typography.caption),
             ],
           ),
-          Slider(
+          AppSlider(
             min: min,
             max: max,
             value: value.clamp(min, max),

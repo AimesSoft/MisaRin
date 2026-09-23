@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:misa_rin/app/widgets/app_slider.dart';
 import 'package:flutter/services.dart';
 
 import '../../canvas/canvas_settings.dart';
@@ -188,7 +189,7 @@ Future<CanvasExportOptions?> showCanvasExportDialog({
                 if (!webpLossless) ...[
                   const SizedBox(height: 12),
                   Text(l10n.webpQualityLabel(webpQuality)),
-                  Slider(
+                  AppSlider(
                     min: 1,
                     max: 100,
                     divisions: 99,
@@ -303,7 +304,7 @@ Future<CanvasExportOptions?> showCanvasExportDialog({
               ),
               if (antialiasEnabled) ...[
                 const SizedBox(height: 12),
-                Slider(
+                AppSlider(
                   min: 0,
                   max: 9,
                   divisions: 9,
@@ -328,7 +329,7 @@ Future<CanvasExportOptions?> showCanvasExportDialog({
                   settings.width.round(), settings.height.round())),
               const SizedBox(height: 12),
               Text(l10n.vectorMaxColors(vectorMaxColors)),
-              Slider(
+              AppSlider(
                 min: 2,
                 max: 16,
                 divisions: 14,
@@ -342,7 +343,7 @@ Future<CanvasExportOptions?> showCanvasExportDialog({
               ),
               const SizedBox(height: 8),
               Text(l10n.vectorSimplify(vectorSimplifyEpsilon.toStringAsFixed(2))),
-              Slider(
+              AppSlider(
                 min: 0.5,
                 max: 4.0,
                 divisions: 14,

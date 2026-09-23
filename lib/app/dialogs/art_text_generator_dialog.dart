@@ -6,6 +6,8 @@ import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import '../widgets/app_color_picker.dart';
+import '../widgets/app_slider.dart';
 import 'package:flutter/gestures.dart' show PointerScrollEvent;
 import 'package:flutter/services.dart' show MethodChannel, rootBundle;
 import 'package:misa_rin/utils/io_shim.dart';
@@ -1267,17 +1269,12 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           title: Text(_l10n.artTextPickFaceColorTitle(_faceLabel(face))),
           content: SizedBox(
             width: 320,
-            child: ColorPicker(
+            child: AppColorPicker(
               color: selected,
               onChanged: (Color color) {
                 selected = color;
               },
-              isAlphaEnabled: false,
-              isAlphaSliderVisible: false,
-              isAlphaTextInputVisible: false,
-              isColorChannelTextInputVisible: false,
               isHexInputVisible: true,
-              isMoreButtonVisible: false,
             ),
           ),
           actions: <Widget>[
@@ -1499,7 +1496,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
             label: _fov == 0
                 ? _l10n.artTextOrthographic
                 : _l10n.artTextPerspectiveAngle(_fov.round()),
-            child: Slider(
+            child: AppSlider(
               min: 0,
               max: 120,
               divisions: 120,
@@ -1514,7 +1511,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
           width: 180,
           child: InfoLabel(
             label: _l10n.artTextZoomLabel(_zoom.toStringAsFixed(2)),
-            child: Slider(
+            child: AppSlider(
               min: 0.25,
               max: 4,
               value: _zoom,
@@ -2245,7 +2242,7 @@ class _ArtTextGeneratorDialogState extends State<_ArtTextGeneratorDialog> {
         child: Row(
           children: <Widget>[
             Expanded(
-              child: Slider(
+              child: AppSlider(
                 min: min,
                 max: max,
                 divisions: divisions > 1000 ? null : divisions,

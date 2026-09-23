@@ -1312,7 +1312,7 @@ extension _ReferenceModelCardStateBakeDialog on _ReferenceModelCardState {
                               Text(context.l10n.brightness),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Slider(
+                                child: AppSlider(
                                   value: renderBrightness.clamp(0.5, 2.0),
                                   min: 0.5,
                                   max: 2.0,
@@ -1344,7 +1344,7 @@ extension _ReferenceModelCardStateBakeDialog on _ReferenceModelCardState {
                               Text(context.l10n.contrast),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Slider(
+                                child: AppSlider(
                                   value: renderContrast.clamp(0.0, 2.0),
                                   min: 0.0,
                                   max: 2.0,
@@ -1376,7 +1376,7 @@ extension _ReferenceModelCardStateBakeDialog on _ReferenceModelCardState {
                               const Text('时间'),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Slider(
+                                child: AppSlider(
                                   value: timeHours.clamp(0, 24),
                                   min: 0,
                                   max: 24,
