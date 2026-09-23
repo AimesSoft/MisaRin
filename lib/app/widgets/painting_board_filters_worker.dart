@@ -21,9 +21,6 @@ Uint8List? _tryApplyRustCpuFilter({
   double param2 = 0,
   double param3 = 0,
 }) {
-  if (kIsWeb) {
-    return null;
-  }
   final RustCpuFiltersFfi rust = RustCpuFiltersFfi.instance;
   if (!rust.supportsRgbaFilters) {
     return null;
@@ -78,10 +75,6 @@ class _FilterPreviewWorker {
   bool _disposed = false;
 
   Future<void> _start(CanvasLayerData layer) async {
-    if (kIsWeb) {
-      _initializeSynchronousLayer(layer);
-      return;
-    }
     final TransferableTypedData? bitmapData = layer.bitmap != null
         ? TransferableTypedData.fromList(<Uint8List>[layer.bitmap!])
         : null;

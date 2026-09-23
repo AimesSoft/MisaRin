@@ -6,106 +6,61 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-CpuTransformTranslateResult cpuTransformTranslateLayer({
-  required List<int> canvas,
-  required int canvasWidth,
-  required int canvasHeight,
-  required List<int> snapshot,
-  required int snapshotWidth,
-  required int snapshotHeight,
-  required int originX,
-  required int originY,
-  required int dx,
-  required int dy,
-  required BigInt overflowCapacity,
-}) => RustLib.instance.api.crateApiCpuTransformCpuTransformTranslateLayer(
-  canvas: canvas,
-  canvasWidth: canvasWidth,
-  canvasHeight: canvasHeight,
-  snapshot: snapshot,
-  snapshotWidth: snapshotWidth,
-  snapshotHeight: snapshotHeight,
-  originX: originX,
-  originY: originY,
-  dx: dx,
-  dy: dy,
-  overflowCapacity: overflowCapacity,
-);
 
-CpuTransformSnapshotResult cpuTransformBuildOverflowSnapshot({
-  required List<int> canvas,
-  required int canvasWidth,
-  required int canvasHeight,
-  required int snapshotWidth,
-  required int snapshotHeight,
-  required int originX,
-  required int originY,
-  required List<int> overflowX,
-  required List<int> overflowY,
-  required List<int> overflowColor,
-}) =>
-    RustLib.instance.api.crateApiCpuTransformCpuTransformBuildOverflowSnapshot(
-      canvas: canvas,
-      canvasWidth: canvasWidth,
-      canvasHeight: canvasHeight,
-      snapshotWidth: snapshotWidth,
-      snapshotHeight: snapshotHeight,
-      originX: originX,
-      originY: originY,
-      overflowX: overflowX,
-      overflowY: overflowY,
-      overflowColor: overflowColor,
-    );
+            
 
-class CpuTransformSnapshotResult {
-  final bool ok;
-  final Uint32List snapshot;
+            CpuTransformTranslateResult  cpuTransformTranslateLayer({required List<int> canvas , required int canvasWidth , required int canvasHeight , required List<int> snapshot , required int snapshotWidth , required int snapshotHeight , required int originX , required int originY , required int dx , required int dy , required BigInt overflowCapacity }) => RustLib.instance.api.crateApiCpuTransformCpuTransformTranslateLayer(canvas: canvas, canvasWidth: canvasWidth, canvasHeight: canvasHeight, snapshot: snapshot, snapshotWidth: snapshotWidth, snapshotHeight: snapshotHeight, originX: originX, originY: originY, dx: dx, dy: dy, overflowCapacity: overflowCapacity);
 
-  const CpuTransformSnapshotResult({required this.ok, required this.snapshot});
+CpuTransformSnapshotResult  cpuTransformBuildOverflowSnapshot({required List<int> canvas , required int canvasWidth , required int canvasHeight , required int snapshotWidth , required int snapshotHeight , required int originX , required int originY , required List<int> overflowX , required List<int> overflowY , required List<int> overflowColor }) => RustLib.instance.api.crateApiCpuTransformCpuTransformBuildOverflowSnapshot(canvas: canvas, canvasWidth: canvasWidth, canvasHeight: canvasHeight, snapshotWidth: snapshotWidth, snapshotHeight: snapshotHeight, originX: originX, originY: originY, overflowX: overflowX, overflowY: overflowY, overflowColor: overflowColor);
 
-  @override
-  int get hashCode => ok.hashCode ^ snapshot.hashCode;
+            class CpuTransformSnapshotResult  {
+                final bool ok;
+final Uint32List snapshot;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CpuTransformSnapshotResult &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          snapshot == other.snapshot;
-}
+                const CpuTransformSnapshotResult({required this.ok ,required this.snapshot ,});
 
-class CpuTransformTranslateResult {
-  final bool ok;
-  final Uint32List canvas;
-  final Int32List overflowX;
-  final Int32List overflowY;
-  final Uint32List overflowColor;
+                
+                
 
-  const CpuTransformTranslateResult({
-    required this.ok,
-    required this.canvas,
-    required this.overflowX,
-    required this.overflowY,
-    required this.overflowColor,
-  });
+                
+        @override
+        int get hashCode => ok.hashCode^snapshot.hashCode;
+        
 
-  @override
-  int get hashCode =>
-      ok.hashCode ^
-      canvas.hashCode ^
-      overflowX.hashCode ^
-      overflowY.hashCode ^
-      overflowColor.hashCode;
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CpuTransformSnapshotResult &&
+                runtimeType == other.runtimeType
+                && ok == other.ok&& snapshot == other.snapshot;
+        
+            }
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CpuTransformTranslateResult &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          canvas == other.canvas &&
-          overflowX == other.overflowX &&
-          overflowY == other.overflowY &&
-          overflowColor == other.overflowColor;
-}
+class CpuTransformTranslateResult  {
+                final bool ok;
+final Uint32List canvas;
+final Int32List overflowX;
+final Int32List overflowY;
+final Uint32List overflowColor;
+
+                const CpuTransformTranslateResult({required this.ok ,required this.canvas ,required this.overflowX ,required this.overflowY ,required this.overflowColor ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => ok.hashCode^canvas.hashCode^overflowX.hashCode^overflowY.hashCode^overflowColor.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CpuTransformTranslateResult &&
+                runtimeType == other.runtimeType
+                && ok == other.ok&& canvas == other.canvas&& overflowX == other.overflowX&& overflowY == other.overflowY&& overflowColor == other.overflowColor;
+        
+            }
+            

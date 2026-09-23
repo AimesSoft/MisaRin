@@ -468,14 +468,13 @@ mixin _PaintingBoardReferenceModelMixin on _PaintingBoardBase {
         dialogTitle: '导入模型',
         type: FileType.custom,
         allowedExtensions: const ['json'],
-        withData: kIsWeb,
       );
       final PlatformFile? file = result?.files.singleOrNull;
       if (!mounted || file == null) {
         return;
       }
       final Uint8List? bytes = file.bytes;
-      final String? path = kIsWeb ? null : file.path;
+      final String? path = file.path;
       Uint8List? jsonBytes = bytes;
       if (jsonBytes == null && path != null) {
         jsonBytes = await File(path).readAsBytes();
@@ -612,7 +611,7 @@ mixin _PaintingBoardReferenceModelMixin on _PaintingBoardBase {
         'Not a Bedrock geometry / client entity file',
       );
     }
-    if (sourcePath == null || sourcePath.isEmpty || kIsWeb) {
+    if (sourcePath == null || sourcePath.isEmpty) {
       throw const FormatException(
         'Client entity JSON needs a file path to resolve geometry',
       );

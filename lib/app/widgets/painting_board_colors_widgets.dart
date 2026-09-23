@@ -628,17 +628,11 @@ class _FluentColorPickerHost extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        ColorPicker(
+        AppColorPicker(
           color: color,
           onChanged: onChanged,
           colorSpectrumShape: spectrumShape,
-          isMoreButtonVisible: false,
-          isColorChannelTextInputVisible: false,
           isHexInputVisible: false,
-          isColorSliderVisible: true,
-          isAlphaEnabled: false,
-          isAlphaSliderVisible: false,
-          isAlphaTextInputVisible: false,
         ),
         const SizedBox(height: 16),
         _ColorHexPreview(color: color, onColorChanged: onChanged),
@@ -780,7 +774,7 @@ class _ColorSliderEditor extends StatelessWidget {
               Text(resolvedDisplay, style: theme.typography.caption),
             ],
           ),
-          Slider(
+          AppSlider(
             min: min,
             max: max,
             divisions: divisions,

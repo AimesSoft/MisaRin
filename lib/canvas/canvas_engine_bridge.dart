@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
-
 import '../src/rust/api/selection_path.dart' as rust_selection_path;
 import '../src/rust/canvas_engine_ffi.dart' as rust_wgpu_engine;
 import 'canvas_backend.dart';
@@ -684,14 +682,11 @@ class CanvasBackendFacade {
   static Timer? _logPump;
 
   void _configureRustLogs() {
-    if (kIsWeb) {
-      return;
-    }
     _ffi.setLogLevel(_kRustLogLevel.clamp(0, 3));
   }
 
   void _ensureLogPump() {
-    if (_logPump != null || kIsWeb || !_kDebugRustLogs) {
+    if (_logPump != null || !_kDebugRustLogs) {
       return;
     }
     _logPump = Timer.periodic(const Duration(milliseconds: 50), (_) {

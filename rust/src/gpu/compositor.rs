@@ -72,7 +72,7 @@ impl GpuCompositor {
         } else {
             wgpu::InstanceFlags::default()
         };
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends,
             flags: instance_flags,
             ..Default::default()
@@ -87,7 +87,7 @@ impl GpuCompositor {
                 compatible_surface: None,
                 force_fallback_adapter: false,
             }))
-            .ok_or_else(|| "wgpu: no compatible GPU adapter found".to_string())?
+            .map_err(|_| "wgpu: no compatible GPU adapter found".to_string())?
         };
 
         if debug::level() >= LogLevel::Info {
@@ -115,8 +115,10 @@ impl GpuCompositor {
                 label: Some("misa-rin GpuCompositor device"),
                 required_features: wgpu::Features::empty(),
                 required_limits,
+                experimental_features: unsafe { wgpu::ExperimentalFeatures::enabled() },
+                memory_hints: wgpu::MemoryHints::Performance,
+                trace: wgpu::Trace::Off,
             },
-            None,
         ))
         .map_err(|e| format!("wgpu: request_device failed: {e:?}"))?;
 
@@ -171,10 +173,12 @@ impl GpuCompositor {
         });
 
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             label: Some("GpuCompositor compute pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "composite_main",
+            entry_point: Some("composite_main"),
         });
 
         let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -399,7 +403,7 @@ impl GpuCompositor {
             let _ = tx.send(res);
         });
 
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device.poll(wgpu::PollType::wait_indefinitely());
 
         let map_status: Result<(), String> = match rx.recv() {
             Ok(Ok(())) => Ok(()),
@@ -582,7 +586,7 @@ impl GpuCompositor {
                     let _ = tx.send(res);
                 });
 
-                self.device.poll(wgpu::Maintain::Wait);
+                self.device.poll(wgpu::PollType::wait_indefinitely());
 
                 let map_status: Result<(), String> = match rx.recv() {
                     Ok(Ok(())) => Ok(()),

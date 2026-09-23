@@ -19,51 +19,6 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
-		<key>battery_plus-battery_plus_privacy.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>battery_plus.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>desktop_drop.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>device_info_plus-device_info_plus_privacy.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>device_info_plus.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>file_selector_macos-file_selector_macos_privacy.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>file_selector_macos.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>package_info_plus-package_info_plus_privacy.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>package_info_plus.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
 		<key>pasteboard.xcscheme</key>
 		<dict>
 			<key>isShown</key>
@@ -75,16 +30,6 @@
 			<false/>
 		</dict>
 		<key>screen_retriever.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>shared_preferences_foundation-shared_preferences_foundation_privacy.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>shared_preferences_foundation.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>

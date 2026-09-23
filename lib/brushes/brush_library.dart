@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:misa_rin/utils/io_shim.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app/preferences/app_preferences.dart';
 import '../canvas/canvas_tools.dart';
@@ -154,32 +153,30 @@ class BrushLibrary extends ChangeNotifier {
 
     // Load user brush packages.
     final List<_UserBrushEntry> userPresets = <_UserBrushEntry>[];
-    if (!kIsWeb) {
-      final Directory directory = await _brushDirectory();
-      await directory.create(recursive: true);
-      final List<FileSystemEntity> files = await directory.list().toList();
-      for (final FileSystemEntity entity in files) {
-        if (entity is! File) {
-          continue;
-        }
-        if (!entity.path.toLowerCase().endsWith('.$brushFileExtension')) {
-          continue;
-        }
-        final Uint8List bytes = await entity.readAsBytes();
-        final BrushPackageData? package = BrushPackageCodec.decode(bytes);
-        if (package == null) {
-          continue;
-        }
-        final BrushPreset preset = package.preset.sanitized();
-        await _ensureShapeForPackage(shapeLibrary, preset, package);
-        userPresets.add(
-          _UserBrushEntry(
-            preset: preset,
-            path: entity.path,
-            localizations: package.localizations,
-          ),
-        );
+    final Directory directory = await _brushDirectory();
+    await directory.create(recursive: true);
+    final List<FileSystemEntity> files = await directory.list().toList();
+    for (final FileSystemEntity entity in files) {
+      if (entity is! File) {
+        continue;
       }
+      if (!entity.path.toLowerCase().endsWith('.$brushFileExtension')) {
+        continue;
+      }
+      final Uint8List bytes = await entity.readAsBytes();
+      final BrushPackageData? package = BrushPackageCodec.decode(bytes);
+      if (package == null) {
+        continue;
+      }
+      final BrushPreset preset = package.preset.sanitized();
+      await _ensureShapeForPackage(shapeLibrary, preset, package);
+      userPresets.add(
+        _UserBrushEntry(
+          preset: preset,
+          path: entity.path,
+          localizations: package.localizations,
+        ),
+      );
     }
 
     userPresets.sort((a, b) => a.preset.name.compareTo(b.preset.name));
@@ -387,20 +384,15 @@ class BrushLibrary extends ChangeNotifier {
     }
     _sources.remove(id);
     _localizations.remove(id);
-    if (!kIsWeb) {
-      final File file = File(source.path);
-      if (await file.exists()) {
-        await file.delete();
-      }
+    final File file = File(source.path);
+    if (await file.exists()) {
+      await file.delete();
     }
     notifyListeners();
     await save();
   }
 
   Future<BrushPreset?> importBrushBytes(Uint8List bytes) async {
-    if (kIsWeb) {
-      return null;
-    }
     final BrushPackageData? package = BrushPackageCodec.decode(bytes);
     if (package == null) {
       return null;
@@ -431,9 +423,6 @@ class BrushLibrary extends ChangeNotifier {
   }
 
   Future<BrushPreset?> importBrushFile(String path) async {
-    if (kIsWeb) {
-      return null;
-    }
     final File file = File(path);
     if (!await file.exists()) {
       return null;
@@ -555,19 +544,6 @@ class BrushLibrary extends ChangeNotifier {
   }
 
   static Future<Map<String, dynamic>?> _readPayload() async {
-    if (kIsWeb) {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String? encoded = prefs.getString(_storageKey);
-      if (encoded == null || encoded.isEmpty) {
-        return null;
-      }
-      try {
-        final Object? decoded = jsonDecode(encoded);
-        return decoded is Map<String, dynamic> ? decoded : null;
-      } catch (_) {
-        return null;
-      }
-    }
     final File file = await _libraryFile();
     if (!await file.exists()) {
       return null;
@@ -582,11 +558,6 @@ class BrushLibrary extends ChangeNotifier {
   }
 
   static Future<void> _writePayload(Map<String, dynamic> payload) async {
-    if (kIsWeb) {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_storageKey, jsonEncode(payload));
-      return;
-    }
     final File file = await _libraryFile();
     await file.create(recursive: true);
     await file.writeAsString(jsonEncode(payload), flush: true);
@@ -602,19 +573,6 @@ class BrushLibrary extends ChangeNotifier {
   }
 
   static Future<Map<String, dynamic>?> _readLegacyPayload() async {
-    if (kIsWeb) {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String? encoded = prefs.getString(_legacyStorageKey);
-      if (encoded == null || encoded.isEmpty) {
-        return null;
-      }
-      try {
-        final Object? decoded = jsonDecode(encoded);
-        return decoded is Map<String, dynamic> ? decoded : null;
-      } catch (_) {
-        return null;
-      }
-    }
     final File file = await _legacyLibraryFile();
     if (!await file.exists()) {
       return null;
@@ -747,9 +705,6 @@ class BrushLibrary extends ChangeNotifier {
     BrushPackageData? package,
     BrushLocalizationTable? localizations,
   }) async {
-    if (kIsWeb) {
-      return null;
-    }
     final Directory directory = await _brushDirectory();
     await directory.create(recursive: true);
     final String baseName = _sanitizeFileId(preset.id);

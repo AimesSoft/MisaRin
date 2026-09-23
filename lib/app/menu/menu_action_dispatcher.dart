@@ -50,6 +50,7 @@ class MenuActionHandler {
     this.paste,
     this.pasteEnabled,
     this.newLayer,
+    this.generateArtText,
     this.generatePalette,
     this.generateGradientPalette,
     this.importPalette,
@@ -135,6 +136,7 @@ class MenuActionHandler {
       paste = null,
       pasteEnabled = null,
       newLayer = null,
+      generateArtText = null,
       generatePalette = null,
       generateGradientPalette = null,
       importPalette = null,
@@ -218,6 +220,7 @@ class MenuActionHandler {
   final MenuAsyncAction? paste;
   final MenuActionEnabledResolver? pasteEnabled;
   final MenuAsyncAction? newLayer;
+  final MenuAsyncAction? generateArtText;
   final MenuAsyncAction? generatePalette;
   final MenuAsyncAction? generateGradientPalette;
   final MenuAsyncAction? importPalette;

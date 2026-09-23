@@ -6,66 +6,43 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `blend_argb`, `blend_channel`, `blend_color_burn`, `blend_color_dodge`, `blend_divide`, `blend_hard_light`, `blend_hard_mix`, `blend_overlay`, `blend_pin_light`, `blend_soft_light`, `blend_vivid_light`, `clamp01`, `clamp_unit_f64_to_f32`, `color_with_opacity`, `compositor_cell`, `cpu_composite_layers_impl`, `hsl_to_rgb`, `hue_to_rgb`, `mix_hash`, `overflow_key`, `pack_argb`, `pseudo_random`, `rgb_to_hsl`, `soft_light_lum`, `to_u8`, `unpack_a`, `unpack_b`, `unpack_g`, `unpack_r`
+
+            // These functions are ignored because they are not marked as `pub`: `blend_argb`, `blend_channel`, `blend_color_burn`, `blend_color_dodge`, `blend_divide`, `blend_hard_light`, `blend_hard_mix`, `blend_overlay`, `blend_pin_light`, `blend_soft_light`, `blend_vivid_light`, `clamp01`, `clamp_unit_f64_to_f32`, `color_with_opacity`, `compositor_cell`, `cpu_composite_layers_impl`, `hsl_to_rgb`, `hue_to_rgb`, `mix_hash`, `overflow_key`, `pack_argb`, `pseudo_random`, `rgb_to_hsl`, `soft_light_lum`, `to_u8`, `unpack_a`, `unpack_b`, `unpack_g`, `unpack_r`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `cpu_blend_on_canvas`, `cpu_blend_overflow`
 
-void gpuCompositorInit() =>
-    RustLib.instance.api.crateApiGpuCompositeGpuCompositorInit();
 
-Future<Uint32List> gpuCompositeLayers({
-  required List<GpuLayerData> layers,
-  required int width,
-  required int height,
-}) => RustLib.instance.api.crateApiGpuCompositeGpuCompositeLayers(
-  layers: layers,
-  width: width,
-  height: height,
-);
+            void  gpuCompositorInit() => RustLib.instance.api.crateApiGpuCompositeGpuCompositorInit();
 
-void gpuCompositorDispose() =>
-    RustLib.instance.api.crateApiGpuCompositeGpuCompositorDispose();
+Future<Uint32List>  gpuCompositeLayers({required List<GpuLayerData> layers , required int width , required int height }) => RustLib.instance.api.crateApiGpuCompositeGpuCompositeLayers(layers: layers, width: width, height: height);
 
-Future<Uint32List> cpuCompositeLayers({
-  required List<GpuLayerData> layers,
-  required int width,
-  required int height,
-}) => RustLib.instance.api.crateApiGpuCompositeCpuCompositeLayers(
-  layers: layers,
-  width: width,
-  height: height,
-);
+void  gpuCompositorDispose() => RustLib.instance.api.crateApiGpuCompositeGpuCompositorDispose();
 
-class GpuLayerData {
-  final Uint32List pixels;
-  final double opacity;
-  final int blendModeIndex;
-  final bool visible;
-  final bool clippingMask;
+Future<Uint32List>  cpuCompositeLayers({required List<GpuLayerData> layers , required int width , required int height }) => RustLib.instance.api.crateApiGpuCompositeCpuCompositeLayers(layers: layers, width: width, height: height);
 
-  const GpuLayerData({
-    required this.pixels,
-    required this.opacity,
-    required this.blendModeIndex,
-    required this.visible,
-    required this.clippingMask,
-  });
+            class GpuLayerData  {
+                final Uint32List pixels;
+final double opacity;
+final int blendModeIndex;
+final bool visible;
+final bool clippingMask;
 
-  @override
-  int get hashCode =>
-      pixels.hashCode ^
-      opacity.hashCode ^
-      blendModeIndex.hashCode ^
-      visible.hashCode ^
-      clippingMask.hashCode;
+                const GpuLayerData({required this.pixels ,required this.opacity ,required this.blendModeIndex ,required this.visible ,required this.clippingMask ,});
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is GpuLayerData &&
-          runtimeType == other.runtimeType &&
-          pixels == other.pixels &&
-          opacity == other.opacity &&
-          blendModeIndex == other.blendModeIndex &&
-          visible == other.visible &&
-          clippingMask == other.clippingMask;
-}
+                
+                
+
+                
+        @override
+        int get hashCode => pixels.hashCode^opacity.hashCode^blendModeIndex.hashCode^visible.hashCode^clippingMask.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is GpuLayerData &&
+                runtimeType == other.runtimeType
+                && pixels == other.pixels&& opacity == other.opacity&& blendModeIndex == other.blendModeIndex&& visible == other.visible&& clippingMask == other.clippingMask;
+        
+            }
+            

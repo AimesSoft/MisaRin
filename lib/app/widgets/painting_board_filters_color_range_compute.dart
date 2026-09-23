@@ -28,9 +28,6 @@ Future<_ColorRangeComputeResult> _generateColorRangeResult(
   int targetColors,
 ) async {
   final List<Object?> args = <Object?>[bitmap, fillColor?.value, targetColors];
-  if (kIsWeb) {
-    return _computeColorRangeReduction(args);
-  }
   try {
     return await compute(_computeColorRangeReduction, args);
   } on UnsupportedError catch (_) {
@@ -455,9 +452,6 @@ int _findNearestPaletteColor(int color, List<int> palette) {
 }
 
 Future<Uint8List> _generateHueSaturationPreviewBytes(List<Object?> args) async {
-  if (kIsWeb) {
-    return _computeHueSaturationPreviewPixels(args);
-  }
   try {
     return await compute<List<Object?>, Uint8List>(
       _computeHueSaturationPreviewPixels,
@@ -467,4 +461,3 @@ Future<Uint8List> _generateHueSaturationPreviewBytes(List<Object?> args) async {
     return _computeHueSaturationPreviewPixels(args);
   }
 }
-

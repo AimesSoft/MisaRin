@@ -89,14 +89,6 @@ class _BrushPresetStrokePreviewState extends State<BrushPresetStrokePreview> {
                   : FilterQuality.high,
             );
           }
-          if (kIsWeb) {
-            return CustomPaint(
-              painter: _BrushPresetStrokeFallbackPainter(
-                preset: widget.preset,
-                color: widget.color,
-              ),
-            );
-          }
           return const SizedBox();
         },
       ),
@@ -643,11 +635,7 @@ double _effectiveSpacing(double spacing) {
 }
 
 int _effectiveAntialias(int level) {
-  int aa = level.clamp(0, 9);
-  if (kIsWeb && aa > 1) {
-    aa = 1;
-  }
-  return aa;
+  return level.clamp(0, 9);
 }
 
 void _drawStrokeSegments({
@@ -1009,9 +997,6 @@ double _customStampRotation({
 double _strokeStampSpacing(double radius, double spacing) {
   double r = radius.isFinite ? radius.abs() : 0.0;
   double s = spacing.isFinite ? spacing : 0.15;
-  if (kIsWeb) {
-    s *= 2.0;
-  }
   s = s.clamp(0.02, 2.5);
   return math.max(r * 2.0 * s, 0.1);
 }
@@ -1203,8 +1188,7 @@ class _QueuedPreviewRequest {
 class _BrushPreviewWorker {
   _BrushPreviewWorker._()
     : _receivePort = ReceivePort(),
-      _pending = <int, Completer<_BrushPreviewWorkerResult?>>{},
-      _useMainThread = kIsWeb {
+      _pending = <int, Completer<_BrushPreviewWorkerResult?>>{} {
     _subscription = _receivePort.listen(
       _handleMessage,
       onError: (Object error, StackTrace stackTrace) {
@@ -1224,14 +1208,13 @@ class _BrushPreviewWorker {
   Isolate? _isolate;
   SendPort? _sendPort;
   int _nextRequestId = 0;
-  bool _useMainThread;
   bool _starting = false;
   Timer? _startTimeout;
 
   static const Duration _kStartTimeout = Duration(milliseconds: 2000);
 
   Future<void> _ensureStarted() async {
-    if (_useMainThread || _sendPort != null || _starting) {
+    if (_sendPort != null || _starting) {
       return;
     }
     _starting = true;
@@ -1260,9 +1243,6 @@ class _BrushPreviewWorker {
   }
 
   Future<_BrushPreviewWorkerResult?> request(_BrushPreviewRequest request) async {
-    if (_useMainThread) {
-      return null;
-    }
     _ensureStarted();
     final SendPort? port = _sendPort;
     final int id = _nextRequestId++;

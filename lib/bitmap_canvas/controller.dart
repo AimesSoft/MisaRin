@@ -126,9 +126,6 @@ class BitmapCanvasController extends ChangeNotifier
     if (maxDim >= 4096) {
       return _kTiledTileSizeMedium;
     }
-    if (kIsWeb) {
-      return _kTiledTileSizeMedium;
-    }
     return _kTiledTileSizeSmall;
   }
 
@@ -254,18 +251,12 @@ class BitmapCanvasController extends ChangeNotifier
   static const int _kGaussianKernel5x5Weight = 256;
   static const int _kMaxWorkerBatchCommands = 24;
   static const int _kMaxWorkerBatchPixels = 512 * 512;
-  static const int _kWebCompositeMinIntervalMs = 16;
-  static const int _kWebRasterFlushMinIntervalMs = 16;
   static const int _kCommitOverlayFadeMs = 140;
   static const int _kCommitOverlayFadeTickMs = 16;
 
   bool _refreshScheduled = false;
   bool _compositeProcessing = false;
   bool _realtimeStrokeFlushScheduled = false;
-  Timer? _webCompositeTimer;
-  Timer? _webRasterFlushTimer;
-  int _lastWebCompositeMs = 0;
-  int _lastWebRasterFlushMs = 0;
   Timer? _commitOverlayFadeTimer;
   final Map<PaintingDrawCommand, _CommitOverlayFade> _commitOverlayFades =
       <PaintingDrawCommand, _CommitOverlayFade>{};
@@ -564,10 +555,6 @@ class BitmapCanvasController extends ChangeNotifier
   }
 
   Future<void> disposeController() async {
-    _webCompositeTimer?.cancel();
-    _webCompositeTimer = null;
-    _webRasterFlushTimer?.cancel();
-    _webRasterFlushTimer = null;
     _commitOverlayFadeTimer?.cancel();
     _commitOverlayFadeTimer = null;
     _commitOverlayFades.clear();

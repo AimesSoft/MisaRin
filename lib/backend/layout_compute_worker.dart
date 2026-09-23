@@ -40,12 +40,7 @@ class BoardLayoutMetrics {
 }
 
 abstract class BoardLayoutWorker {
-  factory BoardLayoutWorker() {
-    if (kIsWeb) {
-      return _InlineBoardLayoutWorker();
-    }
-    return _IsolateBoardLayoutWorker();
-  }
+  factory BoardLayoutWorker() => _IsolateBoardLayoutWorker();
 
   Future<BoardLayoutMetrics> compute(BoardLayoutInput input);
 
@@ -251,10 +246,8 @@ BoardLayoutMetrics _metricsFromResponse(Map<String, Object?> response) {
   );
   final double toolSettingsLeft = (response['toolSettingsLeft'] as num? ?? 0)
       .toDouble();
-  final double sidebarLeft = (response['sidebarLeft'] as num? ?? 0)
-      .toDouble();
-  final double? toolSettingsMaxWidth =
-      response['toolSettingsMaxWidth'] == null
+  final double sidebarLeft = (response['sidebarLeft'] as num? ?? 0).toDouble();
+  final double? toolSettingsMaxWidth = response['toolSettingsMaxWidth'] == null
       ? null
       : (response['toolSettingsMaxWidth'] as num).toDouble();
   return BoardLayoutMetrics(

@@ -50,7 +50,11 @@ pub struct CpuBrushCommand {
 }
 
 fn bool_to_u8(v: bool) -> u8 {
-    if v { 1 } else { 0 }
+    if v {
+        1
+    } else {
+        0
+    }
 }
 
 #[flutter_rust_bridge::frb(sync)]
@@ -383,22 +387,22 @@ pub fn cpu_brush_apply_commands_rgba(
                 cmd.brush_shape,
                 cmd.antialias_level,
                 cmd.softness,
-        bool_to_u8(cmd.erase),
-        bool_to_u8(cmd.random_rotation),
-        bool_to_u8(cmd.smooth_rotation),
-        cmd.rotation_seed,
-        cmd.rotation_jitter,
-        bool_to_u8(cmd.screentone_enabled),
+                bool_to_u8(cmd.erase),
+                bool_to_u8(cmd.random_rotation),
+                bool_to_u8(cmd.smooth_rotation),
+                cmd.rotation_seed,
+                cmd.rotation_jitter,
+                bool_to_u8(cmd.screentone_enabled),
                 cmd.screentone_spacing,
                 cmd.screentone_dot_size,
                 cmd.screentone_rotation,
                 cmd.screentone_softness,
                 cmd.screentone_shape,
                 bool_to_u8(cmd.snap_to_pixel),
-        0,
-        0,
-        std::ptr::null(),
-        0,
+                0,
+                0,
+                std::ptr::null(),
+                0,
                 selection_ptr,
                 selection_len,
             ),
@@ -475,10 +479,7 @@ pub fn cpu_brush_apply_commands_rgba(
 }
 
 #[flutter_rust_bridge::frb(sync)]
-pub fn cpu_brush_apply_streamline_samples(
-    samples: Vec<f32>,
-    strength: f32,
-) -> CpuStreamlineResult {
+pub fn cpu_brush_apply_streamline_samples(samples: Vec<f32>, strength: f32) -> CpuStreamlineResult {
     let mut samples = samples;
     let ok = cpu_brush_apply_streamline(samples.as_mut_ptr(), samples.len(), strength);
     CpuStreamlineResult {

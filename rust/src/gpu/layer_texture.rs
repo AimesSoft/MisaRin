@@ -3,17 +3,18 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::Instant;
 
-use wgpu::{Device, Queue};
+use wgpu::Queue;
 
 use crate::gpu::debug::{self, LogLevel};
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::shared_device::SharedRenderDevice;
 use crate::gpu::wgpu_utils;
 
 const BYTES_PER_PIXEL: u32 = 4;
 const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
 
 pub struct LayerTextureManager {
-    device: Arc<Device>,
+    device: SharedRenderDevice,
     queue: Arc<Queue>,
     textures: HashMap<String, wgpu::Texture>,
     width: u32,
@@ -21,7 +22,7 @@ pub struct LayerTextureManager {
 }
 
 impl LayerTextureManager {
-    pub fn new(device: Arc<Device>, queue: Arc<Queue>) -> Self {
+    pub fn new(device: SharedRenderDevice, queue: Arc<Queue>) -> Self {
         Self {
             device,
             queue,
@@ -112,11 +113,7 @@ impl LayerTextureManager {
                 self.device.as_ref(),
                 self.queue.as_ref(),
                 texture,
-                wgpu::Origin3d {
-                    x: 0,
-                    y,
-                    z: 0,
-                },
+                wgpu::Origin3d { x: 0, y, z: 0 },
                 wgpu::Extent3d {
                     width,
                     height: chunk_h,
@@ -171,15 +168,15 @@ impl LayerTextureManager {
             });
 
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &readback,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row_padded),
                     rows_per_image: Some(self.height),
@@ -200,7 +197,7 @@ impl LayerTextureManager {
             let _ = tx.send(res);
         });
 
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device.poll(wgpu::PollType::wait_indefinitely());
 
         let map_status: Result<(), String> = match rx.recv() {
             Ok(Ok(())) => Ok(()),
@@ -306,7 +303,7 @@ impl LayerTextureManager {
             });
 
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
@@ -316,9 +313,9 @@ impl LayerTextureManager {
                 },
                 aspect: wgpu::TextureAspect::All,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &readback,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row_padded),
                     rows_per_image: Some(height),
@@ -339,7 +336,7 @@ impl LayerTextureManager {
             let _ = tx.send(res);
         });
 
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device.poll(wgpu::PollType::wait_indefinitely());
 
         let map_status: Result<(), String> = match rx.recv() {
             Ok(Ok(())) => Ok(()),

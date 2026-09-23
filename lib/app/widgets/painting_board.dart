@@ -17,7 +17,6 @@ import 'package:flutter/foundation.dart'
         debugPrint,
         defaultTargetPlatform,
         TargetPlatform,
-        kIsWeb,
         protected,
         kDebugMode;
 import 'package:misa_rin/utils/io_shim.dart';
@@ -84,6 +83,8 @@ import 'package:path/path.dart' as p;
 import 'package:vector_math/vector_math_64.dart' show Matrix4, Vector3;
 import 'package:file_picker/file_picker.dart';
 
+import 'app_color_picker.dart';
+import 'app_slider.dart';
 import '../dialogs/misarin_dialog.dart';
 import '../../mobile/responsive_dialog.dart';
 import '../../mobile/mobile_bottom_sheet.dart';
@@ -144,8 +145,6 @@ import '../palette/palette_exporter.dart';
 import '../utils/file_name_dialog.dart';
 import '../utils/ios_photo_saver.dart';
 import '../utils/mobile_export_paths.dart';
-import '../utils/web_file_dialog.dart';
-import '../utils/web_file_saver.dart';
 import '../utils/platform_target.dart';
 import '../utils/clipboard_image_reader.dart';
 import '../utils/svg_rasterizer.dart';

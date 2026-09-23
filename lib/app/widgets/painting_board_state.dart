@@ -186,7 +186,7 @@ class PaintingBoardState extends _PaintingBoardBase
     _syncRasterizeMenuAvailability();
     _syncMenuAvailability();
     _notifyViewInfoChanged();
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
       _pencilDoubleTapSubscription = TabletInputBridge
           .instance
           .pencilDoubleTapEvents
@@ -194,7 +194,7 @@ class PaintingBoardState extends _PaintingBoardBase
             _handleApplePencilDoubleTap();
           });
     }
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
       _tabletHoverSubscription = TabletInputBridge.instance.hoverEvents.listen(
         _handleTabletHover,
       );

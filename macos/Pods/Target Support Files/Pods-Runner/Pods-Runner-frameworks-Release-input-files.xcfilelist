@@ -1,11 +1,5 @@
 ${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh
-${BUILT_PRODUCTS_DIR}/battery_plus/battery_plus.framework
-${BUILT_PRODUCTS_DIR}/desktop_drop/desktop_drop.framework
-${BUILT_PRODUCTS_DIR}/device_info_plus/device_info_plus.framework
-${BUILT_PRODUCTS_DIR}/file_selector_macos/file_selector_macos.framework
-${BUILT_PRODUCTS_DIR}/package_info_plus/package_info_plus.framework
 ${BUILT_PRODUCTS_DIR}/pasteboard/pasteboard.framework
 ${BUILT_PRODUCTS_DIR}/rust_lib_misa_rin/rust_lib_misa_rin.framework
 ${BUILT_PRODUCTS_DIR}/screen_retriever/screen_retriever.framework
-${BUILT_PRODUCTS_DIR}/shared_preferences_foundation/shared_preferences_foundation.framework
 ${BUILT_PRODUCTS_DIR}/window_manager/window_manager.framework

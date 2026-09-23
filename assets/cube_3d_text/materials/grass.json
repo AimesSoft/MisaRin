@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "material": {
+    "front": {
+      "mode": "image",
+      "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAYAAABpYH0BAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAUKADAAQAAAABAAAAKAAAAAD4QudBAAACQUlEQVRoBe2YvU4CURCFL7oxMdEQqIgmFloYCKWdL+Ar+Qi+ka29pYEKCxMNFYRoZfyDZtn55rrjZLHRobozc+aHs/ceLtu6vGl/pg1+DvaL2mpPz2+18aZB9mc/xq1+zCd+i46wfQwEgT6+FDoIVJT4HPWCtaxFzbA0ge29eOZ7+zft582PHcgn5rSDQCdhhAeBZMRpKw2czT9QwndvszSEmoZmifm0iee83U79nrDqsT7nZX59N1YLWzEQBCpKfI4g0MeXQisNtDREVTAc1BADnryaxnlH45ZoMejLv/qch5rG/inV/wYoAkX3pXFxvFe6ru9fynV1cXa4U5q3j6/l+j8s4gg3fMpBYEMC1RGmBnx3bKt9q8eW+dQQHa9WstdW/qAv9wTxs7mUGGooJ6Bm3j3IfNmN2WGbDASBJkX1gCCwnh8zWlAjptNtkdTtyHuUCGYM5qf0nkH93MX5mDk8Wl+hVjFqFPHWfDouNY/11I8IATm7elnlRTWH/8u+OMINn24Q2JBAdYR7PalZo7HURParHmfGcrbWGIlifxlNSedLjdJxWYH1iffGYwdKft1WEOimTCYEgZIPt1VQA1iBmsA484lnnPmTBV+RrV+fEbuyN433zsvvEzsw95QcviDQQVYOGgTmWHH41D2QGjNZyGrnp7vSAYsawXqAp5O21DwLz3zazLfry/7eerEDyZjTDgKdhBEeBJIRp90aXhWuF362pjgnMOC/3c+qb8VjBxoP0AoHgRZDRjwINAiywl/vpcAGB9XflwAAAABJRU5ErkJggg==",
+      "repeatX": 0.5,
+      "repeatY": 1,
+      "offsetX": 0,
+      "offsetY": 0
+    },
+    "back": {
+      "mode": "color",
+      "color": "#4f9810"
+    },
+    "up": {
+      "mode": "color",
+      "color": "#4f9810"
+    },
+    "down": {
+      "mode": "image",
+      "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAWCAYAAADTlvzyAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAHKADAAQAAAABAAAAFgAAAAAuDewDAAAAkElEQVRIDWM0jOP6z0BHwERHu8BWDX8LWdCD1PUBapTuVmBEUYIujyIJ5Hz4gqr/tA5qIKLy0HXTgD/8LWRBjxP0OHB9QFq4CvCgxjm67uEfpHT3IUY+JBQHAuwcKNHy4ecPFD46Bz2N0N2Hw99CFlLjhFCcoedj9DQx/IOU7j5kIRQn6PmKEB89ztDV092HAHWEIjckcsxKAAAAAElFTkSuQmCC",
+      "repeatX": 1.27272727,
+      "repeatY": 1,
+      "offsetX": 0,
+      "offsetY": 0
+    },
+    "left": {
+      "mode": "gradient",
+      "colorGradualStart": "#5c2f0e",
+      "colorGradualEnd": "#2b040c",
+      "repeat": 1,
+      "offset": 0
+    },
+    "right": {
+      "mode": "gradient",
+      "colorGradualStart": "#5c2f0e",
+      "colorGradualEnd": "#2b040c",
+      "repeat": 1,
+      "offset": 0
+    },
+    "outline": {
+      "mode": "color",
+      "color": "#2b040c"
+    }
+  }
+}

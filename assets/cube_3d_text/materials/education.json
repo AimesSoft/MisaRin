@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "material": {
+    "front": {
+      "mode": "gradient",
+      "colorGradualStart": "rgb(169,207,251)",
+      "colorGradualEnd": "rgb(54,143,242)",
+      "repeat": 1,
+      "offset": 0
+    },
+    "back": {
+      "mode": "gradient",
+      "colorGradualStart": "rgb(169,207,251)",
+      "colorGradualEnd": "rgb(54,143,242)",
+      "repeat": 1,
+      "offset": 0
+    },
+    "up": {
+      "mode": "gradient",
+      "colorGradualStart": "rgb(0,51,168)",
+      "colorGradualEnd": "rgb(0,30,86)",
+      "repeat": 1,
+      "offset": 0
+    },
+    "down": {
+      "mode": "gradient",
+      "colorGradualStart": "rgb(0,51,168)",
+      "colorGradualEnd": "rgb(0,30,86)",
+      "repeat": 1,
+      "offset": 0
+    },
+    "left": {
+      "mode": "gradient",
+      "colorGradualStart": "rgb(0,36,117)",
+      "colorGradualEnd": "rgb(0,18,47)",
+      "repeat": 1,
+      "offset": 0
+    },
+    "right": {
+      "mode": "gradient",
+      "colorGradualStart": "rgb(0,36,117)",
+      "colorGradualEnd": "rgb(0,18,47)",
+      "repeat": 1,
+      "offset": 0
+    },
+    "outline": {
+      "mode": "color",
+      "color": "rgb(0,0,0)"
+    }
+  }
+}

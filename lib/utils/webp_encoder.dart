@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'webp_encoder_stub.dart'
-    if (dart.library.html) 'webp_encoder_web.dart'
     if (dart.library.io) 'webp_encoder_io.dart';
 
 Future<Uint8List> encodeWebpRgba({

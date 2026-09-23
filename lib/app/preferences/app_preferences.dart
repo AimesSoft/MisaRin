@@ -2,12 +2,10 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:misa_rin/utils/io_shim.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../bitmap_canvas/stroke_dynamics.dart';
 import '../../canvas/canvas_backend.dart';

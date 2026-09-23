@@ -1,0 +1,18 @@
+# Rust build artifacts
+/target
+crates/*/target
+**/*.rs.bk
+/benches/target
+/tools/compile_fail_utils/target
+
+# Cargo
+Cargo.lock
+.cargo/config
+.cargo/config.toml
+
+# IDE files
+/.idea
+/.vscode
+.zed
+dxcompiler.dll
+dxil.dll

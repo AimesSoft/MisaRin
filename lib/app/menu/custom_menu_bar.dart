@@ -82,18 +82,12 @@ class CustomMenuBar extends StatefulWidget {
   }
 
   static bool _supportsWindowDragArea() {
-    if (kIsWeb) {
-      return false;
-    }
     return defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux ||
         defaultTargetPlatform == TargetPlatform.macOS;
   }
 
   static bool _shouldShowWindowControls() {
-    if (kIsWeb) {
-      return false;
-    }
     return defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux;
   }
@@ -132,9 +126,6 @@ class _CustomMenuBarState extends State<CustomMenuBar> {
   }
 
   _MenuInteractionMode _defaultInteractionMode() {
-    if (kIsWeb) {
-      return _MenuInteractionMode.mouse;
-    }
     return defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.android ||
             defaultTargetPlatform == TargetPlatform.fuchsia
@@ -143,9 +134,6 @@ class _CustomMenuBarState extends State<CustomMenuBar> {
   }
 
   bool get _useTouchMenu {
-    if (kIsWeb) {
-      return false;
-    }
     return _interactionMode == _MenuInteractionMode.touch;
   }
 
@@ -279,7 +267,7 @@ class _CustomMenuBarState extends State<CustomMenuBar> {
     final theme = FluentTheme.of(context);
     final bool canDrag = CustomMenuBar._supportsWindowDragArea();
     final bool showWindowControls = CustomMenuBar._shouldShowWindowControls();
-    final bool isMac = !kIsWeb && isResolvedPlatformMacOS();
+    final bool isMac = isResolvedPlatformMacOS();
     final bool hasMenuButtons = visibleMenus.isNotEmpty;
     if (!hasMenuButtons && !canDrag && !showWindowControls) {
       return const SizedBox.shrink();

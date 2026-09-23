@@ -2,6 +2,7 @@
 # This is a generated file; do not edit or check into version control.
 export "FLUTTER_ROOT=/Library/Afolder/FlutterProject/flutter"
 export "FLUTTER_APPLICATION_PATH=/Library/Afolder/FlutterProject/misa-rin"
+export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=/Library/Afolder/FlutterProject/misa-rin/ios/Flutter/ephemeral/Packages/.packages/FlutterFramework"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_TARGET=lib/main.dart"
 export "FLUTTER_BUILD_DIR=build"

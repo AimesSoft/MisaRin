@@ -1,18 +1,12 @@
 use std::collections::HashMap;
-#[cfg(not(target_family = "wasm"))]
 use std::sync::{Mutex, OnceLock};
-#[cfg(not(target_family = "wasm"))]
 use std::time::{Duration, Instant};
 
-#[cfg(not(target_family = "wasm"))]
 use crate::gpu::compositor::{GpuCompositor, LayerData};
-#[cfg(not(target_family = "wasm"))]
 use crate::gpu::debug::{self, LogLevel};
 
-#[cfg(not(target_family = "wasm"))]
 static GPU_COMPOSITOR: OnceLock<Mutex<Option<GpuCompositor>>> = OnceLock::new();
 
-#[cfg(not(target_family = "wasm"))]
 fn compositor_cell() -> &'static Mutex<Option<GpuCompositor>> {
     GPU_COMPOSITOR.get_or_init(|| Mutex::new(None))
 }
@@ -26,13 +20,6 @@ pub struct GpuLayerData {
     pub clipping_mask: bool,
 }
 
-#[cfg(target_family = "wasm")]
-#[flutter_rust_bridge::frb(sync)]
-pub fn gpu_compositor_init() -> Result<(), String> {
-    Ok(())
-}
-
-#[cfg(not(target_family = "wasm"))]
 #[flutter_rust_bridge::frb(sync)]
 pub fn gpu_compositor_init() -> Result<(), String> {
     let mut guard = compositor_cell()
@@ -51,16 +38,6 @@ pub fn gpu_compositor_init() -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(target_family = "wasm")]
-pub fn gpu_composite_layers(
-    layers: Vec<GpuLayerData>,
-    width: u32,
-    height: u32,
-) -> Result<Vec<u32>, String> {
-    cpu_composite_layers_impl(&layers, width, height)
-}
-
-#[cfg(not(target_family = "wasm"))]
 pub fn gpu_composite_layers(
     layers: Vec<GpuLayerData>,
     width: u32,
@@ -218,11 +195,6 @@ pub fn gpu_composite_layers(
     result
 }
 
-#[cfg(target_family = "wasm")]
-#[flutter_rust_bridge::frb(sync)]
-pub fn gpu_compositor_dispose() {}
-
-#[cfg(not(target_family = "wasm"))]
 #[flutter_rust_bridge::frb(sync)]
 pub fn gpu_compositor_dispose() {
     if let Some(cell) = GPU_COMPOSITOR.get() {
@@ -699,7 +671,11 @@ pub extern "C" fn cpu_blend_on_canvas(
 
     let mut use_mask = false;
     let mut mask_slice: &[u32] = &[];
-    let mut mask_opacity = if mask_opacity.is_finite() { mask_opacity } else { 0.0 };
+    let mut mask_opacity = if mask_opacity.is_finite() {
+        mask_opacity
+    } else {
+        0.0
+    };
     mask_opacity = clamp01(mask_opacity);
     if !mask.is_null() && mask_len == pixels_len && mask_opacity > 0.0 {
         use_mask = true;
@@ -842,7 +818,11 @@ pub extern "C" fn cpu_blend_overflow(
 
     let mut use_mask = false;
     let mut mask_slice: &[u32] = &[];
-    let mut mask_opacity = if mask_opacity.is_finite() { mask_opacity } else { 0.0 };
+    let mut mask_opacity = if mask_opacity.is_finite() {
+        mask_opacity
+    } else {
+        0.0
+    };
     mask_opacity = clamp01(mask_opacity);
     let mut mask_overflow_map: HashMap<i64, u32> = HashMap::new();
     if !mask.is_null() && mask_len == canvas_len && mask_opacity > 0.0 {
@@ -920,7 +900,8 @@ pub extern "C" fn cpu_blend_overflow(
             }
             if x >= 0 && y >= 0 && x < width_i64 && y < height_i64 {
                 let idx = y as usize * width_usize + x as usize;
-                let blended = blend_argb(canvas_slice[idx], effective_color, blend_mode, idx as u32);
+                let blended =
+                    blend_argb(canvas_slice[idx], effective_color, blend_mode, idx as u32);
                 canvas_slice[idx] = blended;
             } else {
                 let key = overflow_key(x as i32, y as i32);

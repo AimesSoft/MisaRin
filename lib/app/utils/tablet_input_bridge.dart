@@ -69,12 +69,12 @@ class TabletInputBridge {
   int _debugRawCoalescedPencilCount = 0;
   DateTime? _debugLastMotionLogAt;
 
-  bool get _supportMacOS => !kIsWeb && Platform.isMacOS;
-  bool get _supportWindows => !kIsWeb && Platform.isWindows;
+  bool get _supportMacOS => Platform.isMacOS;
+  bool get _supportWindows => Platform.isWindows;
   bool get _supportDesktopTabletChannel => _supportMacOS || _supportWindows;
   bool get _supportApplePencilTapChannel =>
-      !kIsWeb && (Platform.isMacOS || Platform.isIOS);
-  bool get _supportApplePencilMotionChannel => !kIsWeb && Platform.isIOS;
+      Platform.isMacOS || Platform.isIOS;
+  bool get _supportApplePencilMotionChannel => Platform.isIOS;
 
   Stream<void> get pencilDoubleTapEvents => _pencilDoubleTapController.stream;
   Stream<TabletHoverSample> get hoverEvents => _hoverController.stream;

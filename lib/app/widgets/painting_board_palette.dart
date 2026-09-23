@@ -348,26 +348,7 @@ mixin _PaintingBoardPaletteMixin on _PaintingBoardBase {
       return;
     }
     String? normalizedPath;
-    String? downloadName;
-    if (kIsWeb) {
-      final String? fileName = await showWebFileNameDialog(
-        context: context,
-        title: l10n.exportPaletteTitle,
-        suggestedFileName: _suggestPaletteFileName(
-          entry.title,
-          option.extension,
-        ),
-        description: l10n.webDownloadDesc,
-        confirmLabel: l10n.download,
-      );
-      if (fileName == null) {
-        return;
-      }
-      downloadName = _normalizePaletteExportPath(
-        _sanitizePaletteFileNameInput(fileName),
-        option.extension,
-      );
-    } else if (Platform.isAndroid || Platform.isIOS) {
+    if (Platform.isAndroid || Platform.isIOS) {
       final String? fileName = await showFileNameDialog(
         context: context,
         title: l10n.exportPaletteTitle,
@@ -408,24 +389,14 @@ mixin _PaintingBoardPaletteMixin on _PaintingBoardBase {
         paletteName: entry.title,
         colors: entry.colors,
       );
-      if (kIsWeb) {
-        await WebFileSaver.saveBytes(
-          fileName: downloadName!,
-          bytes: bytes,
-          mimeType: 'application/octet-stream',
-        );
-      } else {
-        final File file = File(normalizedPath!);
-        await file.writeAsBytes(bytes, flush: true);
-      }
+      final File file = File(normalizedPath!);
+      await file.writeAsBytes(bytes, flush: true);
       if (!mounted) {
         return;
       }
       AppNotifications.show(
         context,
-        message: kIsWeb
-            ? l10n.paletteDownloaded(downloadName!)
-            : l10n.paletteExported(normalizedPath!),
+        message: l10n.paletteExported(normalizedPath!),
         severity: InfoBarSeverity.success,
       );
     } catch (error) {

@@ -244,7 +244,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
     Widget opacityRow() {
       final l10n = context.l10n;
       final bool locked = activeLayer.locked;
-      final Slider slider = Slider(
+      final AppSlider slider = AppSlider(
         value: clampedOpacity,
         min: 0,
         max: 1,

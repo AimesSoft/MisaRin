@@ -349,7 +349,7 @@ void _prepareActiveLayerTransformPreview(
   controller._activeLayerTransformPreparing = true;
   Uint8List bytes;
   ui.PixelFormat format = ui.PixelFormat.rgba8888;
-  if (!kIsWeb && Endian.host == Endian.little) {
+  if (Endian.host == Endian.little) {
     final Uint8List view = Uint8List.view(
       snapshot.buffer,
       snapshot.offsetInBytes,

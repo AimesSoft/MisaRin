@@ -6,10 +6,10 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-Uint32List selectionPathVerticesFromMask({
-  required List<int> mask,
-  required int width,
-}) => RustLib.instance.api.crateApiSelectionPathSelectionPathVerticesFromMask(
-  mask: mask,
-  width: width,
-);
+
+            
+
+            Uint32List  selectionPathVerticesFromMask({required List<int> mask , required int width }) => RustLib.instance.api.crateApiSelectionPathSelectionPathVerticesFromMask(mask: mask, width: width);
+
+            
+            

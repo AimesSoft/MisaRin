@@ -6,121 +6,61 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-CpuBlendResult cpuBlendOnCanvasRgba({
-  required List<int> src,
-  required List<int> dst,
-  required int width,
-  required int height,
-  required int startX,
-  required int endX,
-  required int startY,
-  required int endY,
-  required double opacity,
-  required int blendMode,
-  Uint32List? mask,
-  required double maskOpacity,
-}) => RustLib.instance.api.crateApiCpuBlendCpuBlendOnCanvasRgba(
-  src: src,
-  dst: dst,
-  width: width,
-  height: height,
-  startX: startX,
-  endX: endX,
-  startY: startY,
-  endY: endY,
-  opacity: opacity,
-  blendMode: blendMode,
-  mask: mask,
-  maskOpacity: maskOpacity,
-);
 
-CpuBlendOverflowResult cpuBlendOverflowRgba({
-  required List<int> canvas,
-  required int width,
-  required int height,
-  required List<int> upperX,
-  required List<int> upperY,
-  required List<int> upperColor,
-  required List<int> lowerX,
-  required List<int> lowerY,
-  required List<int> lowerColor,
-  required double opacity,
-  required int blendMode,
-  Uint32List? mask,
-  required double maskOpacity,
-  required List<int> maskOverflowX,
-  required List<int> maskOverflowY,
-  required List<int> maskOverflowColor,
-  required BigInt outCapacity,
-}) => RustLib.instance.api.crateApiCpuBlendCpuBlendOverflowRgba(
-  canvas: canvas,
-  width: width,
-  height: height,
-  upperX: upperX,
-  upperY: upperY,
-  upperColor: upperColor,
-  lowerX: lowerX,
-  lowerY: lowerY,
-  lowerColor: lowerColor,
-  opacity: opacity,
-  blendMode: blendMode,
-  mask: mask,
-  maskOpacity: maskOpacity,
-  maskOverflowX: maskOverflowX,
-  maskOverflowY: maskOverflowY,
-  maskOverflowColor: maskOverflowColor,
-  outCapacity: outCapacity,
-);
+            
 
-class CpuBlendOverflowResult {
-  final bool ok;
-  final Uint32List canvas;
-  final Int32List outX;
-  final Int32List outY;
-  final Uint32List outColor;
+            CpuBlendResult  cpuBlendOnCanvasRgba({required List<int> src , required List<int> dst , required int width , required int height , required int startX , required int endX , required int startY , required int endY , required double opacity , required int blendMode , Uint32List? mask , required double maskOpacity }) => RustLib.instance.api.crateApiCpuBlendCpuBlendOnCanvasRgba(src: src, dst: dst, width: width, height: height, startX: startX, endX: endX, startY: startY, endY: endY, opacity: opacity, blendMode: blendMode, mask: mask, maskOpacity: maskOpacity);
 
-  const CpuBlendOverflowResult({
-    required this.ok,
-    required this.canvas,
-    required this.outX,
-    required this.outY,
-    required this.outColor,
-  });
+CpuBlendOverflowResult  cpuBlendOverflowRgba({required List<int> canvas , required int width , required int height , required List<int> upperX , required List<int> upperY , required List<int> upperColor , required List<int> lowerX , required List<int> lowerY , required List<int> lowerColor , required double opacity , required int blendMode , Uint32List? mask , required double maskOpacity , required List<int> maskOverflowX , required List<int> maskOverflowY , required List<int> maskOverflowColor , required BigInt outCapacity }) => RustLib.instance.api.crateApiCpuBlendCpuBlendOverflowRgba(canvas: canvas, width: width, height: height, upperX: upperX, upperY: upperY, upperColor: upperColor, lowerX: lowerX, lowerY: lowerY, lowerColor: lowerColor, opacity: opacity, blendMode: blendMode, mask: mask, maskOpacity: maskOpacity, maskOverflowX: maskOverflowX, maskOverflowY: maskOverflowY, maskOverflowColor: maskOverflowColor, outCapacity: outCapacity);
 
-  @override
-  int get hashCode =>
-      ok.hashCode ^
-      canvas.hashCode ^
-      outX.hashCode ^
-      outY.hashCode ^
-      outColor.hashCode;
+            class CpuBlendOverflowResult  {
+                final bool ok;
+final Uint32List canvas;
+final Int32List outX;
+final Int32List outY;
+final Uint32List outColor;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CpuBlendOverflowResult &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          canvas == other.canvas &&
-          outX == other.outX &&
-          outY == other.outY &&
-          outColor == other.outColor;
-}
+                const CpuBlendOverflowResult({required this.ok ,required this.canvas ,required this.outX ,required this.outY ,required this.outColor ,});
 
-class CpuBlendResult {
-  final bool ok;
-  final Uint32List canvas;
+                
+                
 
-  const CpuBlendResult({required this.ok, required this.canvas});
+                
+        @override
+        int get hashCode => ok.hashCode^canvas.hashCode^outX.hashCode^outY.hashCode^outColor.hashCode;
+        
 
-  @override
-  int get hashCode => ok.hashCode ^ canvas.hashCode;
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CpuBlendOverflowResult &&
+                runtimeType == other.runtimeType
+                && ok == other.ok&& canvas == other.canvas&& outX == other.outX&& outY == other.outY&& outColor == other.outColor;
+        
+            }
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CpuBlendResult &&
-          runtimeType == other.runtimeType &&
-          ok == other.ok &&
-          canvas == other.canvas;
-}
+class CpuBlendResult  {
+                final bool ok;
+final Uint32List canvas;
+
+                const CpuBlendResult({required this.ok ,required this.canvas ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => ok.hashCode^canvas.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is CpuBlendResult &&
+                runtimeType == other.runtimeType
+                && ok == other.ok&& canvas == other.canvas;
+        
+            }
+            

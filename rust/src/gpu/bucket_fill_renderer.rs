@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use wgpu::{BindGroup, BindGroupLayout, ComputePipeline, Device, Queue};
+use wgpu::{BindGroup, BindGroupLayout, ComputePipeline, Queue};
 
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::shared_device::SharedRenderDevice;
 use crate::gpu::wgpu_utils;
 
 const WORKGROUP_SIZE: u32 = 16;
@@ -102,7 +103,7 @@ struct BucketFillStateSnapshot {
 }
 
 pub struct BucketFillRenderer {
-    device: Arc<Device>,
+    device: SharedRenderDevice,
     queue: Arc<Queue>,
     pipeline: ComputePipeline,
     bind_group_layout: BindGroupLayout,
@@ -138,7 +139,7 @@ pub struct BucketFillRenderer {
 }
 
 impl BucketFillRenderer {
-    pub fn new(device: Arc<Device>, queue: Arc<Queue>) -> Result<Self, String> {
+    pub fn new(device: SharedRenderDevice, queue: Arc<Queue>) -> Result<Self, String> {
         device_push_scopes(device.as_ref());
 
         let shader_source = include_str!("bucket_fill_shaders_rgba8.wgsl");
@@ -290,10 +291,12 @@ impl BucketFillRenderer {
         });
 
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             label: Some("BucketFillRenderer compute pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "bucket_fill_main",
+            entry_point: Some("bucket_fill_main"),
         });
 
         let config_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -473,7 +476,14 @@ impl BucketFillRenderer {
             .is_some();
         if selection_enabled {
             if let Some(mask) = selection_mask {
-                write_mask_texture(self.device.as_ref(), self.queue.as_ref(), &self.mask_a, width, height, mask)?;
+                write_mask_texture(
+                    self.device.as_ref(),
+                    self.queue.as_ref(),
+                    &self.mask_a,
+                    width,
+                    height,
+                    mask,
+                )?;
             }
         }
 
@@ -1161,7 +1171,7 @@ impl BucketFillRenderer {
         slice.map_async(wgpu::MapMode::Read, move |res| {
             let _ = tx.send(res);
         });
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device.poll(wgpu::PollType::wait_indefinitely());
         match rx.recv() {
             Ok(Ok(())) => {}
             Ok(Err(err)) => return Err(format!("wgpu map_async failed: {err:?}")),

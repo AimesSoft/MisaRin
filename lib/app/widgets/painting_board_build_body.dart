@@ -523,7 +523,7 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
 
                                             // 客户端预测：显示当前笔画的实时预览，以及正在提交中的笔画，解决 worker 延迟导致的滞后感和闪烁
                                             final bool canPreviewStroke =
-                                                (_backend.isReady || kIsWeb) &&
+                                                _backend.isReady &&
                                                 (_effectiveActiveTool ==
                                                         CanvasTool.pen ||
                                                     _effectiveActiveTool ==
@@ -543,10 +543,7 @@ extension _PaintingBoardBuildBodyExtension on _PaintingBoardBuildMixin {
                                               return false;
                                             }();
                                             final bool
-                                            allowActiveStrokeOverlay =
-                                                !(kIsWeb &&
-                                                    _controller
-                                                        .activeStrokeSnapToPixel);
+                                            allowActiveStrokeOverlay = true;
                                             final bool hasActiveStroke =
                                                 canPreviewStroke &&
                                                 allowActiveStrokeOverlay &&

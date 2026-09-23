@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:misa_rin/utils/io_shim.dart';
 
@@ -9,7 +8,7 @@ class IosPhotoSaver {
     Uint8List bytes, {
     String? fileName,
   }) async {
-    if (kIsWeb || !Platform.isIOS) {
+    if (!Platform.isIOS) {
       throw UnsupportedError('Photo library is not available on this platform.');
     }
     final String? trimmed = fileName?.trim();

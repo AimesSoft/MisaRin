@@ -554,7 +554,7 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
   }
 
   static Future<void> _doPrewarm() async {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    if (defaultTargetPlatform == TargetPlatform.android) {
       BackendCanvasTimeline.mark('backendSurface: prewarm skipped on Android');
       return;
     }

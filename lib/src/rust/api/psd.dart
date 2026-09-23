@@ -6,84 +6,65 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-Future<PsdDocument> importPsd({required List<int> bytes}) =>
-    RustLib.instance.api.crateApiPsdImportPsd(bytes: bytes);
 
-class PsdDocument {
-  final int width;
-  final int height;
-  final List<PsdLayer> layers;
+            
 
-  const PsdDocument({
-    required this.width,
-    required this.height,
-    required this.layers,
-  });
+            Future<PsdDocument>  importPsd({required List<int> bytes }) => RustLib.instance.api.crateApiPsdImportPsd(bytes: bytes);
 
-  @override
-  int get hashCode => width.hashCode ^ height.hashCode ^ layers.hashCode;
+            class PsdDocument  {
+                final int width;
+final int height;
+final List<PsdLayer> layers;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PsdDocument &&
-          runtimeType == other.runtimeType &&
-          width == other.width &&
-          height == other.height &&
-          layers == other.layers;
-}
+                const PsdDocument({required this.width ,required this.height ,required this.layers ,});
 
-class PsdLayer {
-  final String name;
-  final bool visible;
-  final int opacity;
-  final bool clippingMask;
-  final String blendModeKey;
-  final Uint8List bitmap;
-  final int bitmapWidth;
-  final int bitmapHeight;
-  final int bitmapLeft;
-  final int bitmapTop;
+                
+                
 
-  const PsdLayer({
-    required this.name,
-    required this.visible,
-    required this.opacity,
-    required this.clippingMask,
-    required this.blendModeKey,
-    required this.bitmap,
-    required this.bitmapWidth,
-    required this.bitmapHeight,
-    required this.bitmapLeft,
-    required this.bitmapTop,
-  });
+                
+        @override
+        int get hashCode => width.hashCode^height.hashCode^layers.hashCode;
+        
 
-  @override
-  int get hashCode =>
-      name.hashCode ^
-      visible.hashCode ^
-      opacity.hashCode ^
-      clippingMask.hashCode ^
-      blendModeKey.hashCode ^
-      bitmap.hashCode ^
-      bitmapWidth.hashCode ^
-      bitmapHeight.hashCode ^
-      bitmapLeft.hashCode ^
-      bitmapTop.hashCode;
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is PsdDocument &&
+                runtimeType == other.runtimeType
+                && width == other.width&& height == other.height&& layers == other.layers;
+        
+            }
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PsdLayer &&
-          runtimeType == other.runtimeType &&
-          name == other.name &&
-          visible == other.visible &&
-          opacity == other.opacity &&
-          clippingMask == other.clippingMask &&
-          blendModeKey == other.blendModeKey &&
-          bitmap == other.bitmap &&
-          bitmapWidth == other.bitmapWidth &&
-          bitmapHeight == other.bitmapHeight &&
-          bitmapLeft == other.bitmapLeft &&
-          bitmapTop == other.bitmapTop;
-}
+class PsdLayer  {
+                final String name;
+final bool visible;
+final int opacity;
+final bool clippingMask;
+final String blendModeKey;
+final Uint8List bitmap;
+final int bitmapWidth;
+final int bitmapHeight;
+final int bitmapLeft;
+final int bitmapTop;
+
+                const PsdLayer({required this.name ,required this.visible ,required this.opacity ,required this.clippingMask ,required this.blendModeKey ,required this.bitmap ,required this.bitmapWidth ,required this.bitmapHeight ,required this.bitmapLeft ,required this.bitmapTop ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => name.hashCode^visible.hashCode^opacity.hashCode^clippingMask.hashCode^blendModeKey.hashCode^bitmap.hashCode^bitmapWidth.hashCode^bitmapHeight.hashCode^bitmapLeft.hashCode^bitmapTop.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is PsdLayer &&
+                runtimeType == other.runtimeType
+                && name == other.name&& visible == other.visible&& opacity == other.opacity&& clippingMask == other.clippingMask&& blendModeKey == other.blendModeKey&& bitmap == other.bitmap&& bitmapWidth == other.bitmapWidth&& bitmapHeight == other.bitmapHeight&& bitmapLeft == other.bitmapLeft&& bitmapTop == other.bitmapTop;
+        
+            }
+            

@@ -402,23 +402,10 @@ extension _ReferenceModelCardStateBakeDialog on _ReferenceModelCardState {
       );
 
       String? normalizedPath;
-      String? downloadName;
       String? mobileFileName;
       _MobileImageExportDestination? mobileDestination;
 
-      if (kIsWeb) {
-        final String? fileName = await showWebFileNameDialog(
-          context: context,
-          title: '导出烘焙结果',
-          suggestedFileName: suggestedName,
-          description: context.l10n.webDownloadDesc,
-          confirmLabel: context.l10n.download,
-        );
-        if (fileName == null) {
-          return;
-        }
-        downloadName = _ensurePngExtension(_sanitizeFileName(fileName));
-      } else if (Platform.isAndroid || Platform.isIOS) {
+      if (Platform.isAndroid || Platform.isIOS) {
         if (Platform.isIOS) {
           mobileDestination =
               await _showMobileImageExportDestinationDialog(context);
@@ -512,13 +499,7 @@ extension _ReferenceModelCardStateBakeDialog on _ReferenceModelCardState {
           skybox: skybox,
           transparentBackground: transparentBackground,
         );
-        if (kIsWeb) {
-          await WebFileSaver.saveBytes(
-            fileName: downloadName!,
-            bytes: bytes,
-            mimeType: 'image/png',
-          );
-        } else if (Platform.isIOS &&
+        if (Platform.isIOS &&
             mobileDestination == _MobileImageExportDestination.photos) {
           await IosPhotoSaver.saveImageToPhotos(
             bytes,
@@ -534,13 +515,11 @@ extension _ReferenceModelCardStateBakeDialog on _ReferenceModelCardState {
         }
         AppNotifications.show(
           context,
-          message: kIsWeb
-              ? '已下载：$downloadName'
-              : (Platform.isIOS &&
-                      mobileDestination ==
-                          _MobileImageExportDestination.photos)
-                  ? context.l10n.imageSavedToPhotos
-                  : '已导出：$normalizedPath',
+          message:
+              (Platform.isIOS &&
+                  mobileDestination == _MobileImageExportDestination.photos)
+              ? context.l10n.imageSavedToPhotos
+              : '已导出：$normalizedPath',
           severity: InfoBarSeverity.success,
         );
       } catch (error) {
@@ -1333,7 +1312,7 @@ extension _ReferenceModelCardStateBakeDialog on _ReferenceModelCardState {
                               Text(context.l10n.brightness),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Slider(
+                                child: AppSlider(
                                   value: renderBrightness.clamp(0.5, 2.0),
                                   min: 0.5,
                                   max: 2.0,
@@ -1365,7 +1344,7 @@ extension _ReferenceModelCardStateBakeDialog on _ReferenceModelCardState {
                               Text(context.l10n.contrast),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Slider(
+                                child: AppSlider(
                                   value: renderContrast.clamp(0.0, 2.0),
                                   min: 0.0,
                                   max: 2.0,
@@ -1397,7 +1376,7 @@ extension _ReferenceModelCardStateBakeDialog on _ReferenceModelCardState {
                               const Text('时间'),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Slider(
+                                child: AppSlider(
                                   value: timeHours.clamp(0, 24),
                                   min: 0,
                                   max: 24,

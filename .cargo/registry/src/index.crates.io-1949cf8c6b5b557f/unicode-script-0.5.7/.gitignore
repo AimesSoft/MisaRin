@@ -1,0 +1,6 @@
+/target
+Cargo.lock
+scripts/*.rs
+scripts/*.txt
+/tables.rs
+/*.txt

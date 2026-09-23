@@ -1,6 +1,0 @@
-framework module desktop_drop {
-  umbrella header "desktop_drop-umbrella.h"
-
-  export *
-  module * { export * }
-}

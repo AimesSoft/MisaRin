@@ -1,10 +1,4 @@
-${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/battery_plus.framework
-${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/desktop_drop.framework
-${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/device_info_plus.framework
-${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/file_selector_macos.framework
-${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/package_info_plus.framework
 ${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/pasteboard.framework
 ${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/rust_lib_misa_rin.framework
 ${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/screen_retriever.framework
-${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/shared_preferences_foundation.framework
 ${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/window_manager.framework

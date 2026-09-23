@@ -172,9 +172,6 @@ class BrushShapeLibrary {
     required BrushShapeFileType type,
     BrushShapeSource source = BrushShapeSource.imported,
   }) async {
-    if (kIsWeb) {
-      return null;
-    }
     final Directory? directory =
         _shapeDirectory ?? await _resolveShapeDirectory();
     if (directory == null) {
@@ -237,18 +234,12 @@ class BrushShapeLibrary {
   }
 
   Future<String?> resolveShapeDirectoryPath() async {
-    if (kIsWeb) {
-      return null;
-    }
     final Directory? directory =
         _shapeDirectory ?? await _resolveShapeDirectory();
     return directory?.path;
   }
 
   Future<void> refresh() async {
-    if (kIsWeb) {
-      return;
-    }
     final Directory? directory =
         _shapeDirectory ?? await _resolveShapeDirectory();
     if (directory == null) {
@@ -261,12 +252,6 @@ class BrushShapeLibrary {
   }
 
   static Future<BrushShapeLibrary> load() async {
-    if (kIsWeb) {
-      final List<BrushShapeDefinition> shapes = _builtInShapes
-          .map((shape) => shape.toDefinition())
-          .toList();
-      return BrushShapeLibrary._(shapes: shapes, shapeDirectory: null);
-    }
     final Directory? directory = await _resolveShapeDirectory();
     if (directory == null) {
       return BrushShapeLibrary._(
@@ -282,9 +267,6 @@ class BrushShapeLibrary {
   }
 
   static Future<Directory?> _resolveShapeDirectory() async {
-    if (kIsWeb) {
-      return null;
-    }
     final base = await getApplicationDocumentsDirectory();
     return Directory(p.join(base.path, _folderName, _shapeFolderName));
   }
@@ -374,7 +356,7 @@ class BrushShapeLibrary {
   }
 
   Future<Uint8List> _loadShapeBytes(BrushShapeDefinition shape) async {
-    if (!kIsWeb && shape.filePath != null) {
+    if (shape.filePath != null) {
       final File file = File(shape.filePath!);
       if (await file.exists()) {
         return file.readAsBytes();

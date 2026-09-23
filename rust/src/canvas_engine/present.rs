@@ -1,8 +1,8 @@
 use std::borrow::Cow;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 #[cfg(target_os = "windows")]
 use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 #[cfg(target_os = "windows")]
 use std::time::Instant;
 #[cfg(target_os = "android")]
@@ -11,26 +11,30 @@ use std::{ffi::c_void, ptr::NonNull};
 use crate::gpu::debug::{self, LogLevel};
 use crate::gpu::wgpu_utils;
 
+const BGRA8_UNORM_VIEW_FORMATS: &[wgpu::TextureFormat] = &[wgpu::TextureFormat::Bgra8UnormSrgb];
+
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use metal::foreign_types::ForeignType;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use metal::MTLTextureType;
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-use wgpu_hal::{api::Metal, CopyExtent};
 #[cfg(target_os = "windows")]
 use wgpu_hal::api::Dx12;
 #[cfg(target_os = "windows")]
 use wgpu_hal::dx12;
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+use wgpu_hal::{api::Metal, CopyExtent};
 #[cfg(target_os = "windows")]
 use winapi::shared::{dxgiformat, dxgitype};
 #[cfg(target_os = "windows")]
-use winapi::Interface as _;
-#[cfg(target_os = "windows")]
 use winapi::um::{d3d12 as d3d12_ty, handleapi::CloseHandle, winnt};
+#[cfg(target_os = "windows")]
+use winapi::Interface as _;
 #[cfg(target_os = "android")]
 use {
     ndk_sys::ANativeWindow,
-    raw_window_handle::{AndroidDisplayHandle, AndroidNdkWindowHandle, RawDisplayHandle, RawWindowHandle},
+    raw_window_handle::{
+        AndroidDisplayHandle, AndroidNdkWindowHandle, RawDisplayHandle, RawWindowHandle,
+    },
     wgpu::SurfaceTargetUnsafe,
 };
 
@@ -266,13 +270,7 @@ pub(crate) fn write_present_config(
         transform_layer,
         transform_flags,
     };
-    wgpu_utils::write_buffer(
-        device,
-        queue,
-        header_buffer,
-        0,
-        bytemuck::bytes_of(&header),
-    );
+    wgpu_utils::write_buffer(device, queue, header_buffer, 0, bytemuck::bytes_of(&header));
 
     if layer_count == 0 {
         return;
@@ -320,13 +318,7 @@ pub(crate) fn write_present_transform(
     matrix: [f32; 16],
 ) {
     let config = PresentTransformConfig { matrix };
-    wgpu_utils::write_buffer(
-        device,
-        queue,
-        buffer,
-        0,
-        bytemuck::bytes_of(&config),
-    );
+    wgpu_utils::write_buffer(device, queue, buffer, 0, bytemuck::bytes_of(&config));
 }
 
 pub(crate) fn create_present_transform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
@@ -431,17 +423,20 @@ impl PresentRenderer {
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("misa-rin present renderer pipeline"),
+        cache: None,
+        label: Some("misa-rin present renderer pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[],
+            module: &shader,
+            entry_point: Some("vs_main"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            buffers: &[],
             },
             fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
+            module: &shader,
+            entry_point: Some("fs_main"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
@@ -516,6 +511,7 @@ impl PresentRenderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("misa-rin present renderer pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    depth_slice: None,
                     view: target.render_view(),
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -551,6 +547,7 @@ impl PresentRenderer {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("misa-rin present renderer pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    depth_slice: None,
                     view: present_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
@@ -581,13 +578,13 @@ pub(crate) fn copy_render_to_shared(
         return;
     }
     encoder.copy_texture_to_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: target.render_texture(),
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: shared_texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
@@ -642,9 +639,7 @@ pub(crate) fn signal_frame_ready(
                 let max_ms = (max as f64) / 1000.0;
                 debug::log(
                     LogLevel::Info,
-                    format_args!(
-                        "[perf] present gpu done avg={avg_ms:.2}ms max={max_ms:.2}ms"
-                    ),
+                    format_args!("[perf] present gpu done avg={avg_ms:.2}ms max={max_ms:.2}ms"),
                 );
             }
         }
@@ -700,7 +695,7 @@ pub(crate) fn attach_present_texture(
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_SRC,
-            view_formats: &[],
+            view_formats: BGRA8_UNORM_VIEW_FORMATS,
         };
 
         let texture = unsafe { device.create_texture_from_hal::<Metal>(hal_texture, &desc) };
@@ -722,7 +717,10 @@ pub(crate) fn attach_present_texture(
         let _ = (device, mtl_texture_ptr, width, height, bytes_per_row);
         None
     }
-    #[cfg(all(not(any(target_os = "macos", target_os = "ios")), not(target_os = "windows")))]
+    #[cfg(all(
+        not(any(target_os = "macos", target_os = "ios")),
+        not(target_os = "windows")
+    ))]
     {
         let _ = (mtl_texture_ptr, bytes_per_row);
         if width == 0 || height == 0 {
@@ -742,7 +740,7 @@ pub(crate) fn attach_present_texture(
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_SRC,
-            view_formats: &[],
+            view_formats: BGRA8_UNORM_VIEW_FORMATS,
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let bytes_per_row = width.saturating_mul(4);
@@ -851,7 +849,7 @@ pub(crate) fn create_dxgi_shared_present_target(
 
     let (resource, shared_handle) = unsafe {
         device
-            .as_hal::<Dx12, _, _>(|hal_device| {
+            .as_hal::<Dx12>().map(|hal_device| {
                 let Some(hal_device) = hal_device else {
                     return Err("wgpu: dx12 backend unavailable".to_string());
                 };
@@ -875,7 +873,10 @@ pub(crate) fn create_dxgi_shared_present_target(
                     DepthOrArraySize: 1,
                     MipLevels: 1,
                     Format: dxgiformat::DXGI_FORMAT_B8G8R8A8_UNORM,
-                    SampleDesc: dxgitype::DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+                    SampleDesc: dxgitype::DXGI_SAMPLE_DESC {
+                        Count: 1,
+                        Quality: 0,
+                    },
                     Layout: d3d12_ty::D3D12_TEXTURE_LAYOUT_UNKNOWN,
                     Flags: d3d12_ty::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
                         | d3d12_ty::D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS,
@@ -891,9 +892,7 @@ pub(crate) fn create_dxgi_shared_present_target(
                     resource.mut_void(),
                 );
                 if hr < 0 || resource.is_null() {
-                    return Err(format!(
-                        "dx12 CreateCommittedResource failed: 0x{hr:08X}"
-                    ));
+                    return Err(format!("dx12 CreateCommittedResource failed: 0x{hr:08X}"));
                 }
 
                 let mut handle: winnt::HANDLE = std::ptr::null_mut();
@@ -927,7 +926,7 @@ pub(crate) fn create_dxgi_shared_present_target(
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT
             | wgpu::TextureUsages::TEXTURE_BINDING
             | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
+        view_formats: BGRA8_UNORM_VIEW_FORMATS,
     });
     let render_view = render_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -958,7 +957,7 @@ pub(crate) fn create_dxgi_shared_present_target(
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Bgra8Unorm,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        view_formats: &[],
+        view_formats: BGRA8_UNORM_VIEW_FORMATS,
     };
 
     let shared_texture = unsafe { device.create_texture_from_hal::<Dx12>(hal_texture, &desc) };

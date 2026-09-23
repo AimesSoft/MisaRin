@@ -48,9 +48,6 @@ bool _canApplyAntialias(BitmapCanvasController controller, int level) {
 }
 
 bool _shaderAntialiasSupported() {
-  if (kIsWeb) {
-    return false;
-  }
   return true;
 }
 

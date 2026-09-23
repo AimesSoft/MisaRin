@@ -126,17 +126,17 @@ pub fn cpu_transform_build_overflow_snapshot(
         .len()
         .min(overflow_y.len())
         .min(overflow_color.len());
-    let (overflow_x_ptr, overflow_y_ptr, overflow_color_ptr, overflow_len_u64) =
-        if overflow_len > 0 {
-            (
-                overflow_x.as_ptr(),
-                overflow_y.as_ptr(),
-                overflow_color.as_ptr(),
-                overflow_len as u64,
-            )
-        } else {
-            (std::ptr::null(), std::ptr::null(), std::ptr::null(), 0)
-        };
+    let (overflow_x_ptr, overflow_y_ptr, overflow_color_ptr, overflow_len_u64) = if overflow_len > 0
+    {
+        (
+            overflow_x.as_ptr(),
+            overflow_y.as_ptr(),
+            overflow_color.as_ptr(),
+            overflow_len as u64,
+        )
+    } else {
+        (std::ptr::null(), std::ptr::null(), std::ptr::null(), 0)
+    };
 
     let ok = cpu_build_overflow_snapshot(
         canvas.as_ptr(),

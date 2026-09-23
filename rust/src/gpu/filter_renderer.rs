@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use wgpu::{ComputePipeline, Device, Queue};
+use wgpu::{ComputePipeline, Queue};
 
 use crate::gpu::layer_format::LAYER_TEXTURE_FORMAT;
+use crate::gpu::shared_device::SharedRenderDevice;
 use crate::gpu::wgpu_utils;
 
 pub const FILTER_HUE_SATURATION: u32 = 0;
@@ -34,7 +35,7 @@ struct FilterConfig {
 }
 
 pub struct FilterRenderer {
-    device: Arc<Device>,
+    device: SharedRenderDevice,
     queue: Arc<Queue>,
     bind_group_layout: wgpu::BindGroupLayout,
     uniform_buffer: wgpu::Buffer,
@@ -62,7 +63,7 @@ impl FilterRenderer {
         );
     }
 
-    pub fn new(device: Arc<Device>, queue: Arc<Queue>) -> Result<Self, String> {
+    pub fn new(device: SharedRenderDevice, queue: Arc<Queue>) -> Result<Self, String> {
         device_push_scopes(device.as_ref());
 
         let shader_source = include_str!("filter_shaders_rgba8.wgsl");
@@ -114,36 +115,46 @@ impl FilterRenderer {
         });
 
         let pipeline_color = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             label: Some("FilterRenderer color pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "color_filter",
+            entry_point: Some("color_filter"),
         });
         let pipeline_blur = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             label: Some("FilterRenderer blur pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "blur_pass",
+            entry_point: Some("blur_pass"),
         });
         let pipeline_morph = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             label: Some("FilterRenderer morph pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "morphology_pass",
+            entry_point: Some("morphology_pass"),
         });
         let pipeline_antialias_alpha =
             device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FilterRenderer antialias alpha pipeline"),
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            label: Some("FilterRenderer antialias alpha pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader,
-                entry_point: "antialias_alpha",
+                entry_point: Some("antialias_alpha"),
             });
         let pipeline_antialias_edge =
             device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("FilterRenderer antialias edge pipeline"),
+            cache: None,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            label: Some("FilterRenderer antialias edge pipeline"),
                 layout: Some(&pipeline_layout),
                 module: &shader,
-                entry_point: "antialias_edge",
+                entry_point: Some("antialias_edge"),
             });
 
         let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -157,7 +168,9 @@ impl FilterRenderer {
             return Err(format!("wgpu validation error during filter init: {err}"));
         }
         if let Some(err) = device_pop_scope(device.as_ref()) {
-            return Err(format!("wgpu out-of-memory error during filter init: {err}"));
+            return Err(format!(
+                "wgpu out-of-memory error during filter init: {err}"
+            ));
         }
 
         let (scratch_a, scratch_a_view) = create_scratch(device.as_ref(), 1, 1, "A");
@@ -186,10 +199,8 @@ impl FilterRenderer {
         if self.width == width && self.height == height {
             return;
         }
-        let (scratch_a, scratch_a_view) =
-            create_scratch(self.device.as_ref(), width, height, "A");
-        let (scratch_b, scratch_b_view) =
-            create_scratch(self.device.as_ref(), width, height, "B");
+        let (scratch_a, scratch_a_view) = create_scratch(self.device.as_ref(), width, height, "A");
+        let (scratch_b, scratch_b_view) = create_scratch(self.device.as_ref(), width, height, "B");
         self.scratch_a = scratch_a;
         self.scratch_a_view = scratch_a_view;
         self.scratch_b = scratch_b;
@@ -300,7 +311,11 @@ impl FilterRenderer {
                 params1: [0.0; 4],
             };
             self.write_config(&vertical);
-            self.run_pass(&self.pipeline_blur, &self.scratch_b_view, &self.scratch_a_view)?;
+            self.run_pass(
+                &self.pipeline_blur,
+                &self.scratch_b_view,
+                &self.scratch_a_view,
+            )?;
             src_view = &self.scratch_a_view;
         }
 
@@ -316,9 +331,7 @@ impl FilterRenderer {
         self.run_pass(&self.pipeline_color, src_view, layer_view)?;
 
         if let Some(err) = device_pop_scope(self.device.as_ref()) {
-            return Err(format!(
-                "wgpu validation error during gaussian blur: {err}"
-            ));
+            return Err(format!("wgpu validation error during gaussian blur: {err}"));
         }
         if let Some(err) = device_pop_scope(self.device.as_ref()) {
             return Err(format!(
@@ -384,14 +397,10 @@ impl FilterRenderer {
         }
 
         if let Some(err) = device_pop_scope(self.device.as_ref()) {
-            return Err(format!(
-                "wgpu validation error during morphology: {err}"
-            ));
+            return Err(format!("wgpu validation error during morphology: {err}"));
         }
         if let Some(err) = device_pop_scope(self.device.as_ref()) {
-            return Err(format!(
-                "wgpu out-of-memory error during morphology: {err}"
-            ));
+            return Err(format!("wgpu out-of-memory error during morphology: {err}"));
         }
         Ok(())
     }
@@ -404,7 +413,8 @@ impl FilterRenderer {
         if self.width == 0 || self.height == 0 {
             return Ok(());
         }
-        let profile = antialias_profile(level).ok_or_else(|| "antialias level invalid".to_string())?;
+        let profile =
+            antialias_profile(level).ok_or_else(|| "antialias level invalid".to_string())?;
         if profile.is_empty() {
             return Ok(());
         }
@@ -444,14 +454,10 @@ impl FilterRenderer {
         self.run_pass(&self.pipeline_antialias_edge, src_view, layer_view)?;
 
         if let Some(err) = device_pop_scope(self.device.as_ref()) {
-            return Err(format!(
-                "wgpu validation error during antialias: {err}"
-            ));
+            return Err(format!("wgpu validation error during antialias: {err}"));
         }
         if let Some(err) = device_pop_scope(self.device.as_ref()) {
-            return Err(format!(
-                "wgpu out-of-memory error during antialias: {err}"
-            ));
+            return Err(format!("wgpu out-of-memory error during antialias: {err}"));
         }
         Ok(())
     }
@@ -540,11 +546,9 @@ fn compute_box_sizes(sigma: f32, count: usize) -> Vec<i32> {
         lower = 1;
     }
     let upper = lower + 2;
-    let m_ideal = (12.0 * sigma * sigma
-        - n * (lower * lower) as f32
-        - 4.0 * n * lower as f32
-        - 3.0 * n)
-        / (-4.0 * lower as f32 - 4.0);
+    let m_ideal =
+        (12.0 * sigma * sigma - n * (lower * lower) as f32 - 4.0 * n * lower as f32 - 3.0 * n)
+            / (-4.0 * lower as f32 - 4.0);
     let m = m_ideal.round().clamp(0.0, n) as usize;
     let mut sizes = Vec::with_capacity(count);
     for i in 0..count {
@@ -592,13 +596,13 @@ fn copy_texture(
         label: Some("FilterRenderer copy encoder"),
     });
     encoder.copy_texture_to_texture(
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: src,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::ImageCopyTexture {
+        wgpu::TexelCopyTextureInfo {
             texture: dst,
             mip_level: 0,
             origin: wgpu::Origin3d {

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "material": {
+    "front": {
+      "mode": "image",
+      "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAYAAABpYH0BAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAUKADAAQAAAABAAAAKAAAAAD4QudBAAABaElEQVRoBe2aMQ6CQBBFdwmFx/IoHsnSUm9hY6IH8AxewZLCBIMWrH+LYfhsAvipGHb+zPAYJkCIz6ZtY9A2lkA1Vijdl4AAkp0ggCTAGvWnWwht2x/dbfv9IXus/nj9zYL52fXf6LnljZ91YAovD28fYfV2hnl5ZADnVd78q8luYavkDSial6VY93rdzayQzDzrdA8X8O8eIh16nDFWPmvdiofr1ky18uF65Z1Z6I82Jli7rRlIXmEBJAHG/dn3LtyNu/TdGW2ynuLyyWdg8YpXnkC3MHmBBZAEWKfzbEgs9EcbY0w9czC+18bnQq8e/dWBSMRpC6ATGLoLIBJx2nXp57ipZ47z/Iq7qwNJxAIogCQBUu7uQPz0hzZZz+LkboCLO8PCBQsgCVgABZAkQMrVgQJIEiDl6kABJAmQcnWgAJIESLk6UABJAqS88vwY9MmFXw/QJgtamjzeH//+exB3yTQDOX7hDUxQQxmJ9pPaAAAAAElFTkSuQmCC",
+      "repeatX": 0.5,
+      "repeatY": 1,
+      "offsetX": 0,
+      "offsetY": 0
+    },
+    "back": {
+      "mode": "color",
+      "color": "#91b8ff"
+    },
+    "up": {
+      "mode": "color",
+      "color": "#b1b9d4"
+    },
+    "down": {
+      "mode": "gradient",
+      "colorGradualStart": "#5769cc",
+      "colorGradualEnd": "#4c5cb5",
+      "repeat": 1,
+      "offset": 0
+    },
+    "left": {
+      "mode": "color",
+      "color": "#5769cc"
+    },
+    "right": {
+      "mode": "color",
+      "color": "#5769cc"
+    },
+    "outline": {
+      "mode": "color",
+      "color": "#1d193d"
+    }
+  }
+}

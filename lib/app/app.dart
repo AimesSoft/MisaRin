@@ -3,7 +3,6 @@ import 'dart:ui' show FramePhase, FrameTiming;
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:misa_rin/mobile/responsive_dialog.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/scheduler.dart';
 import 'package:misa_rin/l10n/app_localizations.dart';
@@ -107,9 +106,6 @@ class _MisarinAppState extends State<MisarinApp> with WindowListener {
   }
 
   void _scheduleAutoSaveCleanupCheck() {
-    if (kIsWeb) {
-      return;
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_checkAutoSaveCleanup());
     });
@@ -239,7 +235,7 @@ class _MisarinAppState extends State<MisarinApp> with WindowListener {
   }
 
   void _startFrameTimingDiagnostics() {
-    if (kIsWeb || !Platform.isWindows) {
+    if (!Platform.isWindows) {
       return;
     }
     const int sampleTarget = 120;
@@ -291,7 +287,7 @@ class _MisarinAppState extends State<MisarinApp> with WindowListener {
   }
 
   bool get _supportsDesktopWindowManagement =>
-      !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   @override
   void dispose() {
@@ -443,7 +439,7 @@ class _MisarinAppState extends State<MisarinApp> with WindowListener {
                   );
 
                   // PlatformMenuBar needs AppLocalizations, so build it inside the app.
-                  if (!kIsWeb && Platform.isMacOS) {
+                  if (Platform.isMacOS) {
                     appBody = MacosMenuShell(child: appBody);
                   }
 
@@ -477,7 +473,7 @@ class _MisarinAppState extends State<MisarinApp> with WindowListener {
               ),
             );
           },
-          home: (!_kCanvasPerfStressMode || kIsWeb)
+          home: !_kCanvasPerfStressMode
               ? Builder(
                   builder: (context) => isMobileOrPhone(context)
                       ? const MobileHomePage()

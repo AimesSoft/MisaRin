@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:misa_rin/app/widgets/app_slider.dart';
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
@@ -1642,7 +1643,7 @@ class _ToolSettingsCardState extends State<ToolSettingsCard> {
     int? divisions,
     required ValueChanged<double> onChanged,
   }) {
-    final Slider slider = Slider(
+    final AppSlider slider = AppSlider(
       value: value.clamp(min, max),
       min: min,
       max: max,
