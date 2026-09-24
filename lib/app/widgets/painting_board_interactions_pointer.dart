@@ -104,6 +104,9 @@ extension _PaintingBoardInteractionPointerImpl
   }
 
   Future<void> _handlePointerDownImpl(PointerDownEvent event) async {
+    if (_backend.isSupported && !_backendCanvasAcceptsInput) {
+      return;
+    }
     _debugPointerEvent('down', event);
     _trackStylusContact(event);
     if (_brushPresetWheelActive) {
@@ -1315,6 +1318,10 @@ extension _PaintingBoardInteractionPointerImpl
     if (_useCombinedHistory) {
       final _HistoryActionKind? action = _peekHistoryUndoAction();
       if (action == _HistoryActionKind.backend) {
+        final int? handle = _backendCanvasEngineHandle;
+        if (handle != null) {
+          _flushBackendPoints(handle);
+        }
         if (!_backend.undo()) {
           return false;
         }
@@ -1359,6 +1366,10 @@ extension _PaintingBoardInteractionPointerImpl
     if (_useCombinedHistory) {
       final _HistoryActionKind? action = _peekHistoryRedoAction();
       if (action == _HistoryActionKind.backend) {
+        final int? handle = _backendCanvasEngineHandle;
+        if (handle != null) {
+          _flushBackendPoints(handle);
+        }
         if (!_backend.redo()) {
           return false;
         }

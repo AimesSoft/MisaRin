@@ -93,6 +93,7 @@ fn record_present_wait(waited_us: u64) {
 }
 
 pub(crate) enum EngineCommand {
+    PushPoints(EngineInputBatch),
     AttachPresentTexture {
         mtl_texture_ptr: usize,
         width: u32,
@@ -337,11 +338,12 @@ pub(crate) struct EngineInputBatch {
 }
 
 pub(crate) struct EngineEntry {
+    #[cfg(test)]
+    pub(crate) render_iterations: Arc<AtomicU64>,
     pub(crate) mtl_device_ptr: usize,
     pub(crate) frame_ready: Arc<AtomicBool>,
-    pub(crate) frame_in_flight: Arc<AtomicBool>,
+    pub(crate) frame_in_flight: Arc<AtomicU64>,
     pub(crate) cmd_tx: mpsc::Sender<EngineCommand>,
-    pub(crate) input_tx: mpsc::Sender<EngineInputBatch>,
     pub(crate) input_queue_len: Arc<AtomicU64>,
 }
 
@@ -1216,15 +1218,15 @@ fn commit_preview_stroke(
 }
 
 fn spawn_render_thread(
+    #[cfg(test)] render_iterations: Arc<AtomicU64>,
     instance: Arc<wgpu::Instance>,
     adapter: Arc<wgpu::Adapter>,
     device: SharedRenderDevice,
     queue: Arc<wgpu::Queue>,
     layer_textures: LayerTextures,
     cmd_rx: mpsc::Receiver<EngineCommand>,
-    input_rx: mpsc::Receiver<EngineInputBatch>,
     frame_ready: Arc<AtomicBool>,
-    frame_in_flight: Arc<AtomicBool>,
+    frame_in_flight: Arc<AtomicU64>,
     input_queue_len: Arc<AtomicU64>,
     canvas_width: u32,
     canvas_height: u32,
@@ -1233,13 +1235,14 @@ fn spawn_render_thread(
         .name("misa-rin-canvas-render".to_string())
         .spawn(move || {
             render_thread_main(
+                #[cfg(test)]
+                render_iterations,
                 instance,
                 adapter,
                 device,
                 queue,
                 layer_textures,
                 cmd_rx,
-                input_rx,
                 frame_ready,
                 frame_in_flight,
                 input_queue_len,
@@ -1250,15 +1253,15 @@ fn spawn_render_thread(
 }
 
 fn render_thread_main(
+    #[cfg(test)] render_iterations: Arc<AtomicU64>,
     instance: Arc<wgpu::Instance>,
     adapter: Arc<wgpu::Adapter>,
     device: SharedRenderDevice,
     queue: Arc<wgpu::Queue>,
     layer_textures: LayerTextures,
     cmd_rx: mpsc::Receiver<EngineCommand>,
-    input_rx: mpsc::Receiver<EngineInputBatch>,
     frame_ready: Arc<AtomicBool>,
-    frame_in_flight: Arc<AtomicBool>,
+    frame_in_flight: Arc<AtomicU64>,
     input_queue_len: Arc<AtomicU64>,
     canvas_width: u32,
     canvas_height: u32,
@@ -1363,23 +1366,28 @@ fn render_thread_main(
     let mut logged_pending_present = false;
     let mut logged_present_attempt = false;
     let mut logged_present_missing = false;
-    let mut deferred_reads: Vec<EngineCommand> = Vec::new();
+    let mut pending_command: Option<EngineCommand> = None;
 
     loop {
+        #[cfg(test)]
+        render_iterations.fetch_add(1, Ordering::Relaxed);
         let mut needs_render = false;
-        while let Ok(cmd) = cmd_rx.try_recv() {
-            if present.is_none()
-                && matches!(
-                    cmd,
-                    EngineCommand::ReadLayer { .. }
-                        | EngineCommand::ReadLayerPreview { .. }
-                        | EngineCommand::ReadPresent { .. }
-                        | EngineCommand::ReadPresentPixel { .. }
-                )
-            {
-                deferred_reads.push(cmd);
-                continue;
+        let mut batches: Vec<EngineInputBatch> = Vec::new();
+        // Commands and input share one FIFO. Render preceding points before a
+        // readback, undo, brush change, or layer upload can observe/mutate them.
+        while let Some(cmd) = pending_command.take().or_else(|| cmd_rx.try_recv().ok()) {
+            match cmd {
+                EngineCommand::PushPoints(batch) => {
+                    batches.push(batch);
+                    continue;
+                }
+                cmd if !batches.is_empty() => {
+                    pending_command = Some(cmd);
+                    break;
+                }
+                cmd => pending_command = Some(cmd),
             }
+            let cmd = pending_command.take().expect("pending command");
             if let Some(mut animation) = streamline_animation.take() {
                 if let Some(state) = preview_state.take() {
                     let committed = commit_preview_stroke(
@@ -1477,143 +1485,32 @@ fn render_thread_main(
             needs_render |= outcome.needs_render;
         }
 
-        let mut batches: Vec<EngineInputBatch> = Vec::new();
-        let mut next_timeout = if present.is_some() {
-            Duration::from_millis(4)
-        } else {
-            Duration::from_millis(16)
-        };
-        if let Some(anim) = streamline_animation.as_ref() {
-            let now = Instant::now();
-            if now >= anim.next_frame_at {
-                next_timeout = Duration::from_millis(0);
-            } else {
-                let until = anim.next_frame_at.saturating_duration_since(now);
-                if until < next_timeout {
-                    next_timeout = until;
+        if batches.is_empty() && pending_command.is_none() && !needs_render {
+            if !pending_present
+                && streamline_animation.is_none()
+                && frame_in_flight.load(Ordering::Acquire) == 0
+            {
+                // No animation or GPU completion to service. An input/command
+                // wakes this thread immediately, including disposal and undo.
+                match cmd_rx.recv() {
+                    Ok(cmd) => {
+                        pending_command = Some(cmd);
+                        continue;
+                    }
+                    Err(_) => return,
                 }
             }
-        }
-        match input_rx.recv_timeout(next_timeout) {
-            Ok(batch) => {
-                input_queue_len.fetch_sub(batch.points.len() as u64, Ordering::Relaxed);
-                batches.push(batch);
-                while let Ok(more) = input_rx.try_recv() {
-                    input_queue_len.fetch_sub(more.points.len() as u64, Ordering::Relaxed);
-                    batches.push(more);
-                }
+            let mut timeout = Duration::from_millis(4);
+            if let Some(anim) = streamline_animation.as_ref() {
+                timeout = timeout.min(anim.next_frame_at.saturating_duration_since(Instant::now()));
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => {}
-            Err(mpsc::RecvTimeoutError::Disconnected) => return,
-        }
-
-        if present.is_none() {
-            while let Ok(cmd) = cmd_rx.try_recv() {
-                if matches!(
-                    cmd,
-                    EngineCommand::ReadLayer { .. }
-                        | EngineCommand::ReadLayerPreview { .. }
-                        | EngineCommand::ReadPresent { .. }
-                        | EngineCommand::ReadPresentPixel { .. }
-                ) {
-                    deferred_reads.push(cmd);
+            match cmd_rx.recv_timeout(timeout) {
+                Ok(cmd) => {
+                    pending_command = Some(cmd);
                     continue;
                 }
-                if let Some(mut animation) = streamline_animation.take() {
-                    if let Some(state) = preview_state.take() {
-                        let committed = commit_preview_stroke(
-                            &mut stroke,
-                            &mut brush,
-                            &state.brush_settings,
-                            &animation.to_points,
-                            state.layer_index,
-                            &layers,
-                            &mut undo_manager,
-                            &mut layer_uniform,
-                            &device,
-                            &queue,
-                            canvas_width,
-                            canvas_height,
-                        );
-                        if committed {
-                            needs_render = true;
-                        }
-                    } else {
-                        let frame_drawn = render_streamline_frame(
-                            &mut animation,
-                            1.0,
-                            &mut stroke,
-                            &mut brush,
-                            &device,
-                            &queue,
-                            &layers,
-                            &mut undo_manager,
-                            &mut layer_uniform,
-                            canvas_width,
-                            canvas_height,
-                        );
-                        undo_manager.end_stroke(device.as_ref(), queue.as_ref(), layers.texture());
-                        if frame_drawn {
-                            if let Some(entry) = layer_uniform.get_mut(active_layer_index) {
-                                *entry = None;
-                            }
-                            needs_render = true;
-                        }
-                    }
-                }
-                let outcome = handle_engine_command(
-                    &instance,
-                    &adapter,
-                    &device,
-                    &queue,
-                    &mut present,
-                    cmd,
-                    &mut bucket_fill_renderer,
-                    &mut filter_renderer,
-                    &mut layers,
-                    &mut layer_count,
-                    &mut active_layer_index,
-                    &mut layer_opacity,
-                    &mut layer_visible,
-                    &mut layer_clipping_mask,
-                    &mut layer_blend_mode,
-                    &mut layer_uniform,
-                    &mut view_flags,
-                    &mut present_renderer,
-                    &present_config_buffer,
-                    &present_transform_buffer,
-                    &mut transform_matrix,
-                    &mut transform_layer_index,
-                    &mut transform_flags,
-                    &mut present_format,
-                    &mut present_params_buffer,
-                    &mut present_params_capacity,
-                    &mut present_bind_group,
-                    &mut preview_renderer,
-                    &mut cube_text_preview_renderer,
-                    &mut cube_text_preview_scene,
-                    &mut cube_text_preview_camera,
-                    &mut transform_renderer,
-                    &mut brush,
-                    &mut brush_settings,
-                    &mut stroke,
-                    &mut selection_mask_active,
-                    &mut spray_active_layer,
-                    &mut liquify_active_layer,
-                    &mut smudge_state,
-                    &mut undo_manager,
-                    canvas_width,
-                    canvas_height,
-                );
-                if outcome.stop {
-                    return;
-                }
-                if let Some((new_width, new_height)) = outcome.new_canvas_size {
-                    canvas_width = new_width;
-                    canvas_height = new_height;
-                    stroke = StrokeResampler::new();
-                }
-                needs_render |= outcome.needs_render;
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => return,
             }
         }
 
@@ -1622,6 +1519,7 @@ fn render_thread_main(
             const FLAG_UP: u32 = 4;
             let mut raw_points: Vec<EnginePoint> = Vec::new();
             for batch in batches {
+                input_queue_len.fetch_sub(batch.points.len() as u64, Ordering::Relaxed);
                 raw_points.extend(batch.points);
             }
             let backlog_points = raw_points.len() as u64 + input_queue_len.load(Ordering::Relaxed);
@@ -2152,65 +2050,6 @@ fn render_thread_main(
             streamline_animation = None;
         }
 
-        if !deferred_reads.is_empty() && input_queue_len.load(Ordering::Relaxed) == 0 {
-            let pending = std::mem::take(&mut deferred_reads);
-            for cmd in pending {
-                let outcome = handle_engine_command(
-                    &instance,
-                    &adapter,
-                    &device,
-                    &queue,
-                    &mut present,
-                    cmd,
-                    &mut bucket_fill_renderer,
-                    &mut filter_renderer,
-                    &mut layers,
-                    &mut layer_count,
-                    &mut active_layer_index,
-                    &mut layer_opacity,
-                    &mut layer_visible,
-                    &mut layer_clipping_mask,
-                    &mut layer_blend_mode,
-                    &mut layer_uniform,
-                    &mut view_flags,
-                    &mut present_renderer,
-                    &present_config_buffer,
-                    &present_transform_buffer,
-                    &mut transform_matrix,
-                    &mut transform_layer_index,
-                    &mut transform_flags,
-                    &mut present_format,
-                    &mut present_params_buffer,
-                    &mut present_params_capacity,
-                    &mut present_bind_group,
-                    &mut preview_renderer,
-                    &mut cube_text_preview_renderer,
-                    &mut cube_text_preview_scene,
-                    &mut cube_text_preview_camera,
-                    &mut transform_renderer,
-                    &mut brush,
-                    &mut brush_settings,
-                    &mut stroke,
-                    &mut selection_mask_active,
-                    &mut spray_active_layer,
-                    &mut liquify_active_layer,
-                    &mut smudge_state,
-                    &mut undo_manager,
-                    canvas_width,
-                    canvas_height,
-                );
-                if outcome.stop {
-                    return;
-                }
-                if let Some((new_width, new_height)) = outcome.new_canvas_size {
-                    canvas_width = new_width;
-                    canvas_height = new_height;
-                    stroke = StrokeResampler::new();
-                }
-                needs_render |= outcome.needs_render;
-            }
-        }
-
         if needs_render {
             if !logged_needs_render {
                 logged_needs_render = true;
@@ -2249,7 +2088,7 @@ fn render_thread_main(
                 match target {
                     PresentTarget::Texture(target) => {
                         let mut block_present = if cfg!(target_os = "windows") {
-                            frame_in_flight.load(Ordering::Acquire)
+                            frame_in_flight.load(Ordering::Acquire) != 0
                                 || frame_ready.load(Ordering::Acquire)
                         } else {
                             false
@@ -2676,6 +2515,7 @@ fn handle_engine_command(
     };
 
     match cmd {
+        EngineCommand::PushPoints(_) => unreachable!("input is handled by the render loop"),
         EngineCommand::Stop => {
             return EngineCommandOutcome {
                 stop: true,
@@ -5231,17 +5071,9 @@ fn handle_engine_command(
             };
         }
         EngineCommand::ReadPresentPixel { x, y, reply } => {
-            let Some(target) = &present else {
-                let _ = reply.send(None);
-                return EngineCommandOutcome {
-                    stop: false,
-                    needs_render: false,
-                    new_canvas_size: None,
-                };
-            };
-            let target_width = target.width();
-            let target_height = target.height();
-            if target_width == 0 || target_height == 0 || x >= target_width || y >= target_height {
+            // Sample canvas coordinates directly, independently of presentation
+            // mirroring/grayscale and of the external surface's last frame.
+            if x >= canvas_width || y >= canvas_height {
                 let _ = reply.send(None);
                 return EngineCommandOutcome {
                     stop: false,
@@ -5249,37 +5081,56 @@ fn handle_engine_command(
                     new_canvas_size: None,
                 };
             }
-            if let Some(texture_target) = target.as_texture() {
-                // Force a fresh composite before readback so eyedropper always
-                // reads the latest canvas content.
-                present_renderer.render_base(
-                    device.as_ref(),
-                    queue.as_ref(),
-                    present_bind_group,
-                    texture_target.render_view(),
-                );
-                match read_bgra_texture_pixel(
-                    device,
-                    queue,
-                    texture_target.render_texture(),
-                    target_width,
-                    target_height,
-                    x,
-                    y,
-                ) {
-                    Ok(pixel) => {
-                        let _ = reply.send(Some(pixel));
+            let config = super::present::create_sample_config_buffer(
+                device,
+                *layer_count,
+                *transform_layer_index,
+                *transform_flags,
+                x,
+                y,
+            );
+            let sample_texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("misa-rin color sample target"),
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: *present_format,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
+            let view = sample_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let bind_group = present_renderer.create_bind_group(
+                device,
+                layers.array_view(),
+                &config,
+                present_params_buffer,
+                present_transform_buffer,
+            );
+            present_renderer.render_base(device, queue, &bind_group, &view);
+            let pixel =
+                read_bgra_texture_pixel(device, queue, &sample_texture, 1, 1, 0, 0).map(|argb| {
+                    if matches!(
+                        *present_format,
+                        wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Rgba8UnormSrgb
+                    ) {
+                        (argb & 0xff00ff00) | ((argb & 0xff) << 16) | ((argb >> 16) & 0xff)
+                    } else {
+                        argb
                     }
-                    Err(err) => {
-                        debug::log(
-                            LogLevel::Warn,
-                            format_args!("present pixel readback failed: {err}"),
-                        );
-                        let _ = reply.send(None);
-                    }
+                });
+            match pixel {
+                Ok(pixel) => {
+                    let _ = reply.send(Some(pixel));
                 }
-            } else {
-                let _ = reply.send(None);
+                Err(err) => {
+                    debug::log(LogLevel::Warn, format_args!("color sample failed: {err}"));
+                    let _ = reply.send(None);
+                }
             }
             return EngineCommandOutcome {
                 stop: false,
@@ -7183,18 +7034,20 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
         .map_err(|err| format!("engine_create: layer init failed: {err}"))?;
 
     let (cmd_tx, cmd_rx) = mpsc::channel();
-    let (input_tx, input_rx) = mpsc::channel();
     let input_queue_len = Arc::new(AtomicU64::new(0));
     let frame_ready = Arc::new(AtomicBool::new(false));
-    let frame_in_flight = Arc::new(AtomicBool::new(false));
+    let frame_in_flight = Arc::new(AtomicU64::new(0));
+    #[cfg(test)]
+    let render_iterations = Arc::new(AtomicU64::new(0));
     spawn_render_thread(
+        #[cfg(test)]
+        Arc::clone(&render_iterations),
         Arc::clone(&ctx.instance),
         Arc::clone(&ctx.adapter),
         ctx.device.clone(),
         Arc::clone(&ctx.queue),
         layers,
         cmd_rx,
-        input_rx,
         Arc::clone(&frame_ready),
         Arc::clone(&frame_in_flight),
         Arc::clone(&input_queue_len),
@@ -7209,11 +7062,12 @@ pub(crate) fn create_engine(width: u32, height: u32) -> Result<u64, String> {
     guard.insert(
         handle,
         EngineEntry {
+            #[cfg(test)]
+            render_iterations,
             mtl_device_ptr,
             frame_ready,
             frame_in_flight,
             cmd_tx,
-            input_tx,
             input_queue_len,
         },
     );
@@ -7228,11 +7082,12 @@ pub(crate) fn lookup_engine(handle: u64) -> Option<EngineEntry> {
     let guard = engines().lock().ok()?;
     let entry = guard.get(&handle)?;
     Some(EngineEntry {
+        #[cfg(test)]
+        render_iterations: Arc::clone(&entry.render_iterations),
         mtl_device_ptr: entry.mtl_device_ptr,
         frame_ready: Arc::clone(&entry.frame_ready),
         frame_in_flight: Arc::clone(&entry.frame_in_flight),
         cmd_tx: entry.cmd_tx.clone(),
-        input_tx: entry.input_tx.clone(),
         input_queue_len: Arc::clone(&entry.input_queue_len),
     })
 }

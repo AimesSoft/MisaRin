@@ -150,7 +150,7 @@ class PaintingBoardState extends _PaintingBoardBase
     initializePerspectiveGuide(widget.initialPerspectiveGuide);
     final List<CanvasLayerData> layers = _buildInitialLayers();
     final bool useBackendCanvas = _backend.isSupported;
-    final bool enableRasterOutput = true;
+    final bool enableRasterOutput = !useBackendCanvas;
     final CanvasBackend rasterBackend = CanvasBackendState.resolveRasterBackend(
       useBackendCanvas: useBackendCanvas,
     );
@@ -963,6 +963,9 @@ class PaintingBoardState extends _PaintingBoardBase
     final bool shouldRecreate =
         sizeChanged || backgroundChanged || logicChanged;
     if (shouldRecreate) {
+      _backendPixelsSyncSerial++;
+      _backendPixelsSyncedHandle = null;
+      _backendPixelsSyncInFlight = false;
       debugPrint(
         'paintingBoard: recreate controller surfaceKey=${widget.surfaceKey} '
         'sizeChanged=$sizeChanged backgroundChanged=$backgroundChanged '
@@ -1022,6 +1025,7 @@ class PaintingBoardState extends _PaintingBoardBase
       });
       _notifyViewInfoChanged();
       _syncBackendCanvasLayersToEngine();
+      _syncBackendCanvasPixelsIfNeeded();
     }
     if (!shouldRecreate && layersChanged) {
       debugPrint(
@@ -1131,6 +1135,9 @@ class PaintingBoardState extends _PaintingBoardBase
     if (_boardReadyNotified) {
       return;
     }
+    if (_backend.isSupported && !_backendCanvasAcceptsInput) {
+      return;
+    }
     final CanvasFrame? frame = _controller.frame;
     if (frame == null) {
       if (_backendCanvasEngineHandle == null) {
@@ -1145,6 +1152,9 @@ class PaintingBoardState extends _PaintingBoardBase
       );
     }
     _boardReadyNotified = true;
+    for (final CanvasLayerInfo layer in _controller.layers) {
+      _scheduleBackendLayerPreviewRefresh(layer.id);
+    }
     widget.onReadyChanged?.call(true);
     _syncMenuAvailability();
   }

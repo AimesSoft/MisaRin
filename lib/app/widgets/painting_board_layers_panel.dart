@@ -420,15 +420,19 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
   }
 
   void _ensureLayerPreviewImpl(CanvasLayerInfo layer) {
+    if (_backend.isSupported && !_backendCanvasAcceptsInput) {
+      return;
+    }
     final _LayerPreviewCacheEntry? entry = _layerPreviewCache[layer.id];
     final int revision = _layerPreviewRevisionForLayer(layer);
-    if (entry != null && entry.revision == revision) {
+    if (entry != null && (entry.revision == revision || entry.inFlight)) {
       return;
     }
     final int requestId = ++_layerPreviewRequestSerial;
     final _LayerPreviewCacheEntry target =
         entry ?? _LayerPreviewCacheEntry(requestId: requestId);
     target.requestId = requestId;
+    target.inFlight = true;
     _layerPreviewCache[layer.id] = target;
     unawaited(
       _captureLayerPreviewThumbnail(
@@ -452,7 +456,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
       layerId: layerId,
       maxHeight: _layerPreviewRasterHeight,
     );
-    if (pixels == null) {
+    if (pixels == null && !_backend.isSupported) {
       final Size? surfaceSize = _controller.readLayerSurfaceSize(layerId);
       final Uint32List? layerPixels = _controller.readLayerPixels(layerId);
       if (surfaceSize != null && layerPixels != null) {
@@ -507,6 +511,7 @@ extension _PaintingBoardLayerPanelDelegate on _PaintingBoardLayerMixin {
     final bool changed = previous != image || entry.revision != revision;
     entry
       ..image = image
+      ..inFlight = false
       ..revision = revision;
     if (!changed) {
       return;
@@ -1083,6 +1088,7 @@ class _LayerPreviewCacheEntry {
 
   int requestId;
   int revision;
+  bool inFlight = false;
   ui.Image? image;
 
   void dispose() {

@@ -743,8 +743,10 @@ pub extern "C" fn engine_push_points(handle: u64, points: *const EnginePoint, le
     }
 
     if entry
-        .input_tx
-        .send(EngineInputBatch { points: owned })
+        .cmd_tx
+        .send(EngineCommand::PushPoints(EngineInputBatch {
+            points: owned,
+        }))
         .is_err()
     {
         entry

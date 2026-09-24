@@ -39,7 +39,7 @@ extension _PaintingBoardInteractionBackendImpl
   }
 
   bool _canStartBackendStroke() {
-    if (!_backend.supportsStrokeStream) {
+    if (!_backend.supportsStrokeStream || !_backendCanvasAcceptsInput) {
       return false;
     }
     if (_layerTransformModeActive ||

@@ -26,6 +26,15 @@ private func engine_dispose(_ engineHandle: UInt64)
 @_silgen_name("engine_poll_frame_ready")
 private func engine_poll_frame_ready(_ engineHandle: UInt64) -> Bool
 
+@_silgen_name("engine_frame_events_create")
+private func engine_frame_events_create() -> UInt64
+
+@_silgen_name("engine_frame_events_wait")
+private func engine_frame_events_wait(_ subscription: UInt64) -> Bool
+
+@_silgen_name("engine_frame_events_dispose")
+private func engine_frame_events_dispose(_ subscription: UInt64)
+
 @_silgen_name("engine_set_log_level")
 private func engine_set_log_level(_ level: UInt32)
 
@@ -181,18 +190,15 @@ private final class RustCanvasSurfaceState {
   private var idleSurfaces: [String: [RustCanvasSurfaceState]] = [:]
   // Disable pooling to guarantee per-project isolation.
   private let maxIdleSurfacesPerSize = 0
-  private var displayLink: CADisplayLink?
+  private var frameEvents: UInt64 = 0
+  private let frameDeliveryLock = NSLock()
+  private var frameDeliveryPending = false
   private let engineInitQueue = DispatchQueue(label: "misarin.canvas.engine-init", qos: .userInitiated)
   private let presentLogEnabled: Bool
   private var presentLogLastMs: UInt64 = 0
   private var presentPollCount: UInt64 = 0
   private var presentPollReadyCount: UInt64 = 0
   private var presentTickCount: UInt64 = 0
-  private var presentMainDispatchCount: UInt64 = 0
-  private var presentMainDirectCount: UInt64 = 0
-  private var presentMainExecCount: UInt64 = 0
-  private var presentMainDelaySumMs: UInt64 = 0
-  private var presentMainDelayMaxMs: UInt64 = 0
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     if didRegister {
@@ -264,7 +270,7 @@ private final class RustCanvasSurfaceState {
     )
     let instance = RustLibMisaRinPlugin(textureRegistry: registrar.textures())
     registrar.addMethodCallDelegate(instance, channel: channel)
-    instance.startDisplayLink()
+    instance.startFrameNotifications()
   }
 
   private init(textureRegistry: FlutterTextureRegistry) {
@@ -274,7 +280,7 @@ private final class RustCanvasSurfaceState {
   }
 
   deinit {
-    displayLink?.invalidate()
+    engine_frame_events_dispose(frameEvents)
     var handlesToDispose: [UInt64] = []
     var texturesToUnregister: [Int64] = []
     engineStateLock.lock()
@@ -703,6 +709,8 @@ private final class RustCanvasSurfaceState {
         entry.textureCache = resolvedCache
         entry.presentTexture = resolvedCvTexture
         self.engineStateLock.unlock()
+        // A GPU frame may have completed before the texture was registered.
+        self.scheduleFrameDelivery()
         self.completePendingTextureInfoRequests(surfaceId: surfaceId, response: [
           "textureId": resolvedTextureId,
           "engineHandle": NSNumber(value: handle),
@@ -771,13 +779,42 @@ private final class RustCanvasSurfaceState {
     }
   }
 
-  private func startDisplayLink() {
-    let link = CADisplayLink(target: self, selector: #selector(onDisplayLinkTick(_:)))
-    link.add(to: .main, forMode: .common)
-    displayLink = link
+  private func startFrameNotifications() {
+    let subscription = engine_frame_events_create()
+    frameEvents = subscription
+    // The worker holds only a weak plugin reference while sleeping in Rust.
+    // Disposal closes the subscription and wakes it without a polling timer.
+    let worker = Thread { [weak self] in
+      while engine_frame_events_wait(subscription) {
+        autoreleasepool {
+          self?.scheduleFrameDelivery()
+        }
+      }
+    }
+    worker.name = "misarin.canvas.frame-events"
+    worker.qualityOfService = .userInitiated
+    worker.start()
   }
 
-  @objc private func onDisplayLinkTick(_ link: CADisplayLink) {
+  private func scheduleFrameDelivery() {
+    frameDeliveryLock.lock()
+    if frameDeliveryPending {
+      frameDeliveryLock.unlock()
+      return
+    }
+    frameDeliveryPending = true
+    frameDeliveryLock.unlock()
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.frameDeliveryLock.lock()
+      self.frameDeliveryPending = false
+      self.frameDeliveryLock.unlock()
+      self.onFramesReady()
+    }
+  }
+
+  private func onFramesReady() {
+    // Texture registration, unregistration and delivery all run on main.
     var entries: [(UInt64, Int64)] = []
     engineStateLock.lock()
     for entry in surfaces.values {
@@ -786,61 +823,27 @@ private final class RustCanvasSurfaceState {
       }
     }
     engineStateLock.unlock()
-    var readyCount = 0
     for (handle, textureId) in entries {
       let ready = engine_poll_frame_ready(handle)
       if presentLogEnabled {
         presentPollCount &+= 1
-        if ready {
-          presentPollReadyCount &+= 1
-        }
+        if ready { presentPollReadyCount &+= 1 }
       }
       if ready {
-        readyCount += 1
-        if Thread.isMainThread {
-          presentMainDirectCount &+= 1
-          textureRegistry.textureFrameAvailable(textureId)
-        } else {
-          presentMainDispatchCount &+= 1
-          let queuedAt = nowMs()
-          DispatchQueue.main.async { [weak self, textureRegistry] in
-            guard let self else {
-              return
-            }
-            let delay = self.nowMs() &- queuedAt
-            self.presentMainExecCount &+= 1
-            self.presentMainDelaySumMs &+= delay
-            if delay > self.presentMainDelayMaxMs {
-              self.presentMainDelayMaxMs = delay
-            }
-            textureRegistry.textureFrameAvailable(textureId)
-          }
-        }
+        textureRegistry.textureFrameAvailable(textureId)
       }
     }
     if presentLogEnabled {
       presentTickCount &+= 1
-      if readyCount > 0 {
-        let threadTag = Thread.isMainThread ? "main" : "bg"
-        presentLog("displayLink ready=\(readyCount) entries=\(entries.count) thread=\(threadTag)")
-      }
       let now = nowMs()
       if now &- presentLogLastMs >= 1000 {
-        let avgDelay = presentMainExecCount == 0
-          ? 0
-          : presentMainDelaySumMs / presentMainExecCount
         presentLog(
-          "displayLink summary ticks=\(presentTickCount) polls=\(presentPollCount) ready=\(presentPollReadyCount) entries=\(entries.count) main_direct=\(presentMainDirectCount) main_dispatch=\(presentMainDispatchCount) main_exec=\(presentMainExecCount) main_delay_avg_ms=\(avgDelay) main_delay_max_ms=\(presentMainDelayMaxMs)"
+          "frame events=\(presentTickCount) polls=\(presentPollCount) ready=\(presentPollReadyCount) entries=\(entries.count)"
         )
         presentLogLastMs = now
         presentTickCount = 0
         presentPollCount = 0
         presentPollReadyCount = 0
-        presentMainDispatchCount = 0
-        presentMainDirectCount = 0
-        presentMainExecCount = 0
-        presentMainDelaySumMs = 0
-        presentMainDelayMaxMs = 0
       }
     }
   }

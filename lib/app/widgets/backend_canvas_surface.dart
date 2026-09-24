@@ -468,7 +468,6 @@ class _BackendCanvasSurfaceState extends State<BackendCanvasSurface> {
       'size=${widget.canvasSize.width}x${widget.canvasSize.height} '
       'layers=${widget.layerCount}',
     );
-    unawaited(prewarmIfNeeded());
     unawaited(_loadTextureInfo());
   }
 

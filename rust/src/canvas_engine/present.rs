@@ -1,7 +1,5 @@
 use std::borrow::Cow;
-#[cfg(target_os = "windows")]
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 #[cfg(target_os = "windows")]
 use std::time::Instant;
@@ -24,11 +22,9 @@ use wgpu_hal::dx12;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use wgpu_hal::{api::Metal, CopyExtent};
 #[cfg(target_os = "windows")]
-use winapi::shared::{dxgiformat, dxgitype};
+use winapi::um::{handleapi::CloseHandle, winnt};
 #[cfg(target_os = "windows")]
-use winapi::um::{d3d12 as d3d12_ty, handleapi::CloseHandle, winnt};
-#[cfg(target_os = "windows")]
-use winapi::Interface as _;
+use windows::Win32::Graphics::{Direct3D12 as d3d12_ty, Dxgi::Common as dxgi};
 #[cfg(target_os = "android")]
 use {
     ndk_sys::ANativeWindow,
@@ -233,6 +229,33 @@ pub(crate) struct PresentCompositeHeader {
     view_flags: u32,
     transform_layer: u32,
     transform_flags: u32,
+    origin: [u32; 2],
+    _padding: [u32; 2],
+}
+
+pub(crate) fn create_sample_config_buffer(
+    device: &wgpu::Device,
+    layer_count: usize,
+    transform_layer: u32,
+    transform_flags: u32,
+    x: u32,
+    y: u32,
+) -> wgpu::Buffer {
+    use wgpu::util::DeviceExt;
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("misa-rin color sample config"),
+        contents: bytemuck::bytes_of(&PresentCompositeHeader {
+            layer_count: layer_count as u32,
+            // Readback returns straight color; the displayed surface remains
+            // premultiplied as required by Flutter.
+            view_flags: 4,
+            transform_layer,
+            transform_flags,
+            origin: [x, y],
+            _padding: [0; 2],
+        }),
+        usage: wgpu::BufferUsages::UNIFORM,
+    })
 }
 
 #[repr(C)]
@@ -269,6 +292,8 @@ pub(crate) fn write_present_config(
         view_flags,
         transform_layer,
         transform_flags,
+        origin: [0; 2],
+        _padding: [0; 2],
     };
     wgpu_utils::write_buffer(device, queue, header_buffer, 0, bytemuck::bytes_of(&header));
 
@@ -423,20 +448,20 @@ impl PresentRenderer {
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        cache: None,
-        label: Some("misa-rin present renderer pipeline"),
+            cache: None,
+            label: Some("misa-rin present renderer pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: Some("vs_main"),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            buffers: &[],
+                module: &shader,
+                entry_point: Some("vs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[],
             },
             fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: Some("fs_main"),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            targets: &[Some(wgpu::ColorTargetState {
+                module: &shader,
+                entry_point: Some("fs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
@@ -502,7 +527,7 @@ impl PresentRenderer {
         bind_group: &wgpu::BindGroup,
         target: &PresentTextureTarget,
         frame_ready: Arc<AtomicBool>,
-        frame_in_flight: Arc<AtomicBool>,
+        frame_in_flight: Arc<AtomicU64>,
     ) {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("misa-rin present renderer encoder"),
@@ -601,19 +626,23 @@ pub(crate) fn copy_render_to_shared(
 pub(crate) fn signal_frame_ready(
     queue: &wgpu::Queue,
     frame_ready: Arc<AtomicBool>,
-    frame_in_flight: Arc<AtomicBool>,
+    frame_in_flight: Arc<AtomicU64>,
 ) {
     debug::log(LogLevel::Verbose, format_args!("frame_ready queued"));
     #[cfg(target_os = "windows")]
     let submitted_at = Instant::now();
     // Mark in-flight; only flip to ready once GPU work completes.
     frame_ready.store(false, Ordering::Release);
-    frame_in_flight.store(true, Ordering::Release);
+    // Metal can have several submissions outstanding. An older completion
+    // must not allow the render thread to sleep before the final callback.
+    frame_in_flight.fetch_add(1, Ordering::AcqRel);
     let frame_ready_done = Arc::clone(&frame_ready);
     let frame_in_flight_done = Arc::clone(&frame_in_flight);
     queue.on_submitted_work_done(move || {
-        frame_in_flight_done.store(false, Ordering::Release);
-        frame_ready_done.store(true, Ordering::Release);
+        if frame_in_flight_done.fetch_sub(1, Ordering::AcqRel) == 1 {
+            frame_ready_done.store(true, Ordering::Release);
+            super::frame_events::notify_all();
+        }
         debug::log(LogLevel::Verbose, format_args!("frame_ready done"));
         #[cfg(target_os = "windows")]
         {
@@ -849,13 +878,10 @@ pub(crate) fn create_dxgi_shared_present_target(
 
     let (resource, shared_handle) = unsafe {
         device
-            .as_hal::<Dx12>().map(|hal_device| {
-                let Some(hal_device) = hal_device else {
-                    return Err("wgpu: dx12 backend unavailable".to_string());
-                };
-
+            .as_hal::<Dx12>()
+            .map(|hal_device| {
                 let raw_device = hal_device.raw_device();
-                let mut resource = d3d12::ComPtr::<d3d12_ty::ID3D12Resource>::null();
+                let mut resource: Option<d3d12_ty::ID3D12Resource> = None;
 
                 let heap_props = d3d12_ty::D3D12_HEAP_PROPERTIES {
                     Type: d3d12_ty::D3D12_HEAP_TYPE_DEFAULT,
@@ -872,8 +898,8 @@ pub(crate) fn create_dxgi_shared_present_target(
                     Height: height,
                     DepthOrArraySize: 1,
                     MipLevels: 1,
-                    Format: dxgiformat::DXGI_FORMAT_B8G8R8A8_UNORM,
-                    SampleDesc: dxgitype::DXGI_SAMPLE_DESC {
+                    Format: dxgi::DXGI_FORMAT_B8G8R8A8_UNORM,
+                    SampleDesc: dxgi::DXGI_SAMPLE_DESC {
                         Count: 1,
                         Quality: 0,
                     },
@@ -882,32 +908,28 @@ pub(crate) fn create_dxgi_shared_present_target(
                         | d3d12_ty::D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS,
                 };
 
-                let hr = raw_device.CreateCommittedResource(
-                    &heap_props,
-                    d3d12_ty::D3D12_HEAP_FLAG_SHARED,
-                    &desc,
-                    d3d12_ty::D3D12_RESOURCE_STATE_COMMON,
-                    std::ptr::null(),
-                    &d3d12_ty::ID3D12Resource::uuidof(),
-                    resource.mut_void(),
-                );
-                if hr < 0 || resource.is_null() {
-                    return Err(format!("dx12 CreateCommittedResource failed: 0x{hr:08X}"));
-                }
+                raw_device
+                    .CreateCommittedResource(
+                        &heap_props,
+                        d3d12_ty::D3D12_HEAP_FLAG_SHARED,
+                        &desc,
+                        d3d12_ty::D3D12_RESOURCE_STATE_COMMON,
+                        None,
+                        &mut resource,
+                    )
+                    .map_err(|err| format!("dx12 CreateCommittedResource failed: {err}"))?;
+                let resource = resource.ok_or_else(|| "dx12 resource is null".to_string())?;
 
-                let mut handle: winnt::HANDLE = std::ptr::null_mut();
-                let hr = raw_device.CreateSharedHandle(
-                    resource.as_mut_ptr() as *mut _,
-                    std::ptr::null(),
-                    winnt::GENERIC_ALL,
-                    std::ptr::null(),
-                    &mut handle,
-                );
-                if hr < 0 || handle.is_null() {
-                    return Err(format!("dx12 CreateSharedHandle failed: 0x{hr:08X}"));
-                }
+                let handle = raw_device
+                    .CreateSharedHandle(
+                        &resource,
+                        None,
+                        winnt::GENERIC_ALL,
+                        windows::core::PCWSTR::null(),
+                    )
+                    .map_err(|err| format!("dx12 CreateSharedHandle failed: {err}"))?;
 
-                Ok((resource, handle))
+                Ok::<_, String>((resource, handle.0 as winnt::HANDLE))
             })
             .ok_or_else(|| "wgpu: dx12 backend unavailable".to_string())?
     }?;

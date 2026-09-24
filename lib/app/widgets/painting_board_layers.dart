@@ -38,18 +38,10 @@ mixin _PaintingBoardLayerMixin
     if (provided != null && provided.isNotEmpty) {
       return List<CanvasLayerData>.from(provided);
     }
-    final int width = widget.settings.width.round();
-    final int height = widget.settings.height.round();
     final Color background = widget.settings.backgroundColor;
     return <CanvasLayerData>[
       CanvasLayerData(id: generateLayerId(), name: '背景', fillColor: background),
-      CanvasLayerData(
-        id: generateLayerId(),
-        name: '图层 2',
-        bitmap: Uint8List(width * height * 4),
-        bitmapWidth: width,
-        bitmapHeight: height,
-      ),
+      CanvasLayerData(id: generateLayerId(), name: '图层 2'),
     ];
   }
 

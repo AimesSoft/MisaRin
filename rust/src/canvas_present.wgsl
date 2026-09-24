@@ -22,6 +22,8 @@ struct CompositeConfig {
   view_flags: u32,
   transform_layer: u32,
   transform_flags: u32,
+  origin: vec2<u32>,
+  padding: vec2<u32>,
 };
 
 struct LayerParams {
@@ -397,8 +399,8 @@ fn sample_transformed(coord: vec2<f32>, layer: i32) -> u32 {
 
 @fragment
 fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
-  let x = i32(pos.x);
-  let y = i32(pos.y);
+  let x = i32(pos.x) + i32(cfg.origin.x);
+  let y = i32(pos.y) + i32(cfg.origin.y);
   let dims = textureDimensions(layer_tex);
   var coord = vec2<i32>(x, y);
   if ((cfg.view_flags & 1u) != 0u) {
@@ -486,6 +488,9 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
   if ((cfg.view_flags & 2u) != 0u) {
     let luma = dot(out_premul.rgb, vec3<f32>(0.299, 0.587, 0.114));
     out_premul = vec4<f32>(vec3<f32>(luma), out_premul.a);
+  }
+  if ((cfg.view_flags & 4u) != 0u && out_premul.a > 0.0) {
+    out_premul = vec4<f32>(out_premul.rgb / out_premul.a, out_premul.a);
   }
   return clamp(out_premul, vec4<f32>(0.0), vec4<f32>(1.0));
 }

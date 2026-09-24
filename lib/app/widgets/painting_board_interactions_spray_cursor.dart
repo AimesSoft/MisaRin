@@ -635,9 +635,20 @@ extension _PaintingBoardInteractionSprayCursorExtension
   }
 
   void _applyEyedropperSample(Offset boardLocal, {bool remember = true}) {
-    final Color color =
-        _backend.sampleCompositeColor(boardLocal) ??
-        _controller.sampleColor(boardLocal, sampleAllLayers: true);
+    final int? handle = _backendCanvasEngineHandle;
+    if (handle != null) {
+      // A pointer-up can still be buffered until the next frame. Sampling must
+      // follow that input in the engine queue, including on non-Windows hosts.
+      _flushBackendPoints(handle);
+    }
+    // The Dart pixels do not include live GPU strokes. An unavailable backend
+    // sample must not be mistaken for a genuinely transparent canvas pixel.
+    final Color? color = _backend.isSupported
+        ? _backend.sampleCompositeColor(boardLocal)
+        : _controller.sampleColor(boardLocal, sampleAllLayers: true);
+    if (color == null) {
+      return;
+    }
     if (color.alpha == 0) {
       _updateBrushToolsEraserMode(true);
       return;

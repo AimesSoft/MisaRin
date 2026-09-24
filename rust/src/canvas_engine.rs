@@ -1,5 +1,9 @@
 pub mod ffi;
+mod frame_events;
 mod types;
+
+#[cfg(all(test, target_os = "windows"))]
+mod regression_tests;
 
 #[cfg(any(
     target_os = "macos",

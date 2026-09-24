@@ -1,10 +1,21 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show compute;
+
 import '../src/rust/api/selection_path.dart' as rust_selection_path;
 import '../src/rust/canvas_engine_ffi.dart' as rust_wgpu_engine;
 import 'canvas_backend.dart';
 import 'canvas_backend_state.dart';
+
+Uint8List? _readLayerPreviewInBackground(
+  ({int handle, int layerIndex, int width, int height}) request,
+) => rust_wgpu_engine.CanvasEngineFfi.instance.readLayerPreview(
+  handle: request.handle,
+  layerIndex: request.layerIndex,
+  width: request.width,
+  height: request.height,
+);
 
 const int _kRustLogLevel = int.fromEnvironment(
   'MISA_RIN_RUST_LOG_LEVEL',
@@ -1055,6 +1066,18 @@ class CanvasBackendFacade {
   int? readPresentPixel({required int handle, required int x, required int y}) {
     return _ffi.readPresentPixel(handle: handle, x: x, y: y);
   }
+
+  Future<Uint8List?> readLayerPreviewAsync({
+    required int handle,
+    required int layerIndex,
+    required int width,
+    required int height,
+  }) => compute(_readLayerPreviewInBackground, (
+    handle: handle,
+    layerIndex: layerIndex,
+    width: width,
+    height: height,
+  ));
 
   bool writeLayer({
     required int handle,

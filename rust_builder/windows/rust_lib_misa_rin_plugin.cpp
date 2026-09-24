@@ -15,8 +15,10 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstdlib>
 #include <cstdint>
+#include <deque>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -42,6 +44,10 @@ void engine_reset_canvas_with_layers(uint64_t handle,
                                      uint32_t layer_count,
                                      uint32_t background_color_argb);
 bool engine_poll_frame_ready(uint64_t handle);
+uint64_t engine_frame_events_create();
+bool engine_frame_events_wait(uint64_t subscription);
+void engine_frame_events_request(uint64_t subscription);
+void engine_frame_events_dispose(uint64_t subscription);
 }  // extern "C"
 
 namespace rust_lib_misa_rin {
@@ -173,21 +179,17 @@ int64_t QueryRefreshIntervalUs() {
     if (num > 0 && den > 0) {
       const double hz = static_cast<double>(num) / static_cast<double>(den);
       if (hz > 1.0) {
-        return ClampIntervalUs(
-            static_cast<int64_t>(1'000'000.0 / hz));
+        return ClampIntervalUs(static_cast<int64_t>(1'000'000.0 / hz));
       }
     }
   }
-
   DEVMODE dev_mode{};
   dev_mode.dmSize = sizeof(dev_mode);
-  if (EnumDisplaySettings(nullptr, ENUM_CURRENT_SETTINGS, &dev_mode)) {
-    if (dev_mode.dmDisplayFrequency > 1) {
-      return ClampIntervalUs(
-          static_cast<int64_t>(1'000'000 / dev_mode.dmDisplayFrequency));
-    }
+  if (EnumDisplaySettings(nullptr, ENUM_CURRENT_SETTINGS, &dev_mode) &&
+      dev_mode.dmDisplayFrequency > 1) {
+    return ClampIntervalUs(
+        static_cast<int64_t>(1'000'000 / dev_mode.dmDisplayFrequency));
   }
-
   return kFallbackIntervalUs;
 }
 
@@ -262,7 +264,12 @@ struct RustLibMisaRinPlugin::Impl {
     uint32_t first_frame_poll_count = 0;
 
     int64_t RefreshFrame() {
-      std::lock_guard<std::mutex> lock(mutex);
+      // Surface creation can compile GPU pipelines. Keep other canvases
+      // presenting while that surface is being prepared by the worker.
+      std::unique_lock<std::mutex> lock(mutex, std::try_to_lock);
+      if (!lock.owns_lock()) {
+        return -1;
+      }
       if (engine_handle == 0 || texture_id < 0) {
         return -1;
       }
@@ -296,12 +303,19 @@ struct RustLibMisaRinPlugin::Impl {
   };
 
   explicit Impl(FlutterDesktopTextureRegistrarRef texture_registrar)
-      : texture_registrar_(texture_registrar), running_(true) {
+      : texture_registrar_(texture_registrar), running_(true),
+        frame_events_(engine_frame_events_create()) {
+    surface_thread_ = std::thread([this]() { SurfaceLoop(); });
     frame_thread_ = std::thread([this]() { FrameLoop(); });
   }
 
   ~Impl() {
     running_.store(false);
+    engine_frame_events_dispose(frame_events_);
+    surface_cv_.notify_all();
+    if (surface_thread_.joinable()) {
+      surface_thread_.join();
+    }
     if (frame_thread_.joinable()) {
       frame_thread_.join();
     }
@@ -311,21 +325,53 @@ struct RustLibMisaRinPlugin::Impl {
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue>& method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-    if (method_call.method_name() == "getTextureInfo") {
+    if (method_call.method_name() == "getTextureInfo" ||
+        method_call.method_name() == "disposeTexture") {
       const auto* args =
           std::get_if<flutter::EncodableMap>(method_call.arguments());
-      flutter::EncodableMap empty_args;
-      HandleGetTextureInfo(args ? *args : empty_args, std::move(result));
-      return;
-    }
-    if (method_call.method_name() == "disposeTexture") {
-      const auto* args =
-          std::get_if<flutter::EncodableMap>(method_call.arguments());
-      flutter::EncodableMap empty_args;
-      HandleDisposeTexture(args ? *args : empty_args, std::move(result));
+      {
+        std::lock_guard<std::mutex> lock(surface_jobs_mutex_);
+        surface_jobs_.push_back(SurfaceJob{
+            method_call.method_name() == "disposeTexture",
+            args ? *args : flutter::EncodableMap{}, std::move(result)});
+      }
+      surface_cv_.notify_one();
       return;
     }
     result->NotImplemented();
+  }
+
+  struct SurfaceJob {
+    bool dispose;
+    flutter::EncodableMap args;
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result;
+  };
+
+  void SurfaceLoop() {
+    // One worker preserves create/resize/dispose ordering, including warmups.
+    // Flutter texture registration and method replies support background calls.
+    while (true) {
+      SurfaceJob job;
+      {
+        std::unique_lock<std::mutex> lock(surface_jobs_mutex_);
+        surface_cv_.wait(lock, [this]() {
+          return !running_.load() || !surface_jobs_.empty();
+        });
+        if (surface_jobs_.empty()) {
+          return;
+        }
+        job = std::move(surface_jobs_.front());
+        surface_jobs_.pop_front();
+      }
+      if (job.dispose) {
+        HandleDisposeTexture(job.args, std::move(job.result));
+      } else {
+        HandleGetTextureInfo(job.args, std::move(job.result));
+      }
+      // RefreshFrame may have skipped a surface while this job held its lock,
+      // or GPU completion may have preceded Flutter texture registration.
+      engine_frame_events_request(frame_events_);
+    }
   }
 
   void HandleGetTextureInfo(
@@ -560,9 +606,11 @@ struct RustLibMisaRinPlugin::Impl {
   void FrameLoop() {
     int64_t interval_us = QueryRefreshIntervalUs();
     auto next_refresh_check = std::chrono::steady_clock::now();
-    auto next_tick = std::chrono::steady_clock::now() +
-                     std::chrono::microseconds(interval_us);
-    while (running_.load()) {
+    auto next_tick = next_refresh_check;
+    while (running_.load() && engine_frame_events_wait(frame_events_)) {
+      // Pace actual updates to the display, but never wake on a timer while
+      // idle. This also preserves presentation backpressure during drawing.
+      std::this_thread::sleep_until(next_tick);
       std::vector<std::shared_ptr<SurfaceState>> entries;
       {
         std::lock_guard<std::mutex> lock(surfaces_mutex_);
@@ -580,16 +628,12 @@ struct RustLibMisaRinPlugin::Impl {
               texture_registrar_, texture_id);
         }
       }
-      auto now = std::chrono::steady_clock::now();
+      const auto now = std::chrono::steady_clock::now();
       if (now >= next_refresh_check) {
         interval_us = QueryRefreshIntervalUs();
         next_refresh_check = now + std::chrono::seconds(1);
       }
-      if (next_tick <= now) {
-        next_tick = now + std::chrono::microseconds(interval_us);
-      }
-      std::this_thread::sleep_until(next_tick);
-      next_tick += std::chrono::microseconds(interval_us);
+      next_tick = now + std::chrono::microseconds(interval_us);
     }
   }
 
@@ -621,6 +665,11 @@ struct RustLibMisaRinPlugin::Impl {
   std::mutex surfaces_mutex_;
   std::unordered_map<std::string, std::shared_ptr<SurfaceState>> surfaces_;
   std::atomic<bool> running_;
+  const uint64_t frame_events_;
+  std::mutex surface_jobs_mutex_;
+  std::condition_variable surface_cv_;
+  std::deque<SurfaceJob> surface_jobs_;
+  std::thread surface_thread_;
   std::thread frame_thread_;
 };
 

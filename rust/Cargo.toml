@@ -31,6 +31,7 @@ metal = "0.32.0"
 wgpu-hal = { version = "27.0.4", features = ["dx12"] }
 d3d12 = { version = "0.20.0", features = ["libloading"] }
 winapi = { version = "0.3", features = ["d3d12", "dxgiformat", "dxgitype", "handleapi", "winnt"] }
+windows = { version = "0.58", features = ["Win32_Graphics_Direct3D12", "Win32_Graphics_Dxgi_Common", "Win32_Security"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni-sys = "0.4.1"

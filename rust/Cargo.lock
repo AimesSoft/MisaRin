@@ -2980,6 +2980,7 @@ dependencies = [
  "wgpu",
  "wgpu-hal",
  "winapi",
+ "windows",
 ]
 
 [[package]]
